@@ -208,6 +208,38 @@ class DatabaseManager:
                 return dict(row)
         return None
 
+    def restore_user(self, username: str, token: str, display_name: Optional[str] = None, client_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        clean_user = username.strip().lower()
+        if not clean_user or not token:
+            return None
+
+        d_name = display_name.strip() if display_name else clean_user.capitalize()
+        c_id = client_id.strip().upper() if client_id else "PRO"
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = ?", (clean_user,))
+            existing = cursor.fetchone()
+            if existing:
+                # Update token to match current client session
+                cursor.execute("UPDATE users SET token = ? WHERE username = ?", (token.strip(), clean_user))
+                conn.commit()
+            else:
+                # User lost due to ephemeral disk restart - recreate user and initial funds immediately
+                pwd_hash = self.hash_password("restored_pwd_2026")
+                cursor.execute("""
+                    INSERT INTO users (username, password_hash, display_name, client_id, token)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (clean_user, pwd_hash, d_name, c_id, token.strip()))
+
+                cursor.execute("""
+                    INSERT OR IGNORE INTO user_funds (username, available_cash, used_margin, realized_pnl)
+                    VALUES (?, 1000000.0, 0.0, 0.0)
+                """, (clean_user,))
+                conn.commit()
+
+        return self.get_user(clean_user)
+
     def get_user(self, username: str) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
             cursor = conn.cursor()

@@ -1289,10 +1289,16 @@
         return;
       }
       try {
-        const res = await fetch('/api/auth/me', {
+        let res = await fetch('/api/auth/me', {
           headers: getAuthHeaders()
         });
         if (res.status === 401) {
+          // Seamless auto-recovery if Render free container restarted & wiped db
+          const restored = await tryAutoRestoreUser();
+          if (restored && restored.user) {
+            syncAuthUI(restored.user, restored.funds);
+            return;
+          }
           clearAuthSession();
           syncAuthUI(null);
           return;
@@ -1444,9 +1450,15 @@
       loadOptionChain(true);
     }
 
+    let isFetchingChain = false;
     async function loadOptionChain(forceFullRender = false) {
+      if (isFetchingChain) return;
+      isFetchingChain = true;
       const container = document.getElementById('option-chain-view');
-      if (!container) return;
+      if (!container) {
+        isFetchingChain = false;
+        return;
+      }
 
       const existingTbody = document.getElementById('chain-table-body');
       const needsFullRender = forceFullRender || !existingTbody || !isOptionChainInitialLoaded;
@@ -1697,6 +1709,8 @@
         if (needsFullRender) {
           container.innerHTML = '<div class="p-8 text-center text-xs text-danger">Error fetching option chain: ' + err + '</div>';
         }
+      } finally {
+        isFetchingChain = false;
       }
     }
 
@@ -1819,25 +1833,25 @@
         });
       }
 
-      // 1. High-frequency live tick quote poll (every 900ms)
+      // 1. High-frequency live tick quote poll (every 1500ms)
       setInterval(async () => {
         try { await refreshWatchlist(); } catch (e) {}
-      }, 900);
+      }, 1500);
 
-      // 2. Real-time option chain streaming poll (every 1200ms) when Option Chain view is active
+      // 2. Real-time option chain streaming poll (every 2000ms) when Option Chain view is active
       setInterval(async () => {
         if (currentMainView === 'optionchain') {
           try { await loadOptionChain(false); } catch (e) {}
         }
-      }, 1200);
+      }, 2000);
 
-      // 3. Funds & dock MTM poll (every 2200ms)
+      // 3. Funds & dock MTM poll (every 3000ms)
       setInterval(async () => {
         try { await refreshFunds(); } catch (e) {}
         if (currentDockTab === 'positions') {
           try { await loadDockContent(); } catch (e) {}
         }
-      }, 2200);
+      }, 3000);
     });
 
     // ------------------ SMART BACK BUTTON & APP EXIT FLOW ------------------
@@ -2259,9 +2273,13 @@
     });
 
     // ------------------ WATCHLIST RENDERING ------------------
+    let isFetchingWatchlist = false;
     async function refreshWatchlist() {
+      if (isFetchingWatchlist) return;
+      isFetchingWatchlist = true;
       try {
         const activeList = getActiveWatchlist();
+        if (!activeList || activeList.length === 0) return;
         const res = await fetch(`/api/quotes?symbols=${activeList.join(',')}`);
         const result = await res.json();
         const quotes = result.data || [];
@@ -2424,6 +2442,8 @@
         applyWatchlistFilter();
       } catch (err) {
         console.error('Watchlist fetch error:', err);
+      } finally {
+        isFetchingWatchlist = false;
       }
     }
 
@@ -2437,7 +2457,10 @@
       }
     }
 
+    let isFetchingFunds = false;
     async function refreshFunds() {
+      if (isFetchingFunds) return;
+      isFetchingFunds = true;
       try {
         const res = await fetch('/api/funds', { headers: getAuthHeaders() });
         const r = await res.json();
@@ -2484,6 +2507,8 @@
         }
       } catch (e) {
         console.error('Funds fetch error:', e);
+      } finally {
+        isFetchingFunds = false;
       }
     }
 
@@ -2551,6 +2576,20 @@
       const qty = parseInt(document.getElementById('order-qty').value) || 1;
       const price = parseFloat(document.getElementById('order-price').value) || 0.0;
 
+      const submitBtn = document.getElementById('btn-submit-order');
+      const originalText = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-70', 'cursor-wait');
+        submitBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-slate-950 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          Punching Order...
+        `;
+      }
+
       const payload = {
         symbol: currentSymbol,
         qty: qty,
@@ -2562,11 +2601,22 @@
       };
 
       try {
-        const res = await fetch('/api/orders', {
+        let res = await fetch('/api/orders', {
           method: 'POST',
           headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(payload)
         });
+        if (res.status === 401) {
+          // Seamless auto-recovery if Render restarted
+          const restored = await tryAutoRestoreUser();
+          if (restored) {
+            res = await fetch('/api/orders', {
+              method: 'POST',
+              headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+              body: JSON.stringify(payload)
+            });
+          }
+        }
         if (res.status === 401) {
           clearAuthSession();
           syncAuthUI(null);
@@ -2588,6 +2638,12 @@
         }
       } catch (err) {
         showToast(`Order Error: ${err}`, 'error');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-70', 'cursor-wait');
+          submitBtn.innerHTML = originalText;
+        }
       }
     }
 
@@ -2956,13 +3012,52 @@
       return localStorage.getItem('insta_trade_token') || '';
     }
 
+    function getSavedUser() {
+      try {
+        const u = localStorage.getItem('insta_trade_user');
+        return u ? JSON.parse(u) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
     function getAuthHeaders(customHeaders = {}) {
       const token = getAuthToken();
+      const savedUser = getSavedUser();
       const headers = { ...customHeaders };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
+      if (savedUser && savedUser.username) {
+        headers['X-User-Name'] = savedUser.username;
+      }
       return headers;
+    }
+
+    async function tryAutoRestoreUser() {
+      const token = getAuthToken();
+      const savedUser = getSavedUser();
+      if (!token || !savedUser || !savedUser.username) return null;
+      try {
+        const res = await fetch('/api/auth/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: savedUser.username,
+            token: token,
+            display_name: savedUser.display_name || '',
+            client_id: savedUser.client_id || ''
+          })
+        });
+        const data = await res.json();
+        if (data.s === 'ok' && data.user) {
+          setAuthSession(data.token || token, data.user);
+          return data;
+        }
+      } catch (e) {
+        console.warn('Auto restore failed:', e);
+      }
+      return null;
     }
 
     function setAuthSession(token, user) {

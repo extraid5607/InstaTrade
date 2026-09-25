@@ -225,7 +225,7 @@ class VirtualTradingEngine:
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}?interval=1m&range=1d"
             headers = {"User-Agent": "Mozilla/5.0"}
-            with httpx.Client(timeout=3.0) as client:
+            with httpx.Client(timeout=1.5) as client:
                 resp = client.get(url, headers=headers)
                 if resp.status_code == 200:
                     meta = resp.json()["chart"]["result"][0]["meta"]
@@ -251,22 +251,27 @@ class VirtualTradingEngine:
 
     def _feed_worker(self):
         last_external_fetch = 0
+        primary_benchmarks = ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "BSE:SENSEX-INDEX", "NSE:RELIANCE-EQ"]
 
         while True:
             try:
                 now = time.time()
-                symbols = list(set(list(SYMBOL_MAP.keys()) + list(self.quotes_cache.keys())))
-                # 1. External sync in parallel every 2.5 seconds
-                if now - last_external_fetch > 2.5:
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=min(12, len(symbols))) as pool:
-                        results = list(pool.map(self._fetch_single_quote, symbols))
-                        for quote in results:
-                            if quote:
-                                self.quotes_cache[quote["symbol"]] = quote
-                    last_external_fetch = now
+                all_symbols = list(set(list(SYMBOL_MAP.keys()) + list(self.quotes_cache.keys())))
 
-                # 2. Continuous sub-second micro-ticks between external syncs
-                for sym in symbols:
+                # 1. External sync for primary benchmarks periodically (every 45s) to avoid rate limits & low CPU
+                if now - last_external_fetch > 45.0:
+                    last_external_fetch = now
+                    try:
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                            results = list(pool.map(self._fetch_single_quote, primary_benchmarks))
+                            for quote in results:
+                                if quote:
+                                    self.quotes_cache[quote["symbol"]] = quote
+                    except Exception as fe:
+                        logger.debug(f"External fetch error: {fe}")
+
+                # 2. Continuous sub-second micro-ticks for ultra-fast, smooth live terminal feel
+                for sym in all_symbols:
                     cached = self.quotes_cache.get(sym)
                     if cached:
                         cur_ltp = cached["ltp"]
@@ -290,7 +295,7 @@ class VirtualTradingEngine:
             except Exception as e:
                 logger.debug(f"Feed worker exception: {e}")
 
-            time.sleep(0.4)  # 400ms continuous streaming tick cycle
+            time.sleep(0.5)  # 500ms continuous streaming tick cycle
 
     # ------------------ REAL LIVE MARKET DATA ------------------
     def get_quotes(self, symbols: List[str]) -> List[Dict[str, Any]]:
@@ -438,7 +443,7 @@ class VirtualTradingEngine:
             now_ts = time.time()
             data = None
 
-            if cache_key in self._chain_raw_cache and (now_ts - self._chain_cache_time.get(cache_key, 0) < 6.0):
+            if cache_key in self._chain_raw_cache and (now_ts - self._chain_cache_time.get(cache_key, 0) < 30.0):
                 data = self._chain_raw_cache[cache_key]
             else:
                 try:
@@ -446,7 +451,7 @@ class VirtualTradingEngine:
                     if expiry:
                         url += f"?expiry={expiry}"
                     headers = {"User-Agent": "Mozilla/5.0"}
-                    with httpx.Client(timeout=2.0) as client:
+                    with httpx.Client(timeout=1.0) as client:
                         res = client.get(url, headers=headers)
                         if res.status_code == 200:
                             data = res.json()

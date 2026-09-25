@@ -8,7 +8,7 @@ Features:
 
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -53,11 +53,18 @@ class UpdateCredentialsPayload(BaseModel):
     client_id: Optional[str] = ""
 
 
+class RestorePayload(BaseModel):
+    username: str
+    token: str
+    display_name: Optional[str] = ""
+    client_id: Optional[str] = ""
+
+
 class OrderPayload(BaseModel):
     symbol: str
     qty: int
     side: int  # 1 for BUY, -1 for SELL
-    order_type: int = 2  # 1=Limit, 2=Market, 3=SL-L, 4=SL-M
+    order_type: Union[int, str] = 2  # 1=Limit, 2=Market, 3=SL-L, 4=SL-M
     product_type: str = "INTRADAY"  # "CNC", "INTRADAY", "MARGIN"
     limit_price: float = 0.0
     stop_price: float = 0.0
@@ -67,6 +74,7 @@ class OrderPayload(BaseModel):
 def get_current_username(
     authorization: Optional[str] = Header(None),
     x_auth_token: Optional[str] = Header(None, alias="X-Auth-Token"),
+    x_user_name: Optional[str] = Header(None, alias="X-User-Name"),
 ) -> Optional[str]:
     token = None
     if authorization and authorization.startswith("Bearer "):
@@ -78,25 +86,23 @@ def get_current_username(
         user = db.get_user_by_token(token)
         if user:
             return user["username"]
+        # Seamless recovery across ephemeral container resets:
+        if x_user_name and len(x_user_name.strip()) >= 3:
+            user = db.restore_user(username=x_user_name.strip(), token=token)
+            if user:
+                return user["username"]
 
     return None
-
 
 
 def require_authenticated_user(
     authorization: Optional[str] = Header(None),
     x_auth_token: Optional[str] = Header(None, alias="X-Auth-Token"),
+    x_user_name: Optional[str] = Header(None, alias="X-User-Name"),
 ) -> str:
-    token = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split("Bearer ")[1].strip()
-    elif x_auth_token:
-        token = x_auth_token.strip()
-
-    if token:
-        user = db.get_user_by_token(token)
-        if user:
-            return user["username"]
+    username = get_current_username(authorization=authorization, x_auth_token=x_auth_token, x_user_name=x_user_name)
+    if username:
+        return username
 
     raise HTTPException(status_code=401, detail="Please sign in with your Login ID and Password to trade.")
 
@@ -127,6 +133,25 @@ def register_account(payload: RegisterPayload):
 @app.post("/api/auth/login")
 def login_account(payload: LoginPayload):
     return db.authenticate_user(username=payload.username, password=payload.password)
+
+
+@app.post("/api/auth/restore")
+def restore_account(payload: RestorePayload):
+    user = db.restore_user(
+        username=payload.username,
+        token=payload.token,
+        display_name=payload.display_name,
+        client_id=payload.client_id,
+    )
+    if not user:
+        raise HTTPException(status_code=400, detail="Unable to restore account")
+    funds = virtual_engine.get_funds_for_user(user["username"])
+    return {
+        "s": "ok",
+        "user": user,
+        "token": payload.token,
+        "funds": funds,
+    }
 
 
 @app.get("/api/auth/me")
@@ -291,12 +316,21 @@ def get_orders(username: Optional[str] = Depends(get_current_username)):
 
 @app.post("/api/orders")
 def place_order(order: OrderPayload, username: str = Depends(require_authenticated_user)):
+    ot = order.order_type
+    if isinstance(ot, str):
+        ot = 1 if "LIMIT" in ot.upper() else 2
+    else:
+        try:
+            ot = int(ot)
+        except Exception:
+            ot = 2
+
     return virtual_engine.place_order_for_user(
         username=username,
         symbol=order.symbol,
         qty=order.qty,
         side=order.side,
-        order_type=order.order_type,
+        order_type=ot,
         product=order.product_type,
         limit_price=order.limit_price,
     )
