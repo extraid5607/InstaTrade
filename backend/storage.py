@@ -1,7 +1,9 @@
 """
-Insta Trade - SQLite Persistent Storage Manager
-Stores user accounts, credentials, funds, positions, and orders with 100% data isolation.
-Zero external database dependencies (uses standard library sqlite3).
+Insta Trade - Persistent Storage Manager
+Supports:
+1. Cloud PostgreSQL (Neon / Supabase / Render PostgreSQL via DATABASE_URL)
+2. Persistent Disks (Render /var/data or custom DATA_DIR)
+3. Local SQLite (data/trading_terminal.db) with seamless zero-lockout auto-creation on login
 """
 
 import os
@@ -9,35 +11,75 @@ import sqlite3
 import hashlib
 import secrets
 import datetime
+import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
+logger = logging.getLogger("storage")
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+
+# Persistent disk detection:
+DATA_DIR_ENV = os.environ.get("DATA_DIR")
+if DATA_DIR_ENV and Path(DATA_DIR_ENV).exists():
+    DATA_DIR = Path(DATA_DIR_ENV)
+elif Path("/var/data").exists():
+    DATA_DIR = Path("/var/data")
+else:
+    DATA_DIR = BASE_DIR / "data"
+
 DB_PATH = DATA_DIR / "trading_terminal.db"
 
 
 class DatabaseManager:
     def __init__(self, db_path: Path = DB_PATH):
         self.db_path = db_path
-        self._ensure_dir()
+        raw_db_url = os.environ.get("DATABASE_URL", "").strip()
+        if raw_db_url.startswith("postgres://"):
+            raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+        self.database_url = raw_db_url
+        self.is_postgres = bool(self.database_url)
+
+        if not self.is_postgres:
+            self._ensure_dir()
+        else:
+            logger.info("Connecting to Cloud PostgreSQL Database via DATABASE_URL")
+
         self.init_db()
 
     def _ensure_dir(self):
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
 
-    def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        return conn
+    def _get_connection(self):
+        if self.is_postgres:
+            import psycopg2
+            return psycopg2.connect(self.database_url)
+        else:
+            conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+            conn.row_factory = sqlite3.Row
+            return conn
+
+    def _get_cursor(self, conn):
+        if self.is_postgres:
+            import psycopg2.extras
+            return conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        return conn.cursor()
+
+    def _execute(self, cursor, sql: str, params: tuple = ()):
+        if self.is_postgres:
+            sql = sql.replace("?", "%s")
+        cursor.execute(sql, params)
 
     def init_db(self):
         with self._get_connection() as conn:
-            cursor = conn.cursor()
+            cursor = self._get_cursor(conn)
             # 1. Users table
-            cursor.execute("""
+            self._execute(cursor, """
                 CREATE TABLE IF NOT EXISTS users (
-                    username TEXT PRIMARY KEY,
+                    username VARCHAR(100) PRIMARY KEY,
                     password_hash TEXT NOT NULL,
                     display_name TEXT,
                     client_id TEXT,
@@ -47,46 +89,44 @@ class DatabaseManager:
             """)
 
             # 2. User Funds table
-            cursor.execute("""
+            self._execute(cursor, """
                 CREATE TABLE IF NOT EXISTS user_funds (
-                    username TEXT PRIMARY KEY,
+                    username VARCHAR(100) PRIMARY KEY,
                     available_cash REAL DEFAULT 1000000.0,
                     used_margin REAL DEFAULT 0.0,
-                    realized_pnl REAL DEFAULT 0.0,
-                    FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    realized_pnl REAL DEFAULT 0.0
                 )
             """)
 
             # 3. User Positions table
-            cursor.execute("""
+            self._execute(cursor, """
                 CREATE TABLE IF NOT EXISTS user_positions (
-                    id TEXT PRIMARY KEY,
-                    username TEXT NOT NULL,
-                    symbol TEXT NOT NULL,
-                    side TEXT NOT NULL,
-                    product TEXT DEFAULT 'INTRADAY',
+                    id VARCHAR(200) PRIMARY KEY,
+                    username VARCHAR(100) NOT NULL,
+                    symbol VARCHAR(100) NOT NULL,
+                    side VARCHAR(10) NOT NULL,
+                    product VARCHAR(20) DEFAULT 'INTRADAY',
                     net_qty INTEGER NOT NULL,
                     buy_avg REAL DEFAULT 0.0,
                     sell_avg REAL DEFAULT 0.0,
-                    margin_held REAL DEFAULT 0.0,
-                    FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    margin_held REAL DEFAULT 0.0
                 )
             """)
 
             # 4. User Orders table
-            cursor.execute("""
+            self._execute(cursor, """
                 CREATE TABLE IF NOT EXISTS user_orders (
-                    id TEXT PRIMARY KEY,
-                    username TEXT NOT NULL,
-                    order_time TEXT NOT NULL,
-                    symbol TEXT NOT NULL,
-                    side TEXT NOT NULL,
-                    order_type TEXT NOT NULL,
-                    product TEXT NOT NULL,
+                    id VARCHAR(100) PRIMARY KEY,
+                    username VARCHAR(100) NOT NULL,
+                    order_time VARCHAR(50) NOT NULL,
+                    symbol VARCHAR(100) NOT NULL,
+                    side VARCHAR(10) NOT NULL,
+                    order_type VARCHAR(20) NOT NULL,
+                    product VARCHAR(20) NOT NULL,
                     qty INTEGER NOT NULL,
                     price REAL NOT NULL,
-                    status TEXT NOT NULL,
-                    FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+                    status VARCHAR(50) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.commit()
@@ -96,20 +136,19 @@ class DatabaseManager:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        # Standard SHA256 hashing
         salt = "insta_trade_salt_2026"
         return hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
 
     def _seed_default_user(self):
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) as cnt FROM users")
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, "SELECT COUNT(*) as cnt FROM users")
             row = cursor.fetchone()
             if row and row["cnt"] == 0:
                 default_user = "aman_trader"
                 default_pass = "password123"
                 token = secrets.token_hex(24)
-                cursor.execute("""
+                self._execute(cursor, """
                     INSERT INTO users (username, password_hash, display_name, client_id, token)
                     VALUES (?, ?, ?, ?, ?)
                 """, (
@@ -119,9 +158,10 @@ class DatabaseManager:
                     "XH01499",
                     token
                 ))
-                cursor.execute("""
+                self._execute(cursor, """
                     INSERT INTO user_funds (username, available_cash, used_margin, realized_pnl)
                     VALUES (?, 1000000.0, 0.0, 0.0)
+                    ON CONFLICT(username) DO NOTHING
                 """, (default_user,))
                 conn.commit()
 
@@ -134,21 +174,22 @@ class DatabaseManager:
             return {"s": "error", "message": "Password must be at least 4 characters long"}
 
         d_name = display_name.strip() if display_name else clean_user.capitalize()
-        c_id = client_id.strip().upper() if client_id else f"USR{secrets.token_hex(3).upper()}"
+        c_id = client_id.strip().upper() if client_id else "PRO"
         pwd_hash = self.hash_password(password)
         token = secrets.token_hex(24)
 
         try:
             with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
+                cursor = self._get_cursor(conn)
+                self._execute(cursor, """
                     INSERT INTO users (username, password_hash, display_name, client_id, token)
                     VALUES (?, ?, ?, ?, ?)
                 """, (clean_user, pwd_hash, d_name, c_id, token))
 
-                cursor.execute("""
+                self._execute(cursor, """
                     INSERT INTO user_funds (username, available_cash, used_margin, realized_pnl)
                     VALUES (?, 1000000.0, 0.0, 0.0)
+                    ON CONFLICT(username) DO NOTHING
                 """, (clean_user,))
                 conn.commit()
 
@@ -162,28 +203,40 @@ class DatabaseManager:
                     "token": token
                 }
             }
-        except sqlite3.IntegrityError:
-            return {"s": "error", "message": f"Username '{clean_user}' already exists. Please choose a different login ID."}
+        except Exception as e:
+            err_str = str(e).lower()
+            if "unique" in err_str or "duplicate" in err_str or "already exists" in err_str:
+                return {"s": "error", "message": f"Username '{clean_user}' is already registered. Please choose another or login."}
+            return {"s": "error", "message": f"Registration failed: {e}"}
 
     def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
         clean_user = username.strip().lower()
         pwd_hash = self.hash_password(password)
 
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, """
                 SELECT username, display_name, client_id, password_hash
                 FROM users WHERE username = ?
             """, (clean_user,))
             row = cursor.fetchone()
             if not row:
-                return {"s": "error", "message": "User not found. Please register your Login ID."}
+                # Seamless Cloud Recovery:
+                # If database was wiped by container redeploy or user logging in on new browser,
+                # auto-create/restore the account immediately with the entered credentials!
+                logger.info(f"Auto-creating/restoring user '{clean_user}' on login.")
+                return self.register_user(
+                    username=clean_user,
+                    password=password,
+                    display_name=clean_user.capitalize(),
+                    client_id="PRO",
+                )
 
             if row["password_hash"] != pwd_hash:
                 return {"s": "error", "message": "Incorrect password. Please try again."}
 
             token = secrets.token_hex(24)
-            cursor.execute("UPDATE users SET token = ? WHERE username = ?", (token, clean_user))
+            self._execute(cursor, "UPDATE users SET token = ? WHERE username = ?", (token, clean_user))
             conn.commit()
 
             return {
@@ -192,7 +245,7 @@ class DatabaseManager:
                 "data": {
                     "username": clean_user,
                     "display_name": row["display_name"] or clean_user.capitalize(),
-                    "client_id": row["client_id"] or "XH01499",
+                    "client_id": row["client_id"] or "PRO",
                     "token": token
                 }
             }
@@ -201,8 +254,8 @@ class DatabaseManager:
         if not token:
             return None
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT username, display_name, client_id FROM users WHERE token = ?", (token.strip(),))
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, "SELECT username, display_name, client_id FROM users WHERE token = ?", (token.strip(),))
             row = cursor.fetchone()
             if row:
                 return dict(row)
@@ -217,24 +270,23 @@ class DatabaseManager:
         c_id = client_id.strip().upper() if client_id else "PRO"
 
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE username = ?", (clean_user,))
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, "SELECT * FROM users WHERE username = ?", (clean_user,))
             existing = cursor.fetchone()
             if existing:
-                # Update token to match current client session
-                cursor.execute("UPDATE users SET token = ? WHERE username = ?", (token.strip(), clean_user))
+                self._execute(cursor, "UPDATE users SET token = ? WHERE username = ?", (token.strip(), clean_user))
                 conn.commit()
             else:
-                # User lost due to ephemeral disk restart - recreate user and initial funds immediately
                 pwd_hash = self.hash_password("restored_pwd_2026")
-                cursor.execute("""
+                self._execute(cursor, """
                     INSERT INTO users (username, password_hash, display_name, client_id, token)
                     VALUES (?, ?, ?, ?, ?)
                 """, (clean_user, pwd_hash, d_name, c_id, token.strip()))
 
-                cursor.execute("""
-                    INSERT OR IGNORE INTO user_funds (username, available_cash, used_margin, realized_pnl)
+                self._execute(cursor, """
+                    INSERT INTO user_funds (username, available_cash, used_margin, realized_pnl)
                     VALUES (?, 1000000.0, 0.0, 0.0)
+                    ON CONFLICT(username) DO NOTHING
                 """, (clean_user,))
                 conn.commit()
 
@@ -242,8 +294,8 @@ class DatabaseManager:
 
     def get_user(self, username: str) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT username, display_name, client_id FROM users WHERE username = ?", (username.strip().lower(),))
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, "SELECT username, display_name, client_id FROM users WHERE username = ?", (username.strip().lower(),))
             row = cursor.fetchone()
             if row:
                 return dict(row)
@@ -252,7 +304,7 @@ class DatabaseManager:
     def update_user_credentials(self, username: str, password: Optional[str] = None, display_name: Optional[str] = None, client_id: Optional[str] = None) -> Dict[str, Any]:
         clean_user = username.strip().lower()
         with self._get_connection() as conn:
-            cursor = conn.cursor()
+            cursor = self._get_cursor(conn)
             updates = []
             params = []
             if password and password.strip():
@@ -267,18 +319,18 @@ class DatabaseManager:
 
             if updates:
                 params.append(clean_user)
-                cursor.execute(f"UPDATE users SET {', '.join(updates)} WHERE username = ?", params)
+                self._execute(cursor, f"UPDATE users SET {', '.join(updates)} WHERE username = ?", tuple(params))
                 conn.commit()
 
-            cursor.execute("SELECT username, display_name, client_id FROM users WHERE username = ?", (clean_user,))
+            self._execute(cursor, "SELECT username, display_name, client_id FROM users WHERE username = ?", (clean_user,))
             row = cursor.fetchone()
             return dict(row) if row else {}
 
     # ------------------ FUNDS PER USER ------------------
     def get_funds(self, username: str) -> Dict[str, Any]:
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT available_cash, used_margin, realized_pnl FROM user_funds WHERE username = ?", (username,))
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, "SELECT available_cash, used_margin, realized_pnl FROM user_funds WHERE username = ?", (username,))
             row = cursor.fetchone()
             if row:
                 return {
@@ -286,13 +338,12 @@ class DatabaseManager:
                     "used_margin": float(row["used_margin"]),
                     "realized_pnl": float(row["realized_pnl"]),
                 }
-            # Default
             return {"available_cash": 1000000.0, "used_margin": 0.0, "realized_pnl": 0.0}
 
     def update_funds(self, username: str, available_cash: float, used_margin: float, realized_pnl: float):
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, """
                 INSERT INTO user_funds (username, available_cash, used_margin, realized_pnl)
                 VALUES (?, ?, ?, ?)
                 ON CONFLICT(username) DO UPDATE SET
@@ -304,20 +355,20 @@ class DatabaseManager:
 
     def reset_funds(self, username: str, capital: float = 1000000.0):
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, """
                 UPDATE user_funds SET available_cash = ?, used_margin = 0.0, realized_pnl = 0.0
                 WHERE username = ?
             """, (capital, username))
-            cursor.execute("DELETE FROM user_positions WHERE username = ?", (username,))
-            cursor.execute("DELETE FROM user_orders WHERE username = ?", (username,))
+            self._execute(cursor, "DELETE FROM user_positions WHERE username = ?", (username,))
+            self._execute(cursor, "DELETE FROM user_orders WHERE username = ?", (username,))
             conn.commit()
 
     # ------------------ POSITIONS PER USER ------------------
     def get_positions(self, username: str) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, """
                 SELECT id, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held
                 FROM user_positions WHERE username = ?
             """, (username,))
@@ -327,8 +378,8 @@ class DatabaseManager:
     def save_position(self, username: str, pos: Dict[str, Any]):
         pos_id = f"{username}:{pos['symbol']}"
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, """
                 INSERT INTO user_positions (id, username, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
@@ -354,33 +405,36 @@ class DatabaseManager:
     def delete_position(self, username: str, symbol: str):
         pos_id = f"{username}:{symbol}"
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM user_positions WHERE id = ?", (pos_id,))
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, "DELETE FROM user_positions WHERE id = ?", (pos_id,))
             conn.commit()
 
     def clear_positions(self, username: str):
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM user_positions WHERE username = ?", (username,))
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, "DELETE FROM user_positions WHERE username = ?", (username,))
             conn.commit()
 
     # ------------------ ORDERS PER USER ------------------
     def get_orders(self, username: str) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, """
                 SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status
-                FROM user_orders WHERE username = ? ORDER BY rowid DESC
+                FROM user_orders WHERE username = ? ORDER BY created_at DESC
             """, (username,))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
     def add_order(self, username: str, order: Dict[str, Any]):
         with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT OR REPLACE INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status)
+            cursor = self._get_cursor(conn)
+            self._execute(cursor, """
+                INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    order_time = excluded.order_time,
+                    status = excluded.status
             """, (
                 order["id"],
                 username,
