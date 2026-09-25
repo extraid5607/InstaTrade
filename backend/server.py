@@ -330,6 +330,20 @@ if FRONTEND_DIR.exists():
             return FileResponse(str(index_file))
         return {"message": "Insta Trade API is running. frontend/index.html not found."}
 
+    @app.get("/manifest.json")
+    def serve_manifest():
+        m_file = FRONTEND_DIR / "manifest.json"
+        if m_file.exists():
+            return FileResponse(str(m_file), media_type="application/manifest+json")
+        raise HTTPException(status_code=404, detail="manifest.json not found")
+
+    @app.get("/sw.js")
+    def serve_sw():
+        sw_file = FRONTEND_DIR / "sw.js"
+        if sw_file.exists():
+            return FileResponse(str(sw_file), media_type="application/javascript")
+        raise HTTPException(status_code=404, detail="sw.js not found")
+
 
 if __name__ == "__main__":
     import uvicorn
