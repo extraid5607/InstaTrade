@@ -109,6 +109,8 @@ def require_authenticated_user(
 
 # ------------------ STATUS & SYSTEM ------------------
 @app.get("/api/status")
+@app.get("/api/health")
+@app.get("/health")
 def get_status():
     # Never expose any broker API keys or secrets
     return {
