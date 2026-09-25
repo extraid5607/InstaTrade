@@ -17,6 +17,7 @@ from pydantic import BaseModel
 
 from backend.storage import db
 from backend.virtual_engine import VirtualTradingEngine
+from backend.fyers_client import FyersClient
 
 app = FastAPI(title="Insta Trade", description="High-Speed Indian Market Virtual Trading Terminal")
 
@@ -32,6 +33,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 
 virtual_engine = VirtualTradingEngine(initial_capital=1000000.0)
+fyers_client = FyersClient()
+virtual_engine.fyers_client = fyers_client
 
 
 # ------------------ AUTH MODELS ------------------
@@ -224,6 +227,57 @@ def get_option_chain(
     strikecount: int = Query(15),
 ):
     return virtual_engine.get_option_chain(underlying, expiry=expiry, strike_count=strikecount)
+
+
+# ------------------ FYERS BROKER ENDPOINTS ------------------
+class FyersTokenPayload(BaseModel):
+    access_token: Optional[str] = ""
+    auth_code: Optional[str] = ""
+    app_id: Optional[str] = ""
+    secret_key: Optional[str] = ""
+    client_id: Optional[str] = ""
+
+
+@app.get("/api/fyers/status")
+def get_fyers_status():
+    is_cfg = fyers_client.is_configured
+    has_token = bool(fyers_client.access_token)
+    app_id = fyers_client.app_id
+    client_id = getattr(fyers_client, "client_id", os.getenv("FYERS_CLIENT_ID", "XH01499"))
+    return {
+        "configured": is_cfg,
+        "has_token": has_token,
+        "app_id": app_id,
+        "client_id": client_id,
+        "mode": "FYERS_BROKER_LIVE" if is_cfg else "NSE_EXCHANGE_LIVE",
+        "message": "Fyers API v3 Connected and Live" if is_cfg else "Using Direct Real-Time NSE Market Feed (Zero Token Required)",
+    }
+
+
+@app.get("/api/fyers/auth-url")
+def get_fyers_auth_url(redirect_uri: str = Query("https://127.0.0.1:5000/fyers/callback")):
+    return {"auth_url": fyers_client.generate_auth_url(redirect_uri)}
+
+
+@app.post("/api/fyers/token")
+def set_fyers_token(payload: FyersTokenPayload):
+    app_id = payload.app_id.strip() if payload.app_id else fyers_client.app_id
+    secret_key = payload.secret_key.strip() if payload.secret_key else fyers_client.secret_key
+    client_id = payload.client_id.strip() if payload.client_id else getattr(fyers_client, "client_id", "XH01499")
+
+    if payload.auth_code:
+        res = fyers_client.exchange_code_for_token(payload.auth_code.strip())
+        return res
+
+    if payload.access_token:
+        fyers_client.update_credentials(app_id, secret_key, payload.access_token.strip(), client_id=client_id)
+        return {
+            "s": "ok",
+            "message": "Fyers access token updated and active!",
+            "configured": fyers_client.is_configured,
+        }
+
+    return {"s": "error", "message": "Provide either access_token or auth_code"}
 
 
 @app.get("/api/search")

@@ -74,10 +74,16 @@ class FyersClient:
             }
         ]
 
-    def update_credentials(self, app_id: str, secret_key: str, access_token: str):
+    def update_credentials(self, app_id: str, secret_key: str, access_token: str, client_id: str = ""):
         self.app_id = app_id.strip()
         self.secret_key = secret_key.strip()
         self.access_token = access_token.strip()
+        if client_id:
+            self.client_id = client_id.strip()
+
+        os.environ["FYERS_APP_ID"] = self.app_id
+        os.environ["FYERS_SECRET_KEY"] = self.secret_key
+        os.environ["FYERS_ACCESS_TOKEN"] = self.access_token
 
         # Save to .env if file exists
         if os.path.exists(self.env_path):
@@ -85,6 +91,8 @@ class FyersClient:
                 set_key(self.env_path, "FYERS_APP_ID", self.app_id)
                 set_key(self.env_path, "FYERS_SECRET_KEY", self.secret_key)
                 set_key(self.env_path, "FYERS_ACCESS_TOKEN", self.access_token)
+                if getattr(self, "client_id", None):
+                    set_key(self.env_path, "FYERS_CLIENT_ID", self.client_id)
             except Exception as e:
                 logger.warning(f"Could not persist to .env: {e}")
 

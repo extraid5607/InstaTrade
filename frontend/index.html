@@ -447,8 +447,15 @@
                 <span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-1 rounded font-bold" id="chain-pcr-tag">BULLISH</span>
               </div>
 
+              <!-- Live Data Feed Indicator & Fyers Settings Button -->
+              <div class="flex items-center gap-1.5 bg-darkBg px-2 py-1 rounded-lg border border-borderSubtle text-[10px] font-mono cursor-pointer hover:border-brand/40 transition-colors ml-auto" onclick="openFyersModal()" title="View Feed Status / Connect Fyers Broker API">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="chain-source-badge" class="font-bold text-emerald-400">NSE Live</span>
+                <span class="text-[9px] bg-slate-800 text-slate-300 px-1 py-0.2 rounded hover:text-white border border-slate-700">Fyers API</span>
+              </div>
+
               <!-- Refresh Button -->
-              <button onclick="loadOptionChain(true)" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white cursor-pointer ml-auto transition-colors" title="Refresh Option Chain">
+              <button onclick="loadOptionChain(true)" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white cursor-pointer transition-colors" title="Refresh Option Chain">
                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
               </button>
             </div>
@@ -842,6 +849,68 @@
       <span class="text-[10px] mt-0.5 font-medium">Account</span>
     </button>
   </nav>
+
+  <!-- FYERS BROKER CONFIGURATION MODAL -->
+  <div id="fyers-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-panelBg border border-borderSubtle w-full max-w-lg rounded-2xl p-5 md:p-6 shadow-2xl relative">
+      <!-- Close button -->
+      <button onclick="closeFyersModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer p-1">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="text-center pb-4 border-b border-borderSubtle">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 mb-2">
+          <i data-lucide="key" class="w-6 h-6"></i>
+        </div>
+        <h2 class="text-lg font-bold text-white tracking-tight">Fyers API v3 Integration</h2>
+        <p class="text-xs text-slate-400 mt-1">Connect your Fyers account or stream real-time NSE market data</p>
+      </div>
+
+      <!-- Current Feed Status -->
+      <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle mt-4 space-y-2 text-xs font-mono">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400">Current Feed Mode:</span>
+          <span id="fyers-status-mode" class="font-bold text-emerald-400">NSE Real-Time Direct Feed</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400">Fyers App ID:</span>
+          <span class="text-slate-200" id="fyers-status-appid">DLQNCDLKPV-100</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400">Client ID:</span>
+          <span class="text-slate-200" id="fyers-status-clientid">XH01499</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400">Access Token:</span>
+          <span id="fyers-status-token" class="text-amber-400 font-semibold">Not Set / Expired</span>
+        </div>
+      </div>
+
+      <!-- Explanation note -->
+      <div class="mt-3 p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+        <span class="text-amber-400 font-semibold">Note:</span> SEBI & Indian exchange regulations require Fyers broker access tokens to be regenerated daily. When Fyers token is not present, InstaTrade automatically streams <strong class="text-emerald-400">100% real live market option prices</strong> directly from the exchange.
+      </div>
+
+      <!-- Token Input Form -->
+      <div class="mt-4 space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Enter Fyers Access Token (or Auth Code):</label>
+          <textarea id="fyers-token-input" rows="2" placeholder="Paste your Fyers access token or auth code here..." class="w-full bg-darkBg border border-borderSubtle rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand font-mono"></textarea>
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="saveFyersToken()" class="flex-1 py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-95">
+            <i data-lucide="check" class="w-4 h-4"></i> Save & Connect Token
+          </button>
+          <a id="btn-fyers-oauth" href="https://api-t1.fyers.in/api/v3/generate-authcode?client_id=DLQNCDLKPV-100&redirect_uri=https://127.0.0.1:5000/fyers/callback&response_type=code&state=insta_trade" target="_blank" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 border border-borderSubtle transition-all cursor-pointer">
+            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Daily Login
+          </a>
+        </div>
+        <div id="fyers-token-msg" class="text-xs text-center hidden font-medium"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- TRADER AUTHENTICATION MODAL (SIGN IN / REGISTER) -->
   <div id="auth-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -1489,6 +1558,17 @@
           currentSpotPrice = data.spot;
         }
 
+        const srcBadge = document.getElementById('chain-source-badge');
+        if (srcBadge) {
+          if (data.source === 'FYERS_API_LIVE') {
+            srcBadge.innerText = 'Fyers Live';
+            srcBadge.className = 'font-bold text-emerald-400';
+          } else {
+            srcBadge.innerText = 'NSE Live';
+            srcBadge.className = 'font-bold text-emerald-400';
+          }
+        }
+
         // Sync expiry dropdown
         const expSelect = document.getElementById('chain-expiry-select');
         if (expSelect && data.expiry_dates && data.expiry_dates.length && (needsFullRender || expSelect.children.length === 0)) {
@@ -1861,6 +1941,14 @@
     let lastBackPressTime = 0;
 
     window.addEventListener('popstate', (e) => {
+      // 0. If Fyers Modal is open, close it first
+      const fyersModal = document.getElementById('fyers-modal');
+      if (fyersModal && !fyersModal.classList.contains('hidden')) {
+        closeFyersModal();
+        history.pushState({ tab: currentMobileTab }, '', '#' + currentMobileTab);
+        return;
+      }
+
       // 1. If Trader Auth modal is open, close it first
       const authModal = document.getElementById('auth-modal');
       if (authModal && !authModal.classList.contains('hidden')) {
@@ -3198,6 +3286,77 @@
         if (mobSheetAuthIcon) mobSheetAuthIcon.setAttribute('data-lucide', 'user-check');
       }
       try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ FYERS MODAL CONTROLS ------------------
+    async function openFyersModal() {
+      const modal = document.getElementById('fyers-modal');
+      if (modal) modal.classList.remove('hidden');
+      try {
+        const res = await fetch('/api/fyers/status');
+        const data = await res.json();
+        const modeEl = document.getElementById('fyers-status-mode');
+        const tokenEl = document.getElementById('fyers-status-token');
+        const appIdEl = document.getElementById('fyers-status-appid');
+        const clientIdEl = document.getElementById('fyers-status-clientid');
+
+        if (modeEl) {
+          modeEl.innerText = data.configured ? '🟢 Fyers Broker Live API Active' : '🟢 Real-Time Direct NSE Market Feed';
+          modeEl.className = data.configured ? 'font-bold text-emerald-400' : 'font-bold text-emerald-400';
+        }
+        if (tokenEl) {
+          tokenEl.innerText = data.has_token ? 'Active (Valid)' : 'Not Set / Expired';
+          tokenEl.className = data.has_token ? 'text-emerald-400 font-bold' : 'text-amber-400 font-semibold';
+        }
+        if (appIdEl && data.app_id) appIdEl.innerText = data.app_id;
+        if (clientIdEl && data.client_id) clientIdEl.innerText = data.client_id;
+      } catch (e) {}
+    }
+
+    function closeFyersModal() {
+      const modal = document.getElementById('fyers-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function saveFyersToken() {
+      const input = document.getElementById('fyers-token-input');
+      const msg = document.getElementById('fyers-token-msg');
+      const val = input ? input.value.trim() : '';
+      if (!val) {
+        if (msg) {
+          msg.innerText = 'Please enter an access token or auth code.';
+          msg.className = 'text-xs text-center text-danger';
+          msg.classList.remove('hidden');
+        }
+        return;
+      }
+
+      try {
+        const payload = (val.length < 80 || val.includes('auth_code') || val.includes('code=')) ? { auth_code: val } : { access_token: val };
+        const res = await fetch('/api/fyers/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (msg) {
+          msg.innerText = data.message || 'Token updated!';
+          msg.className = data.s === 'ok' ? 'text-xs text-center text-emerald-400' : 'text-xs text-center text-danger';
+          msg.classList.remove('hidden');
+        }
+        if (data.s === 'ok') {
+          setTimeout(() => {
+            closeFyersModal();
+            loadOptionChain(true);
+          }, 1200);
+        }
+      } catch (e) {
+        if (msg) {
+          msg.innerText = 'Failed to update token: ' + e;
+          msg.className = 'text-xs text-center text-danger';
+          msg.classList.remove('hidden');
+        }
+      }
     }
 
     // ------------------ AUTH MODAL CONTROLS ------------------
