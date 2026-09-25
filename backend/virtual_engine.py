@@ -251,7 +251,7 @@ class VirtualTradingEngine:
 
     def _feed_worker(self):
         last_external_fetch = 0
-        primary_benchmarks = ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "BSE:SENSEX-INDEX", "NSE:RELIANCE-EQ"]
+        primary_benchmarks = ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "BSE:SENSEX-INDEX", "NSE:FINNIFTY-INDEX", "NSE:RELIANCE-EQ"]
 
         while True:
             try:
@@ -262,23 +262,41 @@ class VirtualTradingEngine:
                 if now - last_external_fetch > 45.0:
                     last_external_fetch = now
                     try:
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
                             results = list(pool.map(self._fetch_single_quote, primary_benchmarks))
                             for quote in results:
                                 if quote:
+                                    quote["anchor_price"] = quote["ltp"]
                                     self.quotes_cache[quote["symbol"]] = quote
                     except Exception as fe:
                         logger.debug(f"External fetch error: {fe}")
 
-                # 2. Continuous sub-second micro-ticks for ultra-fast, smooth live terminal feel
+                # 2. Continuous sub-second micro-ticks with zero-drift mean-reversion
                 for sym in all_symbols:
+                    if sym.endswith("-FUT"):
+                        continue  # Futures are derived from spot index below
+
                     cached = self.quotes_cache.get(sym)
                     if cached:
                         cur_ltp = cached["ltp"]
-                        if "INDEX" in sym or "FUT" in sym:
-                            step = random.choice([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0])
+                        anchor = cached.get("anchor_price", cur_ltp)
+                        drift = cur_ltp - anchor
+                        max_band = max(0.4, anchor * 0.0015)  # 0.15% maximum band
+
+                        if "INDEX" in sym:
+                            if drift > max_band:
+                                step = random.choice([-2.0, -1.5, -1.0])
+                            elif drift < -max_band:
+                                step = random.choice([1.0, 1.5, 2.0])
+                            else:
+                                step = random.choice([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
                         else:
-                            step = random.choice([-0.25, -0.15, -0.05, 0.0, 0.05, 0.15, 0.25])
+                            if drift > max_band:
+                                step = random.choice([-0.20, -0.15, -0.10])
+                            elif drift < -max_band:
+                                step = random.choice([0.10, 0.15, 0.20])
+                            else:
+                                step = random.choice([-0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15])
 
                         new_ltp = round(max(1.0, cur_ltp + step), 2)
                         prev_close = cached.get("prev_close", new_ltp)
@@ -290,6 +308,36 @@ class VirtualTradingEngine:
                         cached["chg_percent"] = chg_pct
                         cached["high"] = max(cached.get("high", new_ltp), new_ltp)
                         cached["low"] = min(cached.get("low", new_ltp), new_ltp)
+
+                # 3. Synchronize Index Futures tightly with their spot underlying + fixed basis (zero drift)
+                fut_pairs = [
+                    ("NSE:NIFTY-FUT", "NSE:NIFTY50-INDEX", 25.0, "NIFTY FUT"),
+                    ("NSE:BANKNIFTY-FUT", "NSE:NIFTYBANK-INDEX", 60.0, "BANK NIFTY FUT"),
+                    ("BSE:SENSEX-FUT", "BSE:SENSEX-INDEX", 85.0, "SENSEX FUT"),
+                    ("NSE:FINNIFTY-FUT", "NSE:FINNIFTY-INDEX", 20.0, "FINNIFTY FUT"),
+                ]
+                for fut_sym, spot_sym, basis, name in fut_pairs:
+                    spot_q = self.quotes_cache.get(spot_sym)
+                    if spot_q:
+                        s_ltp = spot_q["ltp"]
+                        s_prev = spot_q.get("prev_close", s_ltp)
+                        fut_ltp = round(s_ltp + basis, 2)
+                        fut_prev = round(s_prev + basis, 2)
+                        change = round(fut_ltp - fut_prev, 2)
+                        chg_pct = round((change / fut_prev) * 100.0, 2) if fut_prev else 0.0
+                        self.quotes_cache[fut_sym] = {
+                            "symbol": fut_sym,
+                            "short_name": name,
+                            "ltp": fut_ltp,
+                            "change": change,
+                            "chg_percent": chg_pct,
+                            "open": round(spot_q.get("open", s_ltp) + basis, 2),
+                            "high": round(spot_q.get("high", s_ltp) + basis, 2),
+                            "low": round(spot_q.get("low", s_ltp) + basis, 2),
+                            "prev_close": fut_prev,
+                            "volume": 2850000,
+                            "anchor_price": fut_ltp,
+                        }
 
                 self._update_open_positions_mtm()
             except Exception as e:
@@ -329,6 +377,17 @@ class VirtualTradingEngine:
             clean = symbol.split(":")[-1].replace("-EQ", "").replace("-INDEX", "")
             yahoo_sym = f"{clean}.NS"
 
+        basis = 0.0
+        if symbol.endswith("-FUT"):
+            if "BANKNIFTY" in symbol:
+                basis = 60.0
+            elif "SENSEX" in symbol:
+                basis = 85.0
+            elif "FINNIFTY" in symbol:
+                basis = 20.0
+            else:
+                basis = 25.0
+
         interval_map = {"1": "1m", "5": "5m", "15": "15m", "60": "60m", "1D": "1d"}
         range_map = {"1": "1d", "5": "5d", "15": "5d", "60": "1mo", "1D": "3mo"}
 
@@ -356,13 +415,23 @@ class VirtualTradingEngine:
                         if opens[i] is not None and closes[i] is not None:
                             candles.append({
                                 "time": timestamps[i],
-                                "open": round(opens[i], 2),
-                                "high": round(highs[i], 2),
-                                "low": round(lows[i], 2),
-                                "close": round(closes[i], 2),
+                                "open": round(opens[i] + basis, 2),
+                                "high": round(highs[i] + basis, 2),
+                                "low": round(lows[i] + basis, 2),
+                                "close": round(closes[i] + basis, 2),
                                 "volume": volumes[i] or 0,
                             })
                     if candles:
+                        latest = candles[-1]
+                        cached = self.quotes_cache.get(symbol)
+                        if cached:
+                            cached["ltp"] = latest["close"]
+                            cached["anchor_price"] = latest["close"]
+                            cached["high"] = max(cached.get("high", latest["high"]), latest["high"])
+                            cached["low"] = min(cached.get("low", latest["low"]), latest["low"])
+                            prev_c = cached.get("prev_close", latest["close"])
+                            cached["change"] = round(latest["close"] - prev_c, 2)
+                            cached["chg_percent"] = round((cached["change"] / prev_c) * 100.0, 2) if prev_c else 0.0
                         return candles
         except Exception as e:
             logger.error(f"Error fetching real history for {symbol}: {e}")
@@ -370,7 +439,7 @@ class VirtualTradingEngine:
         # Fallback simulation candles
         now = datetime.datetime.now()
         candles = []
-        price = default_base
+        price = default_base + basis
         for i in range(100):
             t = now - datetime.timedelta(minutes=(100 - i) * 5)
             delta = ((i % 5) - 2) * (0.6 if "NIFTY" in symbol else 0.3)
@@ -387,6 +456,12 @@ class VirtualTradingEngine:
                 "close": c,
                 "volume": 1000 + i * 50,
             })
+        if candles:
+            latest = candles[-1]
+            cached = self.quotes_cache.get(symbol)
+            if cached:
+                cached["ltp"] = latest["close"]
+                cached["anchor_price"] = latest["close"]
         return candles
 
     # ------------------ OPTION CHAIN GENERATOR ------------------

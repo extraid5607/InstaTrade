@@ -1026,6 +1026,7 @@
     let currentSpotPrice = 55600.0;
     let chart, candleSeries;
     let lastCandle = null;
+    let lastCandleSymbol = '';
     let prevQuotes = {};
     let isOptionChainInitialLoaded = false;
     let currentMobileTab = 'watchlist';
@@ -2002,12 +2003,16 @@
 
     async function loadChartData() {
       if (!candleSeries) return;
+      const symbolToLoad = currentSymbol;
+      lastCandle = null;
+      lastCandleSymbol = '';
       try {
-        const res = await fetch(`/api/history?symbol=${currentSymbol}&resolution=${currentResolution}`);
+        const res = await fetch(`/api/history?symbol=${encodeURIComponent(symbolToLoad)}&resolution=${currentResolution}`);
         const data = await res.json();
-        if (data.candles && data.candles.length) {
+        if (data.candles && data.candles.length && symbolToLoad === currentSymbol) {
           candleSeries.setData(data.candles);
           lastCandle = Object.assign({}, data.candles[data.candles.length - 1]);
+          lastCandleSymbol = symbolToLoad;
           chart.timeScale().fitContent();
         }
       } catch (err) {
@@ -2429,12 +2434,43 @@
             }
 
             // Real-Time Candlestick Chart Live Streaming Tick
-            if (candleSeries && lastCandle) {
-              const curPrice = q.ltp;
-              lastCandle.close = curPrice;
-              if (curPrice > lastCandle.high) lastCandle.high = curPrice;
-              if (curPrice < lastCandle.low) lastCandle.low = curPrice;
-              candleSeries.update(lastCandle);
+            if (candleSeries && lastCandle && lastCandleSymbol === currentSymbol) {
+              const curPrice = Number(q.ltp);
+              if (!isNaN(curPrice) && curPrice > 0) {
+                const resSecMap = { '1': 60, '5': 300, '15': 900, '60': 3600, '1D': 86400 };
+                const barSec = resSecMap[currentResolution] || 300;
+                const nowSec = Math.floor(Date.now() / 1000);
+                const lastTime = typeof lastCandle.time === 'number' ? lastCandle.time : Math.floor(new Date(lastCandle.time).getTime() / 1000);
+
+                if (nowSec >= lastTime && (nowSec - lastTime) < barSec) {
+                  // Within same forming bar: update high, low, close
+                  lastCandle.close = curPrice;
+                  if (curPrice > lastCandle.high) lastCandle.high = curPrice;
+                  if (curPrice < lastCandle.low) lastCandle.low = curPrice;
+                  candleSeries.update(lastCandle);
+                } else if ((nowSec - lastTime) >= barSec && (nowSec - lastTime) < barSec * 3) {
+                  // Next bar period has arrived in live session: start fresh bar
+                  const nextBarTime = lastTime + barSec;
+                  lastCandle = {
+                    time: nextBarTime,
+                    open: curPrice,
+                    high: curPrice,
+                    low: curPrice,
+                    close: curPrice
+                  };
+                  candleSeries.update(lastCandle);
+                } else {
+                  // Historical data time gap (e.g. market closed, off-hours, or historical bar)
+                  // Smoothly update the last bar only if price difference is small (<0.6%) to prevent giant vertical spikes
+                  const pctDiff = Math.abs(curPrice - lastCandle.close) / (lastCandle.close || 1);
+                  if (pctDiff < 0.006) {
+                    lastCandle.close = curPrice;
+                    if (curPrice > lastCandle.high) lastCandle.high = curPrice;
+                    if (curPrice < lastCandle.low) lastCandle.low = curPrice;
+                    candleSeries.update(lastCandle);
+                  }
+                }
+              }
             }
           }
         });
