@@ -129,6 +129,22 @@ class DatabaseManager:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # 5. User Sessions table (multi-device, multi-tab persistent sessions)
+            self._execute(cursor, """
+                CREATE TABLE IF NOT EXISTS user_sessions (
+                    token VARCHAR(200) PRIMARY KEY,
+                    username VARCHAR(100) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Safe column migration for existing user_orders tables
+            try:
+                self._execute(cursor, "ALTER TABLE user_orders ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            except Exception:
+                pass
+
             conn.commit()
 
         # Seed default user if database is new
@@ -187,6 +203,11 @@ class DatabaseManager:
                 """, (clean_user, pwd_hash, d_name, c_id, token))
 
                 self._execute(cursor, """
+                    INSERT INTO user_sessions (token, username) VALUES (?, ?)
+                    ON CONFLICT(token) DO NOTHING
+                """, (token, clean_user))
+
+                self._execute(cursor, """
                     INSERT INTO user_funds (username, available_cash, used_margin, realized_pnl)
                     VALUES (?, 1000000.0, 0.0, 0.0)
                     ON CONFLICT(username) DO NOTHING
@@ -237,6 +258,10 @@ class DatabaseManager:
 
             token = secrets.token_hex(24)
             self._execute(cursor, "UPDATE users SET token = ? WHERE username = ?", (token, clean_user))
+            self._execute(cursor, """
+                INSERT INTO user_sessions (token, username) VALUES (?, ?)
+                ON CONFLICT(token) DO NOTHING
+            """, (token, clean_user))
             conn.commit()
 
             return {
@@ -253,9 +278,21 @@ class DatabaseManager:
     def get_user_by_token(self, token: str) -> Optional[Dict[str, Any]]:
         if not token:
             return None
+        t = token.strip()
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
-            self._execute(cursor, "SELECT username, display_name, client_id FROM users WHERE token = ?", (token.strip(),))
+            # 1. Multi-device/multi-tab session check
+            self._execute(cursor, """
+                SELECT u.username, u.display_name, u.client_id
+                FROM user_sessions s
+                JOIN users u ON s.username = u.username
+                WHERE s.token = ?
+            """, (t,))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+            # 2. Direct token check
+            self._execute(cursor, "SELECT username, display_name, client_id FROM users WHERE token = ?", (t,))
             row = cursor.fetchone()
             if row:
                 return dict(row)
@@ -275,6 +312,10 @@ class DatabaseManager:
             existing = cursor.fetchone()
             if existing:
                 self._execute(cursor, "UPDATE users SET token = ? WHERE username = ?", (token.strip(), clean_user))
+                self._execute(cursor, """
+                    INSERT INTO user_sessions (token, username) VALUES (?, ?)
+                    ON CONFLICT(token) DO NOTHING
+                """, (token.strip(), clean_user))
                 conn.commit()
             else:
                 pwd_hash = self.hash_password("restored_pwd_2026")
@@ -284,6 +325,11 @@ class DatabaseManager:
                 """, (clean_user, pwd_hash, d_name, c_id, token.strip()))
 
                 self._execute(cursor, """
+                    INSERT INTO user_sessions (token, username) VALUES (?, ?)
+                    ON CONFLICT(token) DO NOTHING
+                """, (token.strip(), clean_user))
+
+                self._execute(cursor, """
                     INSERT INTO user_funds (username, available_cash, used_margin, realized_pnl)
                     VALUES (?, 1000000.0, 0.0, 0.0)
                     ON CONFLICT(username) DO NOTHING
@@ -291,6 +337,58 @@ class DatabaseManager:
                 conn.commit()
 
         return self.get_user(clean_user)
+
+    def sync_user_state(self, username: str, positions: Optional[List[Dict[str, Any]]] = None, orders: Optional[List[Dict[str, Any]]] = None):
+        clean_user = username.strip().lower()
+        if not clean_user:
+            return
+        with self._get_connection() as conn:
+            cursor = self._get_cursor(conn)
+            if positions:
+                for p in positions:
+                    if not p or not p.get("symbol") or not p.get("net_qty"):
+                        continue
+                    pos_id = p.get("id") or f"{clean_user}:{p['symbol']}"
+                    self._execute(cursor, """
+                        INSERT INTO user_positions (id, username, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            net_qty = excluded.net_qty,
+                            buy_avg = excluded.buy_avg,
+                            sell_avg = excluded.sell_avg,
+                            margin_held = excluded.margin_held
+                    """, (
+                        pos_id,
+                        clean_user,
+                        p["symbol"],
+                        p.get("side", "BUY"),
+                        p.get("product", "INTRADAY"),
+                        int(p["net_qty"]),
+                        float(p.get("buy_avg", 0.0)),
+                        float(p.get("sell_avg", 0.0)),
+                        float(p.get("margin_held", 0.0)),
+                    ))
+            if orders:
+                for o in orders:
+                    if not o or not o.get("id") or not o.get("symbol"):
+                        continue
+                    self._execute(cursor, """
+                        INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO NOTHING
+                    """, (
+                        o["id"],
+                        clean_user,
+                        o.get("time", ""),
+                        o["symbol"],
+                        o.get("side", "BUY"),
+                        o.get("order_type", "MARKET"),
+                        o.get("product", "INTRADAY"),
+                        int(o.get("qty", 1)),
+                        float(o.get("price", 0.0)),
+                        o.get("status", "FILLED"),
+                    ))
+            conn.commit()
 
     def get_user(self, username: str) -> Optional[Dict[str, Any]]:
         with self._get_connection() as conn:
@@ -421,7 +519,7 @@ class DatabaseManager:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
                 SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status
-                FROM user_orders WHERE username = ? ORDER BY created_at DESC
+                FROM user_orders WHERE username = ? ORDER BY rowid DESC
             """, (username,))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]

@@ -159,6 +159,18 @@ class VirtualTradingEngine:
                 "volume": 500000,
             }
 
+        # Shared persistent HTTP client with connection pooling and socket reuse
+        self.http_client = httpx.Client(
+            timeout=httpx.Timeout(connect=3.0, read=6.0, write=3.0, pool=6.0),
+            limits=httpx.Limits(max_keepalive_connections=8, max_connections=16, keepalive_expiry=30.0),
+            follow_redirects=True,
+        )
+        # Shared persistent thread pool for feed fetching
+        self.feed_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="feed_worker")
+        # Track active underlying to prioritize option chain pre-warming without memory explosion
+        self.active_underlying = "NIFTY"
+        self._last_inactive_option_fetch = 0.0
+
         # Reference to optional Fyers API v3 client
         self.fyers_client = None
 
@@ -237,26 +249,25 @@ class VirtualTradingEngine:
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}?interval=1m&range=1d"
             headers = {"User-Agent": "Mozilla/5.0"}
-            with httpx.Client(timeout=1.5) as client:
-                resp = client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    meta = resp.json()["chart"]["result"][0]["meta"]
-                    ltp = float(meta.get("regularMarketPrice") or default_base)
-                    prev_close = float(meta.get("chartPreviousClose") or meta.get("previousClose") or ltp)
-                    change = round(ltp - prev_close, 2)
-                    chg_pct = round((change / prev_close) * 100.0, 2) if prev_close else 0.0
-                    return {
-                        "symbol": sym,
-                        "short_name": short_name,
-                        "ltp": round(ltp, 2),
-                        "change": change,
-                        "chg_percent": chg_pct,
-                        "open": round(float(meta.get("regularMarketDayOpen") or prev_close), 2),
-                        "high": round(float(meta.get("regularMarketDayHigh") or ltp), 2),
-                        "low": round(float(meta.get("regularMarketDayLow") or ltp), 2),
-                        "prev_close": round(prev_close, 2),
-                        "volume": meta.get("regularMarketVolume", 0),
-                    }
+            resp = self.http_client.get(url, headers=headers)
+            if resp.status_code == 200:
+                meta = resp.json()["chart"]["result"][0]["meta"]
+                ltp = float(meta.get("regularMarketPrice") or default_base)
+                prev_close = float(meta.get("chartPreviousClose") or meta.get("previousClose") or ltp)
+                change = round(ltp - prev_close, 2)
+                chg_pct = round((change / prev_close) * 100.0, 2) if prev_close else 0.0
+                return {
+                    "symbol": sym,
+                    "short_name": short_name,
+                    "ltp": round(ltp, 2),
+                    "change": change,
+                    "chg_percent": chg_pct,
+                    "open": round(float(meta.get("regularMarketDayOpen") or prev_close), 2),
+                    "high": round(float(meta.get("regularMarketDayHigh") or ltp), 2),
+                    "low": round(float(meta.get("regularMarketDayLow") or ltp), 2),
+                    "prev_close": round(prev_close, 2),
+                    "volume": meta.get("regularMarketVolume", 0),
+                }
         except Exception:
             pass
         return None
@@ -277,16 +288,15 @@ class VirtualTradingEngine:
                 now = time.time()
                 all_symbols = list(set(list(SYMBOL_MAP.keys()) + list(self.quotes_cache.keys())))
 
-                # 1. External sync for primary benchmarks periodically (every 2.5s) for real-time live data (<1-2s delay)
+                # 1. External sync for primary benchmarks periodically (every 2.5s) using persistent pool
                 if now - last_external_fetch > 2.5:
                     last_external_fetch = now
                     try:
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
-                            results = list(pool.map(self._fetch_single_quote, primary_benchmarks))
-                            for quote in results:
-                                if quote:
-                                    quote["anchor_price"] = quote["ltp"]
-                                    self.quotes_cache[quote["symbol"]] = quote
+                        results = list(self.feed_pool.map(self._fetch_single_quote, primary_benchmarks))
+                        for quote in results:
+                            if quote:
+                                quote["anchor_price"] = quote["ltp"]
+                                self.quotes_cache[quote["symbol"]] = quote
                     except Exception as fe:
                         logger.debug(f"External fetch error: {fe}")
 
@@ -393,21 +403,42 @@ class VirtualTradingEngine:
                     time.sleep(2.0)
                     continue
 
-                for name, slug in slug_map.items():
-                    try:
-                        url = f"https://groww.in/v1/api/option_chain_service/v1/option_chain/derivatives/{slug}"
-                        with httpx.Client(timeout=8.0) as client:
-                            res = client.get(url, headers=headers)
+                now = time.time()
+                # 1. High-frequency refresh for currently active underlying (every 3.5s)
+                active = self.active_underlying or "NIFTY"
+                active_slug = slug_map.get(active, "nifty")
+                try:
+                    url = f"https://groww.in/v1/api/option_chain_service/v1/option_chain/derivatives/{active_slug}"
+                    res = self.http_client.get(url, headers=headers)
+                    if res.status_code == 200:
+                        d = res.json()
+                        if d and d.get("optionChain"):
+                            self._chain_raw_cache[active] = d
+                            self._chain_raw_cache[f"{active}_"] = d
+                            self._chain_cache_time[active] = now
+                            self._chain_cache_time[f"{active}_"] = now
+                except Exception as ex:
+                    logger.debug(f"Background option chain fetch error for {active}: {ex}")
+
+                # 2. Low-frequency background warm-up for inactive underlyings (every 30s)
+                if now - self._last_inactive_option_fetch > 30.0:
+                    self._last_inactive_option_fetch = now
+                    for name, slug in slug_map.items():
+                        if name == active:
+                            continue
+                        try:
+                            url = f"https://groww.in/v1/api/option_chain_service/v1/option_chain/derivatives/{slug}"
+                            res = self.http_client.get(url, headers=headers)
                             if res.status_code == 200:
                                 d = res.json()
                                 if d and d.get("optionChain"):
                                     self._chain_raw_cache[name] = d
                                     self._chain_raw_cache[f"{name}_"] = d
-                                    self._chain_cache_time[name] = time.time()
-                                    self._chain_cache_time[f"{name}_"] = time.time()
-                    except Exception as ex:
-                        logger.debug(f"Background option chain fetch error for {name}: {ex}")
-                    time.sleep(0.3)
+                                    self._chain_cache_time[name] = now
+                                    self._chain_cache_time[f"{name}_"] = now
+                        except Exception:
+                            pass
+                        time.sleep(0.5)
             except Exception as e:
                 logger.debug(f"Option chain worker loop error: {e}")
 
@@ -546,22 +577,21 @@ class VirtualTradingEngine:
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}?interval={y_interval}&range={y_range}"
             headers = {"User-Agent": "Mozilla/5.0"}
-            with httpx.Client(timeout=8.0) as client:
-                resp = client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    result = data["chart"]["result"][0]
-                    timestamps = result["timestamp"]
-                    quote = result["indicators"]["quote"][0]
-                    opens = quote.get("open", [])
-                    highs = quote.get("high", [])
-                    lows = quote.get("low", [])
-                    closes = quote.get("close", [])
-                    volumes = quote.get("volume", [])
+            resp = self.http_client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                result = data["chart"]["result"][0]
+                timestamps = result["timestamp"]
+                quote = result["indicators"]["quote"][0]
+                opens = quote.get("open", [])
+                highs = quote.get("high", [])
+                lows = quote.get("low", [])
+                closes = quote.get("close", [])
+                volumes = quote.get("volume", [])
 
-                    candles = []
-                    for i in range(len(timestamps)):
-                        if opens[i] is not None and closes[i] is not None:
+                candles = []
+                for i in range(len(timestamps)):
+                    if opens[i] is not None and closes[i] is not None:
                             candles.append({
                                 "time": timestamps[i],
                                 "open": round(opens[i] + basis, 2),
@@ -681,6 +711,7 @@ class VirtualTradingEngine:
                 logger.warning(f"Fyers V3 option chain fetch failed ({fe}), falling back to live NSE feed")
 
         # 2. Real Live Indian Option Chain (Pre-warmed from RAM cache, 0ms lag)
+        self.active_underlying = name
         try:
             cache_key = f"{name}_{expiry or ''}"
             now_ts = time.time()
@@ -697,14 +728,13 @@ class VirtualTradingEngine:
                         "Referer": "https://groww.in/options/derivatives/nifty",
                         "Origin": "https://groww.in",
                     }
-                    with httpx.Client(timeout=8.0) as client:
-                        res = client.get(url, headers=headers)
-                        if res.status_code == 200:
-                            data = res.json()
-                            self._chain_raw_cache[cache_key] = data
-                            self._chain_raw_cache[name] = data
-                            self._chain_cache_time[cache_key] = now_ts
-                            self._chain_cache_time[name] = now_ts
+                    res = self.http_client.get(url, headers=headers)
+                    if res.status_code == 200:
+                        data = res.json()
+                        self._chain_raw_cache[cache_key] = data
+                        self._chain_raw_cache[name] = data
+                        self._chain_cache_time[cache_key] = now_ts
+                        self._chain_cache_time[name] = now_ts
                 except Exception as e:
                     logger.debug(f"Option chain external fetch failed: {e}")
                     data = self._chain_raw_cache.get(name)

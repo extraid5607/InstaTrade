@@ -2752,6 +2752,7 @@
         }
         const r = await res.json();
         if (r.s === 'ok') {
+          window._userExplicitlyClosedAll = false;
           showToast(`Order Placed: ${currentSide === 1 ? 'BUY' : 'SELL'} ${qty} ${currentSymbol}`, 'success');
           loadDockContent();
           refreshFunds();
@@ -2789,9 +2790,40 @@
       if (!container) return;
 
       if (currentDockTab === 'positions') {
-        const res = await fetch('/api/positions', { headers: getAuthHeaders() });
-        const d = await res.json();
-        const positions = d.positions || [];
+        let positions = [];
+        try {
+          const res = await fetch('/api/positions', { headers: getAuthHeaders() });
+          const d = await res.json();
+          positions = d.positions || [];
+        } catch (e) {}
+
+        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
+        const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
+
+        if (positions.length > 0) {
+          try { localStorage.setItem(cacheKeyPos, JSON.stringify(positions)); } catch (e) {}
+        } else {
+          try {
+            const saved = localStorage.getItem(cacheKeyPos);
+            const savedOrders = localStorage.getItem(cacheKeyOrd);
+            if (saved && !window._userExplicitlyClosedAll) {
+              const parsedSaved = JSON.parse(saved);
+              if (Array.isArray(parsedSaved) && parsedSaved.length > 0) {
+                const parsedOrd = savedOrders ? JSON.parse(savedOrders) : [];
+                const syncRes = await fetch('/api/positions/sync', {
+                  method: 'POST',
+                  headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                  body: JSON.stringify({ positions: parsedSaved, orders: parsedOrd })
+                });
+                const syncData = await syncRes.json();
+                if (syncData && syncData.positions && syncData.positions.length > 0) {
+                  positions = syncData.positions;
+                }
+              }
+            }
+          } catch (e) {}
+        }
 
         // Sync tab counter
         const tabPosBtn = document.getElementById('tab-positions');
@@ -2961,9 +2993,29 @@
         try { lucide.createIcons(); } catch (e) {}
 
       } else if (currentDockTab === 'orders') {
-        const res = await fetch('/api/orders', { headers: getAuthHeaders() });
-        const d = await res.json();
-        const orders = d.orders || [];
+        let orders = [];
+        try {
+          const res = await fetch('/api/orders', { headers: getAuthHeaders() });
+          const d = await res.json();
+          orders = d.orders || [];
+        } catch (e) {}
+
+        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
+
+        if (orders.length > 0) {
+          try { localStorage.setItem(cacheKeyOrd, JSON.stringify(orders)); } catch (e) {}
+        } else {
+          try {
+            const savedOrd = localStorage.getItem(cacheKeyOrd);
+            if (savedOrd) {
+              const parsedOrd = JSON.parse(savedOrd);
+              if (Array.isArray(parsedOrd) && parsedOrd.length > 0) {
+                orders = parsedOrd;
+              }
+            }
+          } catch (e) {}
+        }
 
         const tabOrdBtn = document.getElementById('tab-orders');
         if (tabOrdBtn) tabOrdBtn.innerText = `Orders (${orders.length})`;
@@ -3534,6 +3586,15 @@
           openAuthModal('login');
           return;
         }
+        // Remove exited position from local backup
+        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
+        try {
+          const saved = JSON.parse(localStorage.getItem(cacheKeyPos) || '[]');
+          const updated = saved.filter(p => p.symbol !== symbol);
+          localStorage.setItem(cacheKeyPos, JSON.stringify(updated));
+        } catch (e) {}
+
         showToast(`Position exited for ${symbol}`, 'success');
         loadDockContent();
         refreshFunds();
@@ -3559,6 +3620,14 @@
           openAuthModal('login');
           return;
         }
+        // Clear positions in local backup
+        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
+        try {
+          window._userExplicitlyClosedAll = true;
+          localStorage.setItem(cacheKeyPos, '[]');
+        } catch (e) {}
+
         showToast('All open positions closed', 'success');
         loadDockContent();
         refreshFunds();
@@ -3584,6 +3653,14 @@
           openAuthModal('login');
           return;
         }
+        // Clear local backup
+        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        try {
+          window._userExplicitlyClosedAll = true;
+          localStorage.removeItem('insta_trade_saved_positions_' + activeUser);
+          localStorage.removeItem('insta_trade_saved_orders_' + activeUser);
+        } catch (e) {}
+
         const d = await res.json();
         showToast(d.message || 'Virtual Balance reset to ₹10,00,000', 'success');
         await refreshFunds();

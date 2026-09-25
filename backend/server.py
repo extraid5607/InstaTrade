@@ -8,7 +8,7 @@ Features:
 
 import os
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from fastapi import FastAPI, HTTPException, Query, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -71,6 +71,11 @@ class OrderPayload(BaseModel):
     product_type: str = "INTRADAY"  # "CNC", "INTRADAY", "MARGIN"
     limit_price: float = 0.0
     stop_price: float = 0.0
+
+
+class SyncStatePayload(BaseModel):
+    positions: Optional[List[Dict[str, Any]]] = None
+    orders: Optional[List[Dict[str, Any]]] = None
 
 
 # ------------------ USER AUTH DEPENDENCY ------------------
@@ -351,6 +356,17 @@ def get_positions(username: Optional[str] = Depends(get_current_username)):
 @app.delete("/api/positions")
 def exit_positions(symbol: Optional[str] = Query(None), username: str = Depends(require_authenticated_user)):
     return virtual_engine.exit_position_for_user(username=username, symbol=symbol)
+
+
+@app.post("/api/positions/sync")
+def sync_client_positions(payload: SyncStatePayload, username: str = Depends(require_authenticated_user)):
+    db.sync_user_state(username=username, positions=payload.positions, orders=payload.orders)
+    return {
+        "s": "ok",
+        "message": "User state synced successfully",
+        "positions": virtual_engine.get_positions_for_user(username),
+        "orders": virtual_engine.get_orders_for_user(username),
+    }
 
 
 @app.get("/api/orders")
