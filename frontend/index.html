@@ -1,0 +1,3200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Insta Trade - Pro Trading Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['selector', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          colors: {
+            brand: '#10b981',
+            brandHover: '#059669',
+            danger: '#f43f5e',
+            dangerHover: '#e11d48',
+            darkBg: 'var(--bg-main)',
+            panelBg: 'var(--bg-panel)',
+            borderSubtle: 'var(--border-subtle)',
+            cardBg: 'var(--bg-card)'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --bg-main: #06090e;
+      --bg-panel: #0c1017;
+      --bg-card: #101622;
+      --border-subtle: #1c2433;
+      --text-main: #f1f5f9;
+      --scrollbar-track: #090d14;
+      --scrollbar-thumb: #232d3f;
+    }
+
+    [data-theme="light"] {
+      --bg-main: #f8fafc;
+      --bg-panel: #ffffff;
+      --bg-card: #f1f5f9;
+      --border-subtle: #e2e8f0;
+      --text-main: #0f172a;
+      --scrollbar-track: #f1f5f9;
+      --scrollbar-thumb: #cbd5e1;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      transition: background-color 0.15s ease, color 0.15s ease;
+      overscroll-behavior-y: contain;
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: -0.011em;
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* iOS/Android Safe Area Support */
+    .pb-safe { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+    .pt-safe { padding-top: max(0.5rem, env(safe-area-inset-top)); }
+
+    /* Touch momentum */
+    .touch-scroll { -webkit-overflow-scrolling: touch; }
+
+    /* Mobile bottom sheet drawer transition */
+    .bottom-sheet {
+      transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease;
+    }
+
+    /* Active mobile tab indicator */
+    .mob-tab-active {
+      color: #00d26a !important;
+    }
+    .mob-tab-active svg {
+      stroke: #00d26a !important;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+    .tab-active { border-bottom: 2px solid #00d26a; color: #00d26a; }
+    .pill-btn { transition: all 0.15s ease-in-out; }
+    .pill-btn:hover { transform: translateY(-1px); }
+
+    @keyframes flashGreen {
+      0% { background-color: rgba(0, 210, 106, 0.45); }
+      100% { background-color: transparent; }
+    }
+    @keyframes flashRed {
+      0% { background-color: rgba(248, 62, 83, 0.45); }
+      100% { background-color: transparent; }
+    }
+    .flash-up {
+      animation: flashGreen 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .flash-down {
+      animation: flashRed 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Light Theme clean overrides */
+    [data-theme="light"] .text-white { color: #0f172a !important; }
+    [data-theme="light"] .text-slate-200 { color: #1e293b !important; }
+    [data-theme="light"] .text-slate-300 { color: #334155 !important; }
+    [data-theme="light"] .text-slate-400 { color: #64748b !important; }
+    [data-theme="light"] .text-slate-500 { color: #94a3b8 !important; }
+
+    [data-theme="light"] .bg-slate-800 { background-color: #f1f5f9 !important; color: #1e293b !important; border-color: #cbd5e1 !important; }
+    [data-theme="light"] .bg-slate-800\/40 { background-color: rgba(241, 245, 249, 0.7) !important; }
+    [data-theme="light"] .bg-slate-800\/60 { background-color: rgba(241, 245, 249, 0.95) !important; }
+    [data-theme="light"] .bg-slate-800\/30 { background-color: rgba(241, 245, 249, 0.5) !important; }
+    [data-theme="light"] .bg-slate-900 { background-color: #e2e8f0 !important; color: #0f172a !important; }
+
+    [data-theme="light"] input,
+    [data-theme="light"] select {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+
+    [data-theme="light"] .border-borderSubtle { border-color: #e2e8f0 !important; }
+    [data-theme="light"] .border-borderSubtle\/40 { border-color: rgba(226, 232, 240, 0.6) !important; }
+    [data-theme="light"] .border-borderSubtle\/50 { border-color: rgba(226, 232, 240, 0.7) !important; }
+    [data-theme="light"] .border-borderSubtle\/60 { border-color: rgba(226, 232, 240, 0.8) !important; }
+  </style>
+  <script>
+    // Immediate theme init to prevent flash
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  </script>
+</head>
+<body class="h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="h-14 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 z-20">
+    <div class="flex items-center gap-2 md:gap-3">
+      <div class="flex items-center gap-1.5 md:gap-2 text-brand font-black text-lg md:text-xl tracking-tight">
+        <i data-lucide="zap" class="w-5 h-5 md:w-6 md:h-6 fill-current"></i>
+        <span>INSTA<span class="text-white font-medium">TRADE</span></span>
+      </div>
+      <span class="hidden sm:inline-block text-[10px] md:text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-mono">Terminal v1.0</span>
+      
+      <!-- QUICK INDEX STRIP (Desktop) -->
+      <div class="hidden lg:flex items-center gap-3 ml-4 text-xs border-l border-borderSubtle pl-4 font-mono">
+        <div id="index-nifty" class="flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2 py-1 rounded-lg border border-transparent hover:border-borderSubtle transition-all" onclick="selectSymbol('NSE:NIFTY50-INDEX')" title="Switch to NIFTY 50">
+          <span class="text-slate-400 font-bold text-[11px]">NIFTY 50</span>
+          <span class="font-bold text-emerald-400 text-xs" id="top-nifty-ltp">25,425.00</span>
+          <span class="text-[10px] text-emerald-500 font-semibold" id="top-nifty-chg">+0.45%</span>
+        </div>
+        <div id="index-banknifty" class="flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2 py-1 rounded-lg border border-transparent hover:border-borderSubtle transition-all" onclick="selectSymbol('NSE:NIFTYBANK-INDEX')" title="Switch to BANK NIFTY">
+          <span class="text-slate-400 font-bold text-[11px]">BANK NIFTY</span>
+          <span class="font-bold text-danger text-xs" id="top-banknifty-ltp">53,850.00</span>
+          <span class="text-[10px] text-danger font-semibold" id="top-banknifty-chg">-0.22%</span>
+        </div>
+        <div id="index-sensex" class="hidden xl:flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2 py-1 rounded-lg border border-transparent hover:border-borderSubtle transition-all" onclick="selectSymbol('BSE:SENSEX-INDEX')" title="Switch to SENSEX">
+          <span class="text-slate-400 font-bold text-[11px]">SENSEX</span>
+          <span class="font-bold text-emerald-400 text-xs" id="top-sensex-ltp">83,180.00</span>
+          <span class="text-[10px] text-emerald-500 font-semibold" id="top-sensex-chg">+0.32%</span>
+        </div>
+        <div id="index-finnifty" class="hidden 2xl:flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2 py-1 rounded-lg border border-transparent hover:border-borderSubtle transition-all" onclick="selectSymbol('NSE:FINNIFTY-INDEX')" title="Switch to FINNIFTY">
+          <span class="text-slate-400 font-bold text-[11px]">FINNIFTY</span>
+          <span class="font-bold text-emerald-400 text-xs" id="top-finnifty-ltp">24,610.00</span>
+          <span class="text-[10px] text-emerald-500 font-semibold" id="top-finnifty-chg">+0.15%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT STATUS & SETTINGS -->
+    <div class="flex items-center gap-2 md:gap-3">
+      <!-- VIRTUAL TRADING INDICATOR (Large screens) -->
+      <div id="mode-badge" class="hidden xl:flex items-center gap-2 text-xs px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+        <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
+        <span class="font-bold tracking-wide">PAPER TRADING (LIVE NSE)</span>
+        <button onclick="resetVirtualFunds()" title="Reset Virtual Funds to ₹10 Lakhs" class="ml-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded cursor-pointer">
+          Reset ₹10L
+        </button>
+      </div>
+
+      <!-- Desktop Funds & PnL -->
+      <div class="hidden md:flex items-center gap-2 text-xs">
+        <div class="bg-cardBg px-3 py-1.5 rounded border border-borderSubtle flex items-center gap-2">
+          <span class="text-slate-400">Available:</span>
+          <span class="font-mono font-bold text-white" id="header-funds">₹ 10,00,000.00</span>
+        </div>
+        <div class="bg-cardBg px-3 py-1.5 rounded border border-borderSubtle flex items-center gap-2">
+          <span class="text-slate-400">Day P&L:</span>
+          <span class="font-mono font-bold text-emerald-400" id="header-pnl">+₹ 0.00</span>
+        </div>
+      </div>
+
+      <!-- Desktop User Account Buttons (Dynamic) -->
+      <div id="header-auth-container" class="hidden md:flex items-center gap-2">
+        <button id="header-user-btn" onclick="switchMobileTab('account')" class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-cardBg hover:bg-slate-800 border border-borderSubtle text-xs cursor-pointer transition-colors" title="Account Credentials & Security">
+          <div class="w-5 h-5 rounded-full bg-brand/20 text-brand flex items-center justify-center font-bold text-[10px]" id="desktop-avatar-letter">A</div>
+          <span class="font-bold text-white" id="header-user-name">Trader</span>
+          <span class="text-[10px] font-mono text-slate-400" id="header-user-id"></span>
+        </button>
+        <button id="header-login-btn" onclick="openAuthModal('login')" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs cursor-pointer transition-colors shadow-sm">
+          <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+          <span>Sign In</span>
+        </button>
+      </div>
+
+      <!-- Mobile Mini PnL Pill (Visible on small screens) -->
+      <button onclick="openMobileAccountSheet()" class="md:hidden flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cardBg border border-borderSubtle text-xs font-mono" title="Tap to view account details">
+        <span class="text-slate-400 text-[10px]">P&L:</span>
+        <span id="mob-header-pnl" class="font-bold text-emerald-400">+₹0.00</span>
+      </button>
+
+      <!-- Mobile Wallet / Account Button -->
+      <button onclick="openMobileAccountSheet()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-slate-800 text-slate-200 border border-borderSubtle text-xs" title="View Account & Virtual Funds">
+        <i data-lucide="wallet" class="w-4 h-4 text-brand"></i>
+      </button>
+
+      <!-- THEME TOGGLE BUTTON -->
+      <button onclick="toggleTheme()" id="theme-toggle-btn" class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-borderSubtle cursor-pointer transition-colors" title="Toggle Light / Dark Theme">
+        <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-400" id="theme-icon"></i>
+        <span id="theme-text" class="hidden sm:inline font-medium">Light</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MOBILE ACCOUNT & FUNDS SHEET (Slide-up drawer) -->
+  <div id="mob-account-backdrop" onclick="closeMobileAccountSheet()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity"></div>
+  <div id="mob-account-sheet" class="fixed inset-x-0 bottom-0 z-50 bg-panelBg border-t border-borderSubtle rounded-t-2xl p-5 transform translate-y-full bottom-sheet max-h-[85vh] overflow-y-auto">
+    <div class="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-4"></div>
+    <div class="flex items-center justify-between pb-3 border-b border-borderSubtle">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-brand/10 flex items-center justify-center text-brand">
+          <i data-lucide="wallet" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <div class="text-sm font-bold text-white">Trading Account</div>
+          <div class="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-brand animate-pulse"></span> Virtual Paper Trading (NSE)
+          </div>
+        </div>
+      </div>
+      <button onclick="closeMobileAccountSheet()" class="p-1 rounded-full text-slate-400 hover:text-white bg-slate-800">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Funds Grid -->
+    <div class="grid grid-cols-2 gap-3 my-4">
+      <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+        <div class="text-[11px] text-slate-400">Available Cash</div>
+        <div class="text-base font-mono font-bold text-white mt-1" id="mob-sheet-funds">₹ 10,00,000.00</div>
+      </div>
+      <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+        <div class="text-[11px] text-slate-400">Used Margin</div>
+        <div class="text-base font-mono font-bold text-amber-400 mt-1" id="mob-sheet-margin">₹ 0.00</div>
+      </div>
+      <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+        <div class="text-[11px] text-slate-400">Realized P&L</div>
+        <div class="text-base font-mono font-bold text-emerald-400 mt-1" id="mob-sheet-realized">+₹ 0.00</div>
+      </div>
+      <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+        <div class="text-[11px] text-slate-400">Unrealized MTM</div>
+        <div class="text-base font-mono font-bold text-emerald-400 mt-1" id="mob-sheet-unrealized">+₹ 0.00</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="space-y-2 pt-2 pb-safe">
+      <button onclick="resetVirtualFunds(); closeMobileAccountSheet();" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-2 border border-borderSubtle cursor-pointer">
+        <i data-lucide="rotate-ccw" class="w-4 h-4 text-amber-400"></i> Reset Virtual Capital to ₹10,00,000
+      </button>
+      <button onclick="closeMobileAccountSheet(); handleAuthActionClick();" id="mob-sheet-auth-btn" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 border border-brand/30 cursor-pointer">
+        <i data-lucide="user-check" class="w-4 h-4" id="mob-sheet-auth-icon"></i> <span id="mob-sheet-auth-label">Sign In / Switch Account</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN TERMINAL LAYOUT -->
+  <div class="flex-1 flex overflow-hidden relative">
+    
+    <!-- LEFT: MARKET WATCH (Collapsible on lg) -->
+    <aside id="market-watch-panel" class="hidden lg:flex w-full lg:w-72 bg-panelBg border-r border-borderSubtle flex-col flex-shrink-0 z-10 transition-all duration-200">
+      <div class="p-2.5 border-b border-borderSubtle bg-panelBg flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5 font-bold text-xs text-white">
+            <i data-lucide="trending-up" class="w-4 h-4 text-brand"></i>
+            <span>Watchlist</span>
+            <span class="text-[10px] text-slate-400 font-mono bg-slate-800/80 px-1.5 py-0.2 rounded" id="watch-count-pill">7</span>
+          </div>
+          <button onclick="toggleWatchlistCollapse()" id="btn-collapse-watchlist" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer transition-colors" title="Collapse Watchlist Sidebar">
+            <i data-lucide="chevrons-left" class="w-4 h-4" id="icon-watchlist-collapse"></i>
+          </button>
+        </div>
+
+        <!-- Filter tabs: Indices, Futures, Stocks (All removed) -->
+        <div class="flex items-center gap-1 bg-darkBg p-0.5 rounded-lg border border-borderSubtle text-[11px] font-semibold" id="watchlist-filters">
+          <button onclick="filterWatchlist('INDICES')" class="watch-filter-btn flex-1 py-1 rounded-md bg-brand text-slate-950 font-bold cursor-pointer transition-colors text-center text-[11px] shadow-sm" data-filter="INDICES">Indices</button>
+          <button onclick="filterWatchlist('FUTURES')" class="watch-filter-btn flex-1 py-1 rounded-md text-slate-400 hover:text-white cursor-pointer transition-colors text-center text-[11px]" data-filter="FUTURES">Futures</button>
+          <button onclick="filterWatchlist('EQUITY')" class="watch-filter-btn flex-1 py-1 rounded-md text-slate-400 hover:text-white cursor-pointer transition-colors text-center text-[11px]" data-filter="EQUITY">Stocks</button>
+        </div>
+
+        <div class="relative" id="watch-search-wrapper">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5"></i>
+          <input type="text" id="watch-search" placeholder="Search stock or index (e.g. RELIANCE, NIFTY-FUT)..." 
+                 oninput="handleWatchSearchInput(this.value)"
+                 onfocus="openWatchSearchDropdown()"
+                 autocomplete="off"
+                 class="w-full bg-darkBg text-xs pl-8 pr-7 py-2 rounded-lg border border-borderSubtle focus:outline-none focus:border-brand text-slate-200 placeholder-slate-500">
+          <button onclick="clearWatchSearch()" id="watch-search-clear" class="hidden absolute right-2.5 top-2.5 text-slate-500 hover:text-white cursor-pointer">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          </button>
+
+          <!-- Interactive Search Dropdown with '+ Add to Watchlist' -->
+          <div id="watch-search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-[#0d121c] border border-borderSubtle rounded-xl shadow-2xl z-50 overflow-hidden max-h-80 flex flex-col">
+            <div class="p-2 px-3 border-b border-borderSubtle text-[10px] text-slate-400 flex items-center justify-between font-mono bg-[#070a0f]">
+              <span class="flex items-center gap-1.5 font-bold tracking-wider text-slate-300">
+                <i data-lucide="sparkles" class="w-3 h-3 text-brand"></i> MARKET SEARCH & ADD
+              </span>
+              <button onclick="closeWatchSearchDropdown()" class="text-slate-400 hover:text-white cursor-pointer"><i data-lucide="x" class="w-3 h-3"></i></button>
+            </div>
+            <div id="watch-search-results-list" class="overflow-y-auto divide-y divide-borderSubtle/60 text-xs max-h-64">
+              <div class="p-3 text-center text-slate-500 text-xs">Type symbol or stock name to search...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-1 overflow-y-auto pb-16 lg:pb-0 touch-scroll" id="watchlist-container">
+        <!-- Watchlist items dynamically injected -->
+      </div>
+    </aside>
+
+    <!-- Mini Watchlist Expand Button (when collapsed) -->
+    <button onclick="toggleWatchlistCollapse()" id="btn-expand-watchlist" class="hidden fixed left-0 top-20 z-20 bg-panelBg border-r border-y border-borderSubtle rounded-r-lg p-2 text-slate-400 hover:text-white shadow-xl cursor-pointer hover:bg-slate-800 transition-colors" title="Expand Watchlist">
+      <i data-lucide="chevrons-right" class="w-4 h-4 text-brand"></i>
+    </button>
+
+    <!-- CENTER & RIGHT SPLIT -->
+    <main id="main-content-panel" class="flex-1 flex flex-col min-w-0 pb-14 lg:pb-0">
+      
+      <!-- UPPER: CHART & ORDER ENTRY -->
+      <div id="chart-option-split" class="flex-1 flex min-h-0 border-b lg:border-b border-borderSubtle relative">
+        
+        <!-- CENTER: CHART OR OPTION CHAIN CONTAINER -->
+        <div class="flex-1 flex flex-col min-w-0 bg-darkBg relative">
+          <!-- VIEW TOGGLE TOOLBAR -->
+          <div class="min-h-11 bg-panelBg/90 border-b border-borderSubtle flex items-center justify-between px-3 py-1.5 text-xs flex-wrap sm:flex-nowrap gap-2">
+            <div class="flex items-center gap-2.5 md:gap-3 flex-wrap sm:flex-nowrap">
+              <!-- Switch buttons (Desktop and tablet) -->
+              <div class="flex items-center bg-darkBg p-0.5 rounded-lg border border-borderSubtle">
+                <button onclick="switchMainView('chart')" id="view-btn-chart" class="px-3 py-1 rounded-md text-xs font-bold bg-slate-800 text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-sm">
+                  <i data-lucide="line-chart" class="w-3.5 h-3.5 text-brand"></i> Chart
+                </button>
+                <button onclick="switchMainView('optionchain')" id="view-btn-chain" class="px-3 py-1 rounded-md text-xs text-slate-400 hover:text-white flex items-center gap-1.5 cursor-pointer transition-all">
+                  <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i> Option Chain
+                </button>
+              </div>
+
+              <!-- Ticker info (visible in chart mode) -->
+              <div id="chart-ticker-strip" class="flex items-center gap-2 font-mono">
+                <span class="font-bold text-white text-xs sm:text-sm font-sans" id="active-symbol-title">NSE:NIFTY50-INDEX</span>
+                <span class="font-mono text-brand font-bold text-xs sm:text-sm" id="active-symbol-ltp">23,208.65</span>
+                <span class="font-mono text-[10px] sm:text-xs text-brand font-semibold" id="active-symbol-chg">+115.00 (+0.45%)</span>
+              </div>
+            </div>
+
+            <!-- RIGHT CONTROLS: TIMEFRAMES, QUICK TRADE & FULLSCREEN (in chart mode) -->
+            <div id="chart-controls-right" class="flex items-center gap-2">
+              <!-- Quick Trade Buttons directly on Chart toolbar -->
+              <div class="hidden sm:flex items-center gap-1.5 mr-1 font-mono">
+                <button onclick="openOrderWithSide(1)" class="px-2.5 py-1 rounded-md bg-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95" title="Quick Buy Active Symbol">
+                  <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> BUY
+                </button>
+                <button onclick="openOrderWithSide(-1)" class="px-2.5 py-1 rounded-md bg-rose-500/20 hover:bg-rose-500 hover:text-white text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95" title="Quick Sell Active Symbol">
+                  <i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i> SELL
+                </button>
+              </div>
+
+              <!-- TIMEFRAME SELECTOR -->
+              <div id="chart-timeframes" class="flex items-center gap-0.5 bg-darkBg p-0.5 rounded-lg border border-borderSubtle">
+                <button onclick="setResolution('1')" class="res-btn px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-white" data-res="1">1m</button>
+                <button onclick="setResolution('5')" class="res-btn px-2 py-0.5 rounded text-[11px] bg-slate-800 text-white font-bold" data-res="5">5m</button>
+                <button onclick="setResolution('15')" class="res-btn px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-white" data-res="15">15m</button>
+                <button onclick="setResolution('60')" class="res-btn px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-white" data-res="60">1h</button>
+                <button onclick="setResolution('1D')" class="res-btn px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-white" data-res="1D">1D</button>
+              </div>
+
+              <!-- ORDER PAD TOGGLE (Desktop) -->
+              <button onclick="toggleOrderPanelDesktop()" id="btn-toggle-order-pad" class="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-borderSubtle text-xs font-semibold cursor-pointer transition-colors" title="Toggle Order Placement Panel">
+                <i data-lucide="panel-right" class="w-3.5 h-3.5 text-brand"></i>
+                <span id="label-toggle-order-pad">Order Pad</span>
+              </button>
+            </div>
+
+            <!-- OPTION CHAIN CONTROLS (visible in option chain mode) -->
+            <div id="chain-controls" class="hidden flex items-center gap-2 flex-wrap w-full sm:w-auto">
+              <!-- Index Selector -->
+              <div class="flex items-center gap-1.5">
+                <span class="hidden sm:inline text-slate-400 text-[11px] font-semibold">Index:</span>
+                <select id="chain-underlying-select" onchange="changeChainUnderlying(this.value)" class="bg-darkBg border border-borderSubtle text-white text-xs px-2.5 py-1 rounded-lg font-bold cursor-pointer focus:outline-none focus:border-brand">
+                  <option value="BANKNIFTY" selected>BANK NIFTY (Lot: 30)</option>
+                  <option value="NIFTY">NIFTY 50 (Lot: 65)</option>
+                  <option value="SENSEX">SENSEX (Lot: 20)</option>
+                  <option value="FINNIFTY">FINNIFTY (Lot: 60)</option>
+                  <option value="MIDCPNIFTY">MIDCP (Lot: 120)</option>
+                </select>
+              </div>
+
+              <!-- Expiry Selector -->
+              <div class="flex items-center gap-1.5">
+                <select id="chain-expiry-select" onchange="changeChainExpiry(this.value)" class="bg-darkBg border border-borderSubtle text-white text-xs px-2 py-1 rounded-lg font-bold font-mono cursor-pointer max-w-[130px] sm:max-w-none focus:outline-none focus:border-brand">
+                  <option value="">Current Expiry</option>
+                </select>
+              </div>
+
+              <!-- Spot & ATM pill -->
+              <div class="flex items-center gap-2 bg-darkBg px-2.5 py-1 rounded-lg border border-borderSubtle text-[11px] font-mono">
+                <span class="text-slate-400 text-[10px]">Spot:</span>
+                <span class="font-bold text-white text-[11px]" id="chain-spot-price">--</span>
+                <span class="text-amber-400 font-bold text-[10px] border-l border-borderSubtle pl-2" id="chain-atm-strike">ATM: --</span>
+              </div>
+
+              <!-- PCR Metric Pill -->
+              <div class="hidden md:flex items-center gap-1.5 bg-darkBg px-2.5 py-1 rounded-lg border border-borderSubtle text-[11px] font-mono" id="chain-pcr-badge" title="Put Call Ratio">
+                <span class="text-slate-400 text-[10px]">PCR:</span>
+                <span class="font-bold text-emerald-400" id="chain-pcr-val">1.12</span>
+                <span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-1 rounded font-bold" id="chain-pcr-tag">BULLISH</span>
+              </div>
+
+              <!-- Refresh Button -->
+              <button onclick="loadOptionChain(true)" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white cursor-pointer ml-auto transition-colors" title="Refresh Option Chain">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- CHART CANVAS -->
+          <div id="chart-area" class="flex-1 w-full relative"></div>
+
+          <!-- MOBILE FLOATING TRADE ACTION BAR (Visible on Chart in mobile) -->
+          <div id="mob-chart-action-bar" class="hidden absolute bottom-4 inset-x-4 z-20 flex gap-3 pointer-events-auto">
+            <button onclick="openOrderWithSide(1)" class="flex-1 py-3 bg-brand hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-xl flex items-center justify-center gap-1.5 pill-btn active:scale-95 transition-all">
+              <i data-lucide="arrow-up-right" class="w-4 h-4 stroke-[3]"></i> BUY
+            </button>
+            <button onclick="openOrderWithSide(-1)" class="flex-1 py-3 bg-danger hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-xl flex items-center justify-center gap-1.5 pill-btn active:scale-95 transition-all">
+              <i data-lucide="arrow-down-right" class="w-4 h-4 stroke-[3]"></i> SELL
+            </button>
+          </div>
+
+          <!-- OPTION CHAIN CONTAINER -->
+          <div id="option-chain-view" class="hidden flex-1 overflow-y-auto bg-darkBg p-2 touch-scroll">
+            <!-- Table dynamically injected via JS -->
+          </div>
+        </div>
+
+        <!-- MOBILE ORDER BACKDROP -->
+        <div id="order-modal-backdrop" onclick="closeOrderPad()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity"></div>
+
+        <!-- ORDER ENTRY PANEL (Right sidebar on lg, bottom sheet on mobile) -->
+        <div id="order-panel" class="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl max-h-[92vh] overflow-y-auto transform translate-y-full bottom-sheet lg:translate-y-0 lg:static lg:w-80 lg:rounded-none lg:max-h-none lg:z-auto bg-panelBg border-t lg:border-t-0 lg:border-l border-borderSubtle flex flex-col p-4 flex-shrink-0 shadow-2xl lg:shadow-none transition-all duration-200">
+          <!-- Mobile Drag Handle -->
+          <div class="lg:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-3"></div>
+
+          <div class="flex items-center justify-between pb-3 border-b border-borderSubtle">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Order Placement</span>
+              <span class="text-[11px] font-mono text-brand font-bold bg-brand/10 border border-brand/20 px-2 py-0.5 rounded" id="order-symbol-tag">NIFTY 50</span>
+            </div>
+            <button onclick="closeOrderPad()" class="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 cursor-pointer transition-colors" title="Close Order Placement Panel">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- BUY / SELL SWITCH -->
+          <div class="grid grid-cols-2 gap-2 mt-4 bg-darkBg p-1 rounded-xl border border-borderSubtle">
+            <button onclick="setOrderSide(1)" id="btn-side-buy" class="py-2.5 text-xs font-bold rounded-lg bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1 cursor-pointer">
+              <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> BUY
+            </button>
+            <button onclick="setOrderSide(-1)" id="btn-side-sell" class="py-2.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1 cursor-pointer">
+              <i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i> SELL
+            </button>
+          </div>
+
+          <!-- PRODUCT TYPE -->
+          <div class="mt-4">
+            <label class="text-[11px] text-slate-400 uppercase font-semibold">Product</label>
+            <div class="grid grid-cols-3 gap-1 mt-1">
+              <button onclick="setProduct('INTRADAY')" class="prod-btn py-1.5 text-xs rounded-lg bg-slate-800 text-white font-medium border border-borderSubtle cursor-pointer" data-prod="INTRADAY">MIS (Intra)</button>
+              <button onclick="setProduct('CNC')" class="prod-btn py-1.5 text-xs rounded-lg text-slate-400 hover:text-white border border-borderSubtle cursor-pointer" data-prod="CNC">CNC (Delivery)</button>
+              <button onclick="setProduct('MARGIN')" class="prod-btn py-1.5 text-xs rounded-lg text-slate-400 hover:text-white border border-borderSubtle cursor-pointer" data-prod="MARGIN">NRML</button>
+            </div>
+          </div>
+
+          <!-- ORDER TYPE -->
+          <div class="mt-3">
+            <label class="text-[11px] text-slate-400 uppercase font-semibold">Order Type</label>
+            <div class="grid grid-cols-3 gap-1 mt-1">
+              <button onclick="setOrderType(2)" class="type-btn py-1.5 text-xs rounded-lg bg-slate-800 text-white font-medium border border-borderSubtle cursor-pointer" data-type="2">Market</button>
+              <button onclick="setOrderType(1)" class="type-btn py-1.5 text-xs rounded-lg text-slate-400 hover:text-white border border-borderSubtle cursor-pointer" data-type="1">Limit</button>
+              <button onclick="setOrderType(3)" class="type-btn py-1.5 text-xs rounded-lg text-slate-400 hover:text-white border border-borderSubtle cursor-pointer" data-type="3">SL</button>
+            </div>
+          </div>
+
+          <!-- QUANTITY & PRICE -->
+          <div class="mt-3 space-y-3">
+            <div>
+              <div class="flex justify-between items-center text-[11px] text-slate-400">
+                <label class="uppercase font-semibold">Quantity</label>
+                <span id="lot-info-tag" class="text-[10px] text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded font-mono font-bold">1 Lot = 30 Qty</span>
+              </div>
+
+              <!-- Dynamic Lot Multiplier Buttons -->
+              <div class="grid grid-cols-4 gap-1 mt-1.5" id="lot-quick-buttons">
+                <button type="button" onclick="setLots(1)" id="btn-lot-1" class="py-1 text-[10px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-white border border-borderSubtle cursor-pointer">1 Lot (30)</button>
+                <button type="button" onclick="setLots(2)" id="btn-lot-2" class="py-1 text-[10px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-white border border-borderSubtle cursor-pointer">2 Lots (60)</button>
+                <button type="button" onclick="setLots(3)" id="btn-lot-3" class="py-1 text-[10px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-white border border-borderSubtle cursor-pointer">3 Lots (90)</button>
+                <button type="button" onclick="setLots(5)" id="btn-lot-5" class="py-1 text-[10px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-white border border-borderSubtle cursor-pointer">5 Lots (150)</button>
+              </div>
+
+              <!-- Quantity Input with Increment/Decrement Steppers -->
+              <div class="flex items-center gap-1.5 mt-2">
+                <button type="button" onclick="stepLots(-1)" title="Decrease 1 Lot" class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors">-</button>
+                <input type="number" id="order-qty" value="30" min="1" oninput="onQtyChange()" 
+                       class="flex-1 h-10 bg-darkBg border border-borderSubtle rounded-lg px-3 text-sm text-white font-mono text-center font-bold focus:outline-none focus:border-brand">
+                <button type="button" onclick="stepLots(1)" title="Increase 1 Lot" class="w-10 h-10 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors">+</button>
+              </div>
+              <div id="lot-warning" class="text-[10px] text-amber-400 mt-1 hidden font-mono">⚠️ Quantity is not a multiple of lot size</div>
+            </div>
+
+            <div id="price-input-container" class="opacity-50 pointer-events-none">
+              <label class="text-[11px] text-slate-400 uppercase font-semibold">Limit Price</label>
+              <input type="number" id="order-price" value="0.0" step="0.05" oninput="updateMarginEstimate()"
+                     class="w-full mt-1 bg-darkBg border border-borderSubtle rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-brand">
+            </div>
+          </div>
+
+          <!-- MARGIN CALCULATION -->
+          <div class="mt-auto pt-4 border-t border-borderSubtle pb-safe">
+            <div class="flex justify-between text-xs mb-3 text-slate-400">
+              <span>Required Margin:</span>
+              <span class="font-mono text-white font-bold" id="req-margin">₹ 0.00</span>
+            </div>
+            <button onclick="executeOrder()" id="btn-submit-order" class="w-full py-3 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-sm pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (30 Qty)
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LOWER DOCK TABS: POSITIONS, ORDERS, HOLDINGS, FUNDS -->
+      <div id="dock-panel" class="hidden lg:flex flex-1 lg:flex-initial lg:h-60 bg-panelBg flex-col flex-shrink-0 border-t border-borderSubtle transition-all duration-200">
+        <!-- DOCK TAB HEADERS -->
+        <div class="h-10 border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 text-xs font-semibold overflow-x-auto touch-scroll">
+          <div class="flex items-center gap-4 md:gap-6 flex-shrink-0">
+            <button onclick="switchDockTab('positions')" id="tab-positions" class="dock-tab py-2 tab-active cursor-pointer">Positions (1)</button>
+            <button onclick="switchDockTab('orders')" id="tab-orders" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Orders (2)</button>
+            <button onclick="switchDockTab('holdings')" id="tab-holdings" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Holdings (2)</button>
+            <button onclick="switchDockTab('funds')" id="tab-funds" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Funds & Margins</button>
+          </div>
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <!-- LIVE TOTAL MTM SUMMARY PILL -->
+            <div id="dock-total-mtm-badge" class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle font-mono text-xs">
+              <span class="text-slate-400 text-[10px] uppercase font-bold">Total MTM:</span>
+              <span id="dock-total-mtm-val" class="font-bold text-emerald-400">+₹ 0.00</span>
+            </div>
+            <button onclick="exitAllPositions()" class="text-[11px] text-danger bg-red-500/10 hover:bg-red-500/20 px-2.5 py-1 rounded-lg border border-red-500/20 flex items-center gap-1 cursor-pointer flex-shrink-0">
+              <i data-lucide="x-circle" class="w-3 h-3"></i> Square Off All
+            </button>
+            <!-- DOCK MINIMIZE / EXPAND TOGGLE -->
+            <button onclick="toggleDockHeight()" id="btn-toggle-dock" class="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer transition-colors" title="Toggle Dock Height">
+              <i data-lucide="chevron-down" class="w-4 h-4" id="dock-toggle-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- DOCK CONTENT AREA -->
+        <div class="flex-1 overflow-y-auto p-2 touch-scroll" id="dock-content">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <!-- ACCOUNT & SECURITY PANEL (Dedicated Account View) -->
+      <div id="account-panel" class="hidden flex-1 overflow-y-auto p-4 md:p-6 pb-20 lg:pb-6 touch-scroll bg-darkBg">
+        <div class="max-w-2xl mx-auto space-y-4">
+          
+          <!-- PROFILE HERO CARD -->
+          <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3.5">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand to-emerald-400 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg shadow-brand/20" id="acc-avatar-letter">
+                ?
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-base md:text-lg font-bold text-white" id="acc-display-title">Guest Trader</h2>
+                  <span class="text-[10px] bg-brand/10 text-brand border border-brand/20 px-2 py-0.5 rounded-full font-mono font-bold" id="acc-badge">PRO</span>
+                </div>
+                <div class="text-xs text-slate-400 font-mono mt-0.5" id="acc-display-subtitle">Sign in or create account to trade</div>
+                <div class="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-1 font-semibold">
+                  <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
+                  <span id="acc-trading-mode-label">Virtual Paper Trading (Active)</span>
+                </div>
+              </div>
+            </div>
+            <!-- Dynamic Log Out / Sign In buttons on Hero Card -->
+            <button id="acc-hero-logout-btn" onclick="logoutTrader()" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 border border-rose-500/30 cursor-pointer transition-colors" title="Log out and switch trader account">
+              <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Log Out
+            </button>
+            <button id="acc-hero-login-btn" onclick="openAuthModal('login')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-md cursor-pointer transition-colors">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i> Sign In
+            </button>
+          </div>
+
+          <!-- BEFORE LOGIN: GUEST SIGN IN / REGISTER PROMPT CARD -->
+          <div id="acc-unauth-card" class="bg-cardBg border border-borderSubtle rounded-2xl p-6 md:p-8 shadow-sm text-center space-y-4">
+            <div class="w-14 h-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto border border-brand/20">
+              <i data-lucide="shield-check" class="w-7 h-7"></i>
+            </div>
+            <div>
+              <h3 class="text-base md:text-lg font-bold text-white">Sign In to Your Account</h3>
+              <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">Log in with your unique Username and Password to place trades, track your private portfolio, and manage your account settings.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-sm mx-auto">
+              <button onclick="openAuthModal('login')" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-brand/20 transition-all active:scale-95">
+                <i data-lucide="log-in" class="w-4 h-4"></i> Sign In
+              </button>
+              <button onclick="openAuthModal('register')" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-borderSubtle flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95">
+                <i data-lucide="user-plus" class="w-4 h-4 text-brand"></i> Register Free
+              </button>
+            </div>
+          </div>
+
+          <!-- AFTER LOGIN ONLY: USERNAME & PASSWORD CREDENTIALS CARD -->
+          <div id="acc-auth-credentials-card" class="hidden bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-4">
+            <div class="border-b border-borderSubtle/60 pb-3 flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <i data-lucide="shield-check" class="w-4 h-4 text-brand"></i>
+                  Account Credentials & Security
+                </h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">Customize your unique username and password to secure your terminal</p>
+              </div>
+              <span class="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">Secured</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div>
+                <label class="text-slate-300 font-semibold block mb-1">Unique Username</label>
+                <div class="relative">
+                  <i data-lucide="user" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                  <input type="text" id="acc-input-username" placeholder="e.g. aman_trader" 
+                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white font-mono focus:outline-none focus:border-brand">
+                </div>
+                <span class="text-[10px] text-slate-500 mt-1 block">Your personal unique trader ID</span>
+              </div>
+
+              <div>
+                <label class="text-slate-300 font-semibold block mb-1">Password / Security PIN</label>
+                <div class="relative">
+                  <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                  <input type="password" id="acc-input-password" placeholder="Enter new password to update" 
+                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-10 py-2 text-white font-mono focus:outline-none focus:border-brand">
+                  <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer">
+                    <i data-lucide="eye" class="w-4 h-4" id="acc-eye-icon"></i>
+                  </button>
+                </div>
+                <span class="text-[10px] text-slate-500 mt-1 block">Secures virtual trading & executions</span>
+              </div>
+
+              <div>
+                <label class="text-slate-300 font-semibold block mb-1">Trader Display Name</label>
+                <div class="relative">
+                  <i data-lucide="badge-check" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                  <input type="text" id="acc-input-name" placeholder="e.g. Aman" 
+                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white focus:outline-none focus:border-brand">
+                </div>
+              </div>
+
+              <div>
+                <label class="text-slate-300 font-semibold block mb-1">Client ID / Broker Code</label>
+                <div class="relative">
+                  <i data-lucide="hash" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                  <input type="text" id="acc-input-client-id" placeholder="e.g. XH01499" 
+                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-brand">
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <button onclick="saveUserProfile()" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md">
+                <i data-lucide="save" class="w-4 h-4"></i> Save Account Credentials
+              </button>
+            </div>
+          </div>
+
+          <!-- FUNDS & MARGINS QUICK CARD -->
+          <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
+            <div class="flex items-center justify-between border-b border-borderSubtle/60 pb-2.5">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="wallet" class="w-4 h-4 text-amber-400"></i>
+                Virtual Capital & Margin Summary
+              </h3>
+              <button onclick="resetVirtualFunds()" class="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer">
+                <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset ₹10 Lakhs
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+                <span class="text-slate-400 text-[11px]">Available Cash</span>
+                <div class="text-base font-mono font-bold text-white mt-0.5" id="acc-funds-cash">₹ 10,00,000.00</div>
+              </div>
+              <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+                <span class="text-slate-400 text-[11px]">Used Margin</span>
+                <div class="text-base font-mono font-bold text-amber-400 mt-0.5" id="acc-funds-margin">₹ 0.00</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TERMINAL & STORAGE INFORMATION CARD -->
+          <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+              Virtual Terminal & Storage Architecture
+            </h3>
+
+            <div class="space-y-2 pt-1 text-xs">
+              <div class="p-3 rounded-xl bg-darkBg border border-borderSubtle flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-brand flex-shrink-0 mt-0.5">
+                  <i data-lucide="shield-check" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-white">Private Multi-User Isolation</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">Each trader gets a dedicated ₹10,00,000 balance with private positions, order history, and P&L. Zero trade cross-over.</div>
+                </div>
+              </div>
+
+              <div class="p-3 rounded-xl bg-darkBg border border-borderSubtle flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0 mt-0.5">
+                  <i data-lucide="hard-drive" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-white">Data Storage Location</div>
+                  <div class="text-[11px] text-slate-400 mt-0.5">All accounts, trades, and margins are safely stored locally in <code class="text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded font-mono">data/trading_terminal.db</code> (SQLite). 100% persistent and offline-safe.</div>
+                </div>
+              </div>
+
+              <button onclick="toggleTheme()" class="w-full p-3 rounded-xl bg-darkBg hover:bg-slate-800 border border-borderSubtle flex items-center justify-between text-xs cursor-pointer transition-colors text-left">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                    <i data-lucide="moon" class="w-4 h-4"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold text-white">Theme Mode (Light / Dark)</div>
+                    <div class="text-[10px] text-slate-400">Switch terminal theme color palette</div>
+                  </div>
+                </div>
+                <span class="text-xs text-slate-400 font-mono" id="acc-theme-label">Dark</span>
+              </button>
+
+              <button onclick="logoutTrader()" class="w-full p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 flex items-center justify-between text-xs cursor-pointer transition-colors text-left">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold text-rose-300">Log Out & Switch User</div>
+                    <div class="text-[10px] text-slate-400">Switch to another trader account or login ID</div>
+                  </div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION BAR -->
+  <nav id="mob-bottom-nav" class="lg:hidden fixed bottom-0 inset-x-0 bg-panelBg/95 backdrop-blur-md border-t border-borderSubtle flex items-center justify-around h-14 z-30 pb-safe">
+    <button onclick="switchMobileTab('watchlist')" id="mob-tab-watchlist" class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 cursor-pointer transition-colors">
+      <i data-lucide="list" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5 font-medium">Watchlist</span>
+    </button>
+    <button onclick="switchMobileTab('options')" id="mob-tab-options" class="flex flex-col items-center justify-center flex-1 h-full mob-tab-active text-brand cursor-pointer transition-colors">
+      <i data-lucide="layers" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5 font-bold">Options</span>
+    </button>
+    <button onclick="switchMobileTab('positions')" id="mob-tab-positions" class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 cursor-pointer transition-colors relative">
+      <i data-lucide="briefcase" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5 font-medium">Portfolio</span>
+      <span id="mob-pos-badge" class="hidden absolute top-2 right-1/4 w-2 h-2 rounded-full bg-brand"></span>
+    </button>
+    <button onclick="switchMobileTab('chart')" id="mob-tab-chart" class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 cursor-pointer transition-colors">
+      <i data-lucide="line-chart" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5 font-medium">Chart</span>
+    </button>
+    <button onclick="switchMobileTab('account')" id="mob-tab-account" class="flex flex-col items-center justify-center flex-1 h-full text-slate-400 cursor-pointer transition-colors">
+      <i data-lucide="user" class="w-5 h-5"></i>
+      <span class="text-[10px] mt-0.5 font-medium">Account</span>
+    </button>
+  </nav>
+
+  <!-- TRADER AUTHENTICATION MODAL (SIGN IN / REGISTER) -->
+  <div id="auth-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-panelBg border border-borderSubtle w-full max-w-md rounded-2xl p-5 md:p-6 shadow-2xl relative">
+      <!-- Close button -->
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer p-1">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="text-center pb-3 border-b border-borderSubtle">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-brand/10 text-brand mb-2">
+          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        </div>
+        <h2 class="text-lg font-bold text-white tracking-tight" id="auth-modal-title">Sign In to Insta Trade</h2>
+        <p class="text-xs text-slate-400 mt-0.5" id="auth-modal-desc">Each trader gets a dedicated account with ₹10,00,000 virtual capital</p>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="grid grid-cols-2 gap-1 bg-darkBg p-1 rounded-xl mt-4 border border-borderSubtle text-xs font-semibold">
+        <button type="button" id="tab-auth-login" onclick="switchAuthTab('login')" class="py-2 rounded-lg bg-cardBg text-white shadow-sm transition-all cursor-pointer">
+          Sign In
+        </button>
+        <button type="button" id="tab-auth-register" onclick="switchAuthTab('register')" class="py-2 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer">
+          Create Account
+        </button>
+      </div>
+
+      <!-- SIGN IN FORM -->
+      <div id="auth-form-login" class="mt-4 space-y-3.5 text-xs">
+        <div>
+          <label class="text-slate-300 font-semibold block mb-1">Login ID / Username</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+            <input type="text" id="auth-login-username" placeholder="e.g. rahul_trader" 
+                   class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2.5 text-white font-mono focus:outline-none focus:border-brand"
+                   onkeydown="if(event.key==='Enter') submitLogin()">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-slate-300 font-semibold block mb-1">Password</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+            <input type="password" id="auth-login-password" placeholder="Enter your password" 
+                   class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-10 py-2.5 text-white font-mono focus:outline-none focus:border-brand"
+                   onkeydown="if(event.key==='Enter') submitLogin()">
+            <button type="button" onclick="toggleAuthPasswordVisibility('auth-login-password', 'auth-eye-login')" class="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer">
+              <i data-lucide="eye" class="w-4 h-4" id="auth-eye-login"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button onclick="submitLogin()" id="btn-login-submit" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-brand/20">
+            <i data-lucide="log-in" class="w-4 h-4"></i> Sign In & Trade
+          </button>
+        </div>
+
+        <div class="text-center pt-1 text-[11px] text-slate-400">
+          New to Insta Trade? <a href="javascript:void(0)" onclick="switchAuthTab('register')" class="text-brand font-semibold hover:underline">Create a free demo account</a>
+        </div>
+      </div>
+
+      <!-- CREATE ACCOUNT FORM -->
+      <div id="auth-form-register" class="mt-4 space-y-3 text-xs hidden">
+        <div>
+          <label class="text-slate-300 font-semibold block mb-1">Choose Login ID / Username *</label>
+          <div class="relative">
+            <i data-lucide="user-plus" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+            <input type="text" id="auth-reg-username" placeholder="e.g. rahul_trader (min 3 chars)" 
+                   class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white font-mono focus:outline-none focus:border-brand">
+          </div>
+          <span class="text-[10px] text-slate-500 mt-0.5 block">Unique ID to access your positions and funds</span>
+        </div>
+
+        <div>
+          <label class="text-slate-300 font-semibold block mb-1">Create Password *</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+            <input type="password" id="auth-reg-password" placeholder="At least 4 characters" 
+                   class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-10 py-2 text-white font-mono focus:outline-none focus:border-brand">
+            <button type="button" onclick="toggleAuthPasswordVisibility('auth-reg-password', 'auth-eye-reg')" class="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer">
+              <i data-lucide="eye" class="w-4 h-4" id="auth-eye-reg"></i>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-slate-300 font-semibold block mb-1">Trader Display Name (Optional)</label>
+          <div class="relative">
+            <i data-lucide="badge-check" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+            <input type="text" id="auth-reg-name" placeholder="e.g. Rahul Sharma" 
+                   class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white focus:outline-none focus:border-brand">
+          </div>
+        </div>
+
+        <div class="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2.5 text-emerald-400">
+          <i data-lucide="gift" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="text-[11px] font-medium">Includes ₹10,00,000 free virtual capital ready to trade!</span>
+        </div>
+
+        <div class="pt-2">
+          <button onclick="submitRegister()" id="btn-reg-submit" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-brand/20">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> Create Account & Start Trading
+          </button>
+        </div>
+
+        <div class="text-center pt-1 text-[11px] text-slate-400">
+          Already have an account? <a href="javascript:void(0)" onclick="switchAuthTab('login')" class="text-brand font-semibold hover:underline">Sign In here</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-cardBg border border-borderSubtle px-4 py-3 rounded-lg shadow-xl text-xs flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+    <i data-lucide="info" class="w-4 h-4 text-brand" id="toast-icon"></i>
+    <span id="toast-msg">Notification</span>
+  </div>
+
+  <script>
+    // Theme Management
+    let currentTheme = localStorage.getItem('theme') || 'dark';
+
+    function applyTheme(theme) {
+      currentTheme = theme;
+      localStorage.setItem('theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+
+      const themeText = document.getElementById('theme-text');
+      const themeIcon = document.getElementById('theme-icon');
+      const isLight = (theme === 'light');
+
+      if (themeText) {
+        themeText.innerText = isLight ? 'Dark' : 'Light';
+      }
+      if (themeIcon) {
+        themeIcon.setAttribute('data-lucide', isLight ? 'moon' : 'sun');
+        themeIcon.className = isLight ? 'w-3.5 h-3.5 text-indigo-500' : 'w-3.5 h-3.5 text-amber-400';
+      }
+
+      // Update Lightweight Chart theme if initialized
+      if (chart) {
+        chart.applyOptions({
+          layout: {
+            background: { color: isLight ? '#ffffff' : '#0b0e14' },
+            textColor: isLight ? '#475569' : '#94a3b8',
+          },
+          grid: {
+            vertLines: { color: isLight ? '#f1f5f9' : '#161d2b' },
+            horzLines: { color: isLight ? '#f1f5f9' : '#161d2b' },
+          },
+          timeScale: {
+            borderColor: isLight ? '#e2e8f0' : '#1f2937',
+          },
+          rightPriceScale: {
+            borderColor: isLight ? '#e2e8f0' : '#1f2937',
+          },
+        });
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function toggleTheme() {
+      const nextTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+      applyTheme(nextTheme);
+      showToast(`Switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} Theme`, 'info');
+    }
+
+    // Global State
+    let currentSymbol = 'NSE:NIFTYBANK-INDEX';
+    let currentResolution = '5';
+    let currentSide = 1; // 1 = Buy, -1 = Sell
+    let currentProduct = 'INTRADAY';
+    let currentOrderType = 2; // 2 = Market, 1 = Limit, 3 = SL
+    let currentDockTab = 'positions';
+    let currentMainView = 'optionchain'; // Default to Option Chain
+    let currentOptionUnderlying = 'BANKNIFTY';
+    let currentLotSize = 30; // Official Bank Nifty lot size
+    let currentOptionExpiry = '';
+    let currentSpotPrice = 55600.0;
+    let chart, candleSeries;
+    let lastCandle = null;
+    let prevQuotes = {};
+    let isOptionChainInitialLoaded = false;
+    let currentMobileTab = 'options';
+
+    const defaultWatchlist = [
+      'NSE:NIFTY50-INDEX',
+      'NSE:NIFTY-FUT',
+      'NSE:NIFTYBANK-INDEX',
+      'NSE:BANKNIFTY-FUT',
+      'BSE:SENSEX-INDEX',
+      'BSE:SENSEX-FUT',
+      'NSE:FINNIFTY-INDEX',
+      'NSE:FINNIFTY-FUT',
+      'NSE:RELIANCE-EQ',
+      'NSE:HDFCBANK-EQ',
+      'NSE:ICICIBANK-EQ',
+      'NSE:INFY-EQ',
+      'NSE:TCS-EQ',
+      'NSE:TATAMOTORS-EQ',
+      'NSE:TATASTEEL-EQ',
+      'NSE:SBIN-EQ',
+      'NSE:ITC-EQ'
+    ];
+
+    function getActiveWatchlist() {
+      try {
+        const saved = localStorage.getItem('insta_trade_watchlist');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+      return [...defaultWatchlist];
+    }
+
+    function saveActiveWatchlist(list) {
+      try {
+        localStorage.setItem('insta_trade_watchlist', JSON.stringify(list));
+      } catch (e) {}
+    }
+
+
+    // ------------------ MOBILE NAVIGATION CONTROLS ------------------
+    function switchMobileTab(tab) {
+      if (tab === 'portfolio') tab = 'positions';
+      currentMobileTab = tab;
+      
+      const watchPanel = document.getElementById('market-watch-panel');
+      const mainPanel = document.getElementById('main-content-panel');
+      const chartOptionSplit = document.getElementById('chart-option-split');
+      const dockPanel = document.getElementById('dock-panel');
+      const chartActionBar = document.getElementById('mob-chart-action-bar');
+
+      // Update mobile nav icons active state
+      ['watchlist', 'options', 'chart', 'positions', 'account'].forEach(t => {
+        const btn = document.getElementById(`mob-tab-${t}`);
+        if (!btn) return;
+        if (t === tab) {
+          btn.classList.add('mob-tab-active');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('mob-tab-active');
+          btn.classList.add('text-slate-400');
+        }
+      });
+
+      const accPanel = document.getElementById('account-panel');
+
+      if (tab === 'watchlist') {
+        if (watchPanel) {
+          watchPanel.classList.remove('hidden');
+          watchPanel.classList.add('flex', 'w-full');
+        }
+        if (mainPanel) mainPanel.classList.add('hidden');
+        if (accPanel) {
+          accPanel.classList.add('hidden');
+          accPanel.classList.remove('flex', 'flex-col');
+        }
+      } else {
+        if (watchPanel) {
+          watchPanel.classList.add('hidden');
+          watchPanel.classList.remove('flex', 'w-full');
+        }
+        if (mainPanel) mainPanel.classList.remove('hidden');
+
+        if (tab === 'account') {
+          if (chartOptionSplit) chartOptionSplit.classList.add('hidden');
+          if (dockPanel) dockPanel.classList.add('hidden');
+          if (chartActionBar) chartActionBar.classList.add('hidden');
+          if (accPanel) {
+            accPanel.classList.remove('hidden');
+            accPanel.classList.add('flex', 'flex-col');
+          }
+          loadUserProfile();
+        } else {
+          if (accPanel) {
+            accPanel.classList.add('hidden');
+            accPanel.classList.remove('flex', 'flex-col');
+          }
+          if (tab === 'options') {
+            if (chartOptionSplit) chartOptionSplit.classList.remove('hidden');
+            if (dockPanel) dockPanel.classList.add('hidden');
+            if (chartActionBar) chartActionBar.classList.add('hidden');
+            switchMainView('optionchain');
+          } else if (tab === 'chart') {
+            if (chartOptionSplit) chartOptionSplit.classList.remove('hidden');
+            if (dockPanel) dockPanel.classList.add('hidden');
+            if (chartActionBar) chartActionBar.classList.remove('hidden');
+            switchMainView('chart');
+          } else if (tab === 'positions') {
+            if (chartOptionSplit) chartOptionSplit.classList.add('hidden');
+            if (dockPanel) {
+              dockPanel.classList.remove('hidden');
+              dockPanel.classList.add('flex', 'flex-1');
+            }
+            if (chartActionBar) chartActionBar.classList.add('hidden');
+            switchDockTab('positions');
+          } else if (tab === 'orders') {
+            if (chartOptionSplit) chartOptionSplit.classList.add('hidden');
+            if (dockPanel) {
+              dockPanel.classList.remove('hidden');
+              dockPanel.classList.add('flex', 'flex-1');
+            }
+            if (chartActionBar) chartActionBar.classList.add('hidden');
+            switchDockTab('orders');
+          }
+        }
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function toggleOrderPanelDesktop() {
+      const panel = document.getElementById('order-panel');
+      if (!panel) return;
+      if (panel.classList.contains('lg:hidden')) {
+        openOrderPad();
+      } else {
+        closeOrderPad();
+      }
+    }
+
+    function openOrderPad() {
+      const panel = document.getElementById('order-panel');
+      const backdrop = document.getElementById('order-modal-backdrop');
+      if (panel) {
+        panel.classList.remove('translate-y-full', 'lg:hidden');
+        panel.classList.add('translate-y-0', 'lg:flex');
+      }
+      if (backdrop && window.innerWidth < 1024) backdrop.classList.remove('hidden');
+      const label = document.getElementById('label-toggle-order-pad');
+      if (label) label.innerText = 'Close Pad';
+      if (chart) {
+        setTimeout(() => {
+          const chartArea = document.getElementById('chart-area');
+          if (chartArea && chartArea.clientWidth > 0) {
+            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+          }
+        }, 150);
+      }
+    }
+
+    function closeOrderPad() {
+      const panel = document.getElementById('order-panel');
+      const backdrop = document.getElementById('order-modal-backdrop');
+      if (panel) {
+        panel.classList.add('translate-y-full', 'lg:hidden');
+        panel.classList.remove('translate-y-0', 'lg:flex');
+      }
+      if (backdrop) backdrop.classList.add('hidden');
+      const label = document.getElementById('label-toggle-order-pad');
+      if (label) label.innerText = 'Order Pad';
+      if (chart) {
+        setTimeout(() => {
+          const chartArea = document.getElementById('chart-area');
+          if (chartArea && chartArea.clientWidth > 0) {
+            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+          }
+        }, 150);
+      }
+    }
+
+    let isDockMinimized = false;
+    function toggleDockHeight() {
+      const dock = document.getElementById('dock-panel');
+      const icon = document.getElementById('dock-toggle-icon');
+      const content = document.getElementById('dock-content');
+      if (!dock) return;
+
+      isDockMinimized = !isDockMinimized;
+      if (isDockMinimized) {
+        dock.classList.remove('lg:h-60');
+        dock.classList.add('lg:h-10');
+        if (content) content.classList.add('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-up');
+      } else {
+        dock.classList.remove('lg:h-10');
+        dock.classList.add('lg:h-60');
+        if (content) content.classList.remove('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+      }
+      try { lucide.createIcons(); } catch (e) {}
+
+      if (chart) {
+        setTimeout(() => {
+          const chartArea = document.getElementById('chart-area');
+          if (chartArea && chartArea.clientWidth > 0) {
+            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+          }
+        }, 150);
+      }
+    }
+
+    function openOrderWithSide(side) {
+      if (currentSymbol.includes('INDEX')) {
+        let futSym = 'NSE:NIFTY-FUT';
+        if (currentSymbol.includes('BANK') || currentSymbol.includes('BANKNIFTY')) futSym = 'NSE:BANKNIFTY-FUT';
+        else if (currentSymbol.includes('SENSEX')) futSym = 'BSE:SENSEX-FUT';
+        else if (currentSymbol.includes('FINNIFTY')) futSym = 'NSE:FINNIFTY-FUT';
+        showToast(`Spot index cannot be bought/sold directly. Auto-switched to ${futSym.split(':')[1]}!`, 'info');
+        selectSymbol(futSym);
+      }
+      setOrderSide(side);
+      openOrderPad();
+    }
+
+    function openMobileAccountSheet() {
+      const sheet = document.getElementById('mob-account-sheet');
+      const backdrop = document.getElementById('mob-account-backdrop');
+      if (sheet) {
+        sheet.classList.remove('translate-y-full');
+        sheet.classList.add('translate-y-0');
+      }
+      if (backdrop) backdrop.classList.remove('hidden');
+    }
+
+    function closeMobileAccountSheet() {
+      const sheet = document.getElementById('mob-account-sheet');
+      const backdrop = document.getElementById('mob-account-backdrop');
+      if (sheet) {
+        sheet.classList.add('translate-y-full');
+        sheet.classList.remove('translate-y-0');
+      }
+      if (backdrop) backdrop.classList.add('hidden');
+    }
+
+    // ------------------ USER PROFILE & CREDENTIALS ------------------
+    async function loadUserProfile() {
+      const token = getAuthToken();
+      if (!token) {
+        syncAuthUI(null);
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: getAuthHeaders()
+        });
+        if (res.status === 401) {
+          clearAuthSession();
+          syncAuthUI(null);
+          return;
+        }
+        const r = await res.json();
+        if (r.s === 'ok' && r.user) {
+          syncAuthUI(r.user, r.funds);
+        } else {
+          clearAuthSession();
+          syncAuthUI(null);
+        }
+      } catch (e) {
+        console.error('Error loading user profile:', e);
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    async function saveUserProfile() {
+      if (!getAuthToken()) {
+        showToast('Please sign in first', 'info');
+        openAuthModal('login');
+        return;
+      }
+      const password = (document.getElementById('acc-input-password').value || '').trim();
+      const displayName = (document.getElementById('acc-input-name').value || '').trim();
+      const clientId = (document.getElementById('acc-input-client-id').value || '').trim();
+
+      try {
+        const res = await fetch('/api/auth/update', {
+          method: 'POST',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            password: password,
+            display_name: displayName,
+            client_id: clientId
+          })
+        });
+        const r = await res.json();
+        if (r.s === 'ok') {
+          showToast(r.message || 'Credentials updated successfully!', 'success');
+          document.getElementById('acc-input-password').value = '';
+          await loadUserProfile();
+        } else {
+          showToast(r.message || 'Failed to update credentials', 'error');
+        }
+      } catch (e) {
+        showToast('Error saving credentials: ' + e, 'error');
+      }
+    }
+
+    function togglePasswordVisibility() {
+      const input = document.getElementById('acc-input-password');
+      const icon = document.getElementById('acc-eye-icon');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        if (icon) icon.setAttribute('data-lucide', 'eye');
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ MAIN VIEW SWITCH (CHART vs OPTION CHAIN) ------------------
+    function switchMainView(view) {
+      currentMainView = view;
+      const accPanel = document.getElementById('account-panel');
+      if (accPanel) {
+        accPanel.classList.add('hidden');
+        accPanel.classList.remove('flex', 'flex-col');
+      }
+      const split = document.getElementById('chart-option-split');
+      if (split) split.classList.remove('hidden');
+
+      const chartBtn = document.getElementById('view-btn-chart');
+      const chainBtn = document.getElementById('view-btn-chain');
+      const chartArea = document.getElementById('chart-area');
+      const chainView = document.getElementById('option-chain-view');
+      const tickerStrip = document.getElementById('chart-ticker-strip');
+      const timeframes = document.getElementById('chart-timeframes');
+      const chainControls = document.getElementById('chain-controls');
+      const chartActionBar = document.getElementById('mob-chart-action-bar');
+
+      if (view === 'chart') {
+        chartBtn.className = 'px-2.5 py-1 rounded text-xs font-bold bg-slate-800 text-white flex items-center gap-1.5 cursor-pointer';
+        chainBtn.className = 'px-2.5 py-1 rounded text-xs text-slate-400 hover:text-white flex items-center gap-1.5 cursor-pointer';
+        chartArea.classList.remove('hidden');
+        chainView.classList.add('hidden');
+        tickerStrip.classList.remove('hidden');
+        timeframes.classList.remove('hidden');
+        chainControls.classList.add('hidden');
+        if (chartActionBar && window.innerWidth < 1024) {
+          chartActionBar.classList.remove('hidden');
+        }
+        if (chart) {
+          setTimeout(() => {
+            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+          }, 50);
+        }
+      } else {
+        chainBtn.className = 'px-2.5 py-1 rounded text-xs font-bold bg-slate-800 text-white flex items-center gap-1.5 cursor-pointer';
+        chartBtn.className = 'px-2.5 py-1 rounded text-xs text-slate-400 hover:text-white flex items-center gap-1.5 cursor-pointer';
+        chartArea.classList.add('hidden');
+        chainView.classList.remove('hidden');
+        tickerStrip.classList.add('hidden');
+        timeframes.classList.add('hidden');
+        chainControls.classList.remove('hidden');
+        if (chartActionBar) chartActionBar.classList.add('hidden');
+        loadOptionChain(true);
+      }
+      lucide.createIcons();
+    }
+
+    function updateLotControls() {
+      const tag = document.getElementById('lot-info-tag');
+      if (tag) tag.innerText = `1 Lot = ${currentLotSize} Qty`;
+
+      const b1 = document.getElementById('btn-lot-1');
+      const b2 = document.getElementById('btn-lot-2');
+      const b3 = document.getElementById('btn-lot-3');
+      const b5 = document.getElementById('btn-lot-5');
+
+      if (b1) b1.innerText = `1 Lot (${currentLotSize})`;
+      if (b2) b2.innerText = `2 Lots (${currentLotSize * 2})`;
+      if (b3) b3.innerText = `3 Lots (${currentLotSize * 3})`;
+      if (b5) b5.innerText = `5 Lots (${currentLotSize * 5})`;
+    }
+
+    function changeChainUnderlying(val) {
+      currentOptionUnderlying = val;
+      currentOptionExpiry = '';
+      if (val === 'BANKNIFTY') currentLotSize = 30;
+      else if (val === 'NIFTY') currentLotSize = 65;
+      else if (val === 'SENSEX') currentLotSize = 20;
+      else if (val === 'FINNIFTY') currentLotSize = 60;
+      else if (val === 'MIDCPNIFTY') currentLotSize = 120;
+
+      updateLotControls();
+      document.getElementById('order-qty').value = currentLotSize;
+      onQtyChange();
+      isOptionChainInitialLoaded = false;
+      loadOptionChain(true);
+    }
+
+    function changeChainExpiry(exp) {
+      currentOptionExpiry = exp;
+      isOptionChainInitialLoaded = false;
+      loadOptionChain(true);
+    }
+
+    async function loadOptionChain(forceFullRender = false) {
+      const container = document.getElementById('option-chain-view');
+      if (!container) return;
+
+      const existingTbody = document.getElementById('chain-table-body');
+      const needsFullRender = forceFullRender || !existingTbody || !isOptionChainInitialLoaded;
+
+      if (needsFullRender && (!existingTbody || !existingTbody.children.length)) {
+        container.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Loading live Indian Market Option Chain...</div>';
+      }
+
+      try {
+        const url = `/api/optionchain?underlying=${currentOptionUnderlying}${currentOptionExpiry ? `&expiry=${currentOptionExpiry}` : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.s !== 'ok' || !data.strikes) {
+          if (needsFullRender) {
+            container.innerHTML = '<div class="p-8 text-center text-xs text-danger">Failed to load option chain.</div>';
+          }
+          return;
+        }
+
+        if (data.lot_size && data.lot_size > 0) {
+          currentLotSize = data.lot_size;
+          updateLotControls();
+        }
+        if (data.spot) {
+          currentSpotPrice = data.spot;
+        }
+
+        // Sync expiry dropdown
+        const expSelect = document.getElementById('chain-expiry-select');
+        if (expSelect && data.expiry_dates && data.expiry_dates.length && (needsFullRender || expSelect.children.length === 0)) {
+          const currentChosen = currentOptionExpiry || data.current_expiry;
+          let optHtml = '';
+          data.expiry_dates.forEach((d, idx) => {
+            const isSel = (d === currentChosen);
+            optHtml += `<option value="${d}" ${isSel ? 'selected' : ''}>${d}${idx === 0 ? ' (Current)' : ''}</option>`;
+          });
+          expSelect.innerHTML = optHtml;
+          currentOptionExpiry = expSelect.value;
+        }
+
+        const spotEl = document.getElementById('chain-spot-price');
+        if (spotEl) {
+          const prevSpot = parseFloat(spotEl.getAttribute('data-val') || 0);
+          if (prevSpot && prevSpot !== data.spot) {
+            spotEl.classList.remove('flash-up', 'flash-down');
+            void spotEl.offsetWidth;
+            spotEl.classList.add(data.spot > prevSpot ? 'flash-up' : 'flash-down');
+          }
+          spotEl.setAttribute('data-val', data.spot);
+          spotEl.innerText = Number(data.spot).toLocaleString('en-IN', {minimumFractionDigits: 2});
+        }
+
+        const atmEl = document.getElementById('chain-atm-strike');
+        if (atmEl) {
+          atmEl.innerText = `ATM: ${data.atm}`;
+        }
+
+        // Compute Max OI and PCR metrics across strikes
+        const maxCeOi = Math.max(1, ...data.strikes.map(s => (s.ce && s.ce.oi) || 0));
+        const maxPeOi = Math.max(1, ...data.strikes.map(s => (s.pe && s.pe.oi) || 0));
+        const totalCeOi = data.strikes.reduce((acc, s) => acc + ((s.ce && s.ce.oi) || 0), 0);
+        const totalPeOi = data.strikes.reduce((acc, s) => acc + ((s.pe && s.pe.oi) || 0), 0);
+        const pcr = totalCeOi > 0 ? (totalPeOi / totalCeOi).toFixed(2) : '1.00';
+
+        // Update PCR Metric Badge in toolbar
+        const pcrVal = document.getElementById('chain-pcr-val');
+        const pcrTag = document.getElementById('chain-pcr-tag');
+        if (pcrVal && pcrTag) {
+          pcrVal.innerText = pcr;
+          const pcrNum = parseFloat(pcr);
+          if (pcrNum >= 1.2) {
+            pcrVal.className = 'font-bold text-emerald-400';
+            pcrTag.className = 'text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-bold border border-emerald-500/20';
+            pcrTag.innerText = 'BULLISH';
+          } else if (pcrNum <= 0.8) {
+            pcrVal.className = 'font-bold text-danger';
+            pcrTag.className = 'text-[9px] bg-rose-500/10 text-danger px-1.5 py-0.5 rounded font-bold border border-rose-500/20';
+            pcrTag.innerText = 'BEARISH';
+          } else {
+            pcrVal.className = 'font-bold text-amber-400';
+            pcrTag.className = 'text-[9px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded font-bold border border-amber-500/20';
+            pcrTag.innerText = 'NEUTRAL';
+          }
+        }
+
+        // Fast In-Place Cell Update (preserves scroll position and prevents jump)
+        if (!needsFullRender && existingTbody) {
+          data.strikes.forEach(s => {
+            const ce = s.ce || {};
+            const pe = s.pe || {};
+            const cePercent = Math.min(100, Math.round(((ce.oi || 0) / maxCeOi) * 100));
+            const pePercent = Math.min(100, Math.round(((pe.oi || 0) / maxPeOi) * 100));
+            const ceOiL = ce.oi > 0 ? (ce.oi / 100000).toFixed(1) + 'L' : '-';
+            const peOiL = pe.oi > 0 ? (pe.oi / 100000).toFixed(1) + 'L' : '-';
+
+            // CE OI bar & text
+            const ceOiEl = document.getElementById(`ce-oi-${s.strike}`);
+            if (ceOiEl) {
+              const bar = ceOiEl.querySelector('.ce-oi-bar');
+              if (bar) bar.style.width = `${cePercent}%`;
+              const txt = ceOiEl.querySelector('.oi-txt');
+              if (txt) txt.innerText = ceOiL;
+            }
+
+            // PE OI bar & text
+            const peOiEl = document.getElementById(`pe-oi-${s.strike}`);
+            if (peOiEl) {
+              const bar = peOiEl.querySelector('.pe-oi-bar');
+              if (bar) bar.style.width = `${pePercent}%`;
+              const txt = peOiEl.querySelector('.oi-txt');
+              if (txt) txt.innerText = peOiL;
+            }
+
+            // CE LTP
+            const ceLtpEl = document.getElementById(`ce-ltp-${s.strike}`);
+            if (ceLtpEl && ce.ltp !== undefined) {
+              const oldCe = parseFloat(ceLtpEl.getAttribute('data-val') || 0);
+              if (ce.ltp !== oldCe) {
+                ceLtpEl.classList.remove('flash-up', 'flash-down');
+                void ceLtpEl.offsetWidth;
+                ceLtpEl.classList.add(ce.ltp > oldCe ? 'flash-up' : 'flash-down');
+                ceLtpEl.innerText = `₹ ${ce.ltp.toFixed(2)}`;
+                ceLtpEl.setAttribute('data-val', ce.ltp);
+              }
+            }
+
+            // PE LTP
+            const peLtpEl = document.getElementById(`pe-ltp-${s.strike}`);
+            if (peLtpEl && pe.ltp !== undefined) {
+              const oldPe = parseFloat(peLtpEl.getAttribute('data-val') || 0);
+              if (pe.ltp !== oldPe) {
+                peLtpEl.classList.remove('flash-up', 'flash-down');
+                void peLtpEl.offsetWidth;
+                peLtpEl.classList.add(pe.ltp > oldPe ? 'flash-up' : 'flash-down');
+                peLtpEl.innerText = `₹ ${pe.ltp.toFixed(2)}`;
+                peLtpEl.setAttribute('data-val', pe.ltp);
+              }
+            }
+
+            // Deltas
+            const ceDeltaEl = document.getElementById(`ce-delta-${s.strike}`);
+            if (ceDeltaEl && ce.delta !== undefined) ceDeltaEl.innerText = ce.delta.toFixed(2);
+            const peDeltaEl = document.getElementById(`pe-delta-${s.strike}`);
+            if (peDeltaEl && pe.delta !== undefined) peDeltaEl.innerText = pe.delta.toFixed(2);
+
+            // ATM Row highlight styling
+            const rowEl = document.getElementById(`row-strike-${s.strike}`);
+            if (rowEl) {
+              const isAtm = s.is_atm;
+              const atmStyle = isAtm ? 'bg-amber-500/10 border-y-2 border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-b border-borderSubtle/50';
+              rowEl.className = `${atmStyle} hover:bg-slate-800/40 transition-colors`;
+            }
+          });
+          return;
+        }
+
+        // Full Render (First load or when switching underlying / expiry)
+        let html = `
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs font-mono border-collapse select-text">
+              <thead>
+                <tr class="bg-panelBg text-[11px] border-b border-borderSubtle">
+                  <th colspan="4" class="py-2.5 text-center text-emerald-400 border-r border-borderSubtle bg-emerald-950/20 font-bold uppercase tracking-wider">CALLS (CE)</th>
+                  <th class="py-2.5 px-3 text-center text-amber-400 font-bold bg-slate-900 border-x border-borderSubtle uppercase tracking-wider">STRIKE</th>
+                  <th colspan="4" class="py-2.5 text-center text-danger border-l border-borderSubtle bg-rose-950/20 font-bold uppercase tracking-wider">PUTS (PE)</th>
+                </tr>
+                <tr class="text-[10px] text-slate-400 border-b border-borderSubtle bg-panelBg/80 font-bold">
+                  <th class="py-1.5 px-3 text-left w-24">OI (L)</th>
+                  <th class="py-1.5 px-2 text-right w-16">Delta</th>
+                  <th class="py-1.5 px-3 text-right w-24">Call LTP</th>
+                  <th class="py-1.5 px-2 text-center w-20 border-r border-borderSubtle">Trade</th>
+                  <th class="py-1.5 px-4 text-center font-bold text-white bg-slate-900 w-28">Strike</th>
+                  <th class="py-1.5 px-2 text-center w-20 border-l border-borderSubtle">Trade</th>
+                  <th class="py-1.5 px-3 text-left w-24">Put LTP</th>
+                  <th class="py-1.5 px-2 text-right w-16">Delta</th>
+                  <th class="py-1.5 px-3 text-right w-24">OI (L)</th>
+                </tr>
+              </thead>
+              <tbody id="chain-table-body">
+        `;
+
+        data.strikes.forEach(s => {
+          const isAtm = s.is_atm;
+          const ce = s.ce || {};
+          const pe = s.pe || {};
+          const ceItmBg = ce.is_itm ? 'bg-emerald-950/20' : '';
+          const peItmBg = pe.is_itm ? 'bg-rose-950/20' : '';
+          const atmRowStyle = isAtm ? 'bg-amber-500/10 border-y-2 border-amber-400/80 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'border-b border-borderSubtle/50';
+
+          const ceOiL = ce.oi > 0 ? (ce.oi / 100000).toFixed(1) + 'L' : '-';
+          const peOiL = pe.oi > 0 ? (pe.oi / 100000).toFixed(1) + 'L' : '-';
+          const cePercent = Math.min(100, Math.round(((ce.oi || 0) / maxCeOi) * 100));
+          const pePercent = Math.min(100, Math.round(((pe.oi || 0) / maxPeOi) * 100));
+          const isRes = (ce.oi === maxCeOi && ce.oi > 0);
+          const isSup = (pe.oi === maxPeOi && pe.oi > 0);
+
+          html += `
+            <tr id="row-strike-${s.strike}" class="${atmRowStyle} hover:bg-slate-800/40 transition-colors">
+              <!-- CALLS -->
+              <td id="ce-oi-${s.strike}" class="py-2 px-2.5 text-slate-300 ${ceItmBg} relative overflow-hidden" title="Call OI: ${ce.oi || 0} (${cePercent}%)">
+                <div class="ce-oi-bar absolute inset-y-1 right-0 bg-emerald-500/20 rounded-l transition-all duration-300 pointer-events-none" style="width: ${cePercent}%;"></div>
+                <div class="relative z-10 flex items-center justify-between text-[11px] font-mono">
+                  ${isRes ? '<span class="text-[8px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1 py-0.2 rounded font-bold">RES</span>' : '<span></span>'}
+                  <span class="oi-txt font-bold text-slate-200">${ceOiL}</span>
+                </div>
+              </td>
+              <td id="ce-delta-${s.strike}" class="py-2 px-2 text-right text-slate-400 ${ceItmBg}">${ce.delta ? ce.delta.toFixed(2) : '0.50'}</td>
+              <td id="ce-ltp-${s.strike}" data-val="${ce.ltp}" onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size})" class="py-2 px-3 text-right font-bold text-emerald-400 cursor-pointer active:scale-95 transition-transform hover:underline ${ceItmBg}" title="Tap to Buy ${ce.display_name}">₹ ${Number(ce.ltp || 0).toFixed(2)}</td>
+              <td class="py-2 px-2 text-center border-r border-borderSubtle ${ceItmBg}">
+                <div class="flex items-center justify-center gap-1.5">
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-brand/20 text-brand hover:bg-brand hover:text-slate-950 font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Buy ${ce.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, -1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-danger/20 text-danger hover:bg-danger hover:text-white font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Sell ${ce.display_name}">S</button>
+                </div>
+              </td>
+
+              <!-- STRIKE -->
+              <td class="py-2 px-3 text-center font-bold bg-slate-900 text-white ${isAtm ? 'bg-amber-950/40 text-amber-300 border-x border-amber-500/30 font-black' : ''}">
+                <div class="flex items-center justify-center gap-1">
+                  <span class="font-mono ${isAtm ? 'text-amber-300 font-extrabold text-[12px]' : ''}">${s.strike}</span>
+                  ${isAtm ? '<span class="text-[8px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-extrabold uppercase tracking-wider">ATM</span>' : ''}
+                </div>
+              </td>
+
+              <!-- PUTS -->
+              <td class="py-2 px-2 text-center border-l border-borderSubtle ${peItmBg}">
+                <div class="flex items-center justify-center gap-1.5">
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-brand/20 text-brand hover:bg-brand hover:text-slate-950 font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Buy ${pe.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, -1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-danger/20 text-danger hover:bg-danger hover:text-white font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Sell ${pe.display_name}">S</button>
+                </div>
+              </td>
+              <td id="pe-ltp-${s.strike}" data-val="${pe.ltp}" onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size})" class="py-2 px-3 text-left font-bold text-danger cursor-pointer active:scale-95 transition-transform hover:underline ${peItmBg}" title="Tap to Buy ${pe.display_name}">₹ ${Number(pe.ltp || 0).toFixed(2)}</td>
+              <td id="pe-delta-${s.strike}" class="py-2 px-2 text-right text-slate-400 ${peItmBg}">${pe.delta ? pe.delta.toFixed(2) : '-0.50'}</td>
+              <td id="pe-oi-${s.strike}" class="py-2 px-2.5 text-slate-300 ${peItmBg} relative overflow-hidden" title="Put OI: ${pe.oi || 0} (${pePercent}%)">
+                <div class="pe-oi-bar absolute inset-y-1 left-0 bg-rose-500/20 rounded-r transition-all duration-300 pointer-events-none" style="width: ${pePercent}%;"></div>
+                <div class="relative z-10 flex items-center justify-between text-[11px] font-mono">
+                  <span class="oi-txt font-bold text-slate-200">${peOiL}</span>
+                  ${isSup ? '<span class="text-[8px] bg-rose-500/20 text-rose-400 border border-rose-500/30 px-1 py-0.2 rounded font-bold">SUP</span>' : '<span></span>'}
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        isOptionChainInitialLoaded = true;
+      } catch (err) {
+        if (needsFullRender) {
+          container.innerHTML = '<div class="p-8 text-center text-xs text-danger">Error fetching option chain: ' + err + '</div>';
+        }
+      }
+    }
+
+    function selectOptionForTrade(symbol, price, side, lotSize) {
+      currentSymbol = symbol;
+      currentLotSize = lotSize;
+      const symTag = document.getElementById('order-symbol-tag');
+      if (symTag) symTag.innerText = symbol;
+      const qtyInput = document.getElementById('order-qty');
+      if (qtyInput) qtyInput.value = lotSize;
+      const priceInput = document.getElementById('order-price');
+      if (priceInput) priceInput.value = Number(price || 0).toFixed(2);
+
+      updateLotControls();
+      setOrderSide(side);
+      onQtyChange();
+
+      showToast(`Selected ${symbol} @ ₹${Number(price || 0).toFixed(2)} (Lot: ${lotSize})`, 'info');
+
+      // Auto-open Order Pad slide drawer on mobile & desktop
+      openOrderPad();
+    }
+
+    function setLots(multiplier) {
+      const q = document.getElementById('order-qty');
+      q.value = currentLotSize * multiplier;
+      onQtyChange();
+    }
+
+    function stepLots(direction) {
+      const q = document.getElementById('order-qty');
+      const cur = parseInt(q.value) || currentLotSize;
+      const next = Math.max(currentLotSize, cur + (direction * currentLotSize));
+      q.value = next;
+      onQtyChange();
+    }
+
+    function onQtyChange() {
+      const q = document.getElementById('order-qty');
+      const warn = document.getElementById('lot-warning');
+      const infoTag = document.getElementById('lot-info-tag');
+      const val = parseInt(q.value) || 0;
+
+      if (val > 0 && currentLotSize > 0 && (val % currentLotSize !== 0)) {
+        if (warn) {
+          warn.classList.remove('hidden');
+          warn.innerText = `⚠️ Must be multiple of lot size (${currentLotSize})`;
+        }
+        if (infoTag) {
+          infoTag.className = 'text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono font-bold';
+        }
+      } else {
+        if (warn) warn.classList.add('hidden');
+        if (infoTag) {
+          infoTag.className = 'text-[10px] text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded font-mono font-bold';
+          const numLots = currentLotSize > 0 ? (val / currentLotSize) : 1;
+          infoTag.innerText = `${numLots} Lot${numLots > 1 ? 's' : ''} = ${val} Qty`;
+        }
+      }
+      updateMarginEstimate();
+    }
+
+    function updateMarginEstimate() {
+      const qty = parseInt(document.getElementById('order-qty').value) || currentLotSize;
+      const price = parseFloat(document.getElementById('order-price').value) || 0.0;
+      const reqEl = document.getElementById('req-margin');
+      const submitBtn = document.getElementById('btn-submit-order');
+
+      let margin = 0;
+      if (currentSide === 1) {
+        // Buy premium
+        margin = price * qty;
+        if (submitBtn) {
+          submitBtn.className = 'w-full py-2.5 rounded-lg bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all';
+          submitBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (${qty} Qty)`;
+        }
+      } else {
+        // Option sell writing margin ~ (Index Spot * 0.12) per lot + premium
+        const spot = currentSpotPrice || 55000;
+        const lots = qty / Math.max(1, currentLotSize);
+        margin = (lots * spot * 0.12) + (price * qty);
+        if (submitBtn) {
+          submitBtn.className = 'w-full py-2.5 rounded-lg bg-danger hover:bg-rose-600 text-white font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all';
+          submitBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE SELL (${qty} Qty)`;
+        }
+      }
+
+      if (reqEl) {
+        reqEl.innerText = `₹ ${margin.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', async () => {
+      try { lucide.createIcons(); } catch (e) {}
+      try { applyTheme(currentTheme); } catch (e) {}
+      try { initChart(); } catch (e) { console.error('Chart init error:', e); }
+      try { updateLotControls(); onQtyChange(); } catch (e) {}
+      try { await checkStatus(); } catch (e) { console.error('Status check error:', e); }
+      try { await refreshWatchlist(); } catch (e) { console.error('Watchlist error:', e); }
+      try { await refreshFunds(); } catch (e) { console.error('Funds error:', e); }
+      try { await loadChartData(); } catch (e) { console.error('Chart load error:', e); }
+      try { await loadDockContent(); } catch (e) { console.error('Dock load error:', e); }
+      try { await loadUserProfile(); } catch (e) { console.error('User profile load error:', e); }
+
+      if (window.innerWidth < 1024) {
+        switchMobileTab('options');
+      } else {
+        if (currentMainView === 'optionchain') {
+          switchMainView('optionchain');
+        }
+      }
+
+      // Live search filter
+      const searchBox = document.getElementById('watch-search');
+      if (searchBox) {
+        searchBox.addEventListener('input', (e) => {
+          const val = e.target.value.toLowerCase();
+          document.querySelectorAll('#watchlist-container > div').forEach(el => {
+            el.style.display = el.innerText.toLowerCase().includes(val) ? 'flex' : 'none';
+          });
+        });
+      }
+
+      // 1. High-frequency live tick quote poll (every 900ms)
+      setInterval(async () => {
+        try { await refreshWatchlist(); } catch (e) {}
+      }, 900);
+
+      // 2. Real-time option chain streaming poll (every 1200ms) when Option Chain view is active
+      setInterval(async () => {
+        if (currentMainView === 'optionchain') {
+          try { await loadOptionChain(false); } catch (e) {}
+        }
+      }, 1200);
+
+      // 3. Funds & dock MTM poll (every 2200ms)
+      setInterval(async () => {
+        try { await refreshFunds(); } catch (e) {}
+        if (currentDockTab === 'positions') {
+          try { await loadDockContent(); } catch (e) {}
+        }
+      }, 2200);
+    });
+
+    // ------------------ CHART ------------------
+    function initChart() {
+      const container = document.getElementById('chart-area');
+      if (!container) return;
+
+      const isLight = (currentTheme === 'light');
+      chart = LightweightCharts.createChart(container, {
+        layout: {
+          background: { color: isLight ? '#ffffff' : '#0b0e14' },
+          textColor: isLight ? '#475569' : '#94a3b8',
+        },
+        grid: {
+          vertLines: { color: isLight ? '#f1f5f9' : '#161d2b' },
+          horzLines: { color: isLight ? '#f1f5f9' : '#161d2b' },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+        },
+        timeScale: {
+          timeVisible: true,
+          borderColor: isLight ? '#e2e8f0' : '#1f2937',
+        },
+        rightPriceScale: {
+          borderColor: isLight ? '#e2e8f0' : '#1f2937',
+        },
+      });
+
+      const seriesOpts = {
+        upColor: '#00d26a',
+        downColor: '#f83e53',
+        borderVisible: false,
+        wickUpColor: '#00d26a',
+        wickDownColor: '#f83e53',
+      };
+
+      if (typeof chart.addCandlestickSeries === 'function') {
+        candleSeries = chart.addCandlestickSeries(seriesOpts);
+      } else if (typeof chart.addSeries === 'function' && LightweightCharts.CandlestickSeries) {
+        candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, seriesOpts);
+      }
+
+      window.addEventListener('resize', () => {
+        if (chart && container) {
+          chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+        }
+      });
+      setTimeout(() => {
+        if (chart && container) {
+          chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+        }
+      }, 100);
+    }
+
+    async function loadChartData() {
+      if (!candleSeries) return;
+      try {
+        const res = await fetch(`/api/history?symbol=${currentSymbol}&resolution=${currentResolution}`);
+        const data = await res.json();
+        if (data.candles && data.candles.length) {
+          candleSeries.setData(data.candles);
+          lastCandle = Object.assign({}, data.candles[data.candles.length - 1]);
+          chart.timeScale().fitContent();
+        }
+      } catch (err) {
+        console.error('Failed to load chart data:', err);
+      }
+    }
+
+    function setResolution(res) {
+      currentResolution = res;
+      document.querySelectorAll('.res-btn').forEach(b => {
+        if (b.dataset.res === res) {
+          b.className = 'res-btn px-2 py-0.5 rounded text-[11px] bg-slate-800 text-white font-bold';
+        } else {
+          b.className = 'res-btn px-2 py-0.5 rounded text-[11px] text-slate-400 hover:text-white';
+        }
+      });
+      loadChartData();
+    }
+
+    // ------------------ SYMBOL SELECTION ------------------
+    function selectSymbol(sym) {
+      currentSymbol = sym;
+      const title = document.getElementById('active-symbol-title');
+      if (title) title.innerText = sym;
+      const cleanName = sym.split(':').pop() || sym;
+      const symTag = document.getElementById('order-symbol-tag');
+      if (symTag) symTag.innerText = cleanName;
+
+      if (sym.includes('BANKNIFTY') || sym.includes('NIFTYBANK')) {
+        currentLotSize = sym.includes('-EQ') ? 1 : 30;
+      } else if (sym.includes('FINNIFTY')) {
+        currentLotSize = sym.includes('-EQ') ? 1 : 60;
+      } else if (sym.includes('SENSEX')) {
+        currentLotSize = sym.includes('-EQ') ? 1 : 20;
+      } else if (sym.includes('NIFTY-FUT') || sym.includes('NIFTY50') || sym.includes('NIFTY')) {
+        currentLotSize = sym.includes('-EQ') ? 1 : 65;
+      } else {
+        currentLotSize = 1; // Equities trade from 1 share upwards
+      }
+
+      updateLotControls();
+      const qInput = document.getElementById('order-qty');
+      if (qInput) qInput.value = currentLotSize;
+      onQtyChange();
+
+      loadChartData();
+      refreshWatchlist();
+
+      // If mobile user taps a watchlist item, smoothly navigate to the chart tab
+      if (window.innerWidth < 1024 && currentMobileTab === 'watchlist') {
+        switchMobileTab('chart');
+      }
+    }
+
+    // ------------------ WATCHLIST CONTROLS & FILTERING ------------------
+    let currentWatchFilter = 'INDICES';
+    let isWatchlistCollapsed = false;
+
+    function toggleWatchlistCollapse() {
+      const panel = document.getElementById('market-watch-panel');
+      const expandBtn = document.getElementById('btn-expand-watchlist');
+      if (!panel) return;
+
+      isWatchlistCollapsed = !isWatchlistCollapsed;
+      if (isWatchlistCollapsed) {
+        panel.classList.add('lg:hidden');
+        panel.classList.remove('lg:flex');
+        if (expandBtn) expandBtn.classList.remove('hidden');
+      } else {
+        panel.classList.remove('lg:hidden');
+        panel.classList.add('lg:flex');
+        if (expandBtn) expandBtn.classList.add('hidden');
+      }
+
+      if (chart) {
+        setTimeout(() => {
+          const chartArea = document.getElementById('chart-area');
+          if (chartArea && chartArea.clientWidth > 0) {
+            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+          }
+        }, 150);
+      }
+    }
+
+    function filterWatchlist(filter) {
+      currentWatchFilter = filter;
+      document.querySelectorAll('.watch-filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-filter') === filter) {
+          btn.className = 'watch-filter-btn flex-1 py-1 rounded-md bg-brand text-slate-950 font-bold cursor-pointer transition-colors text-center text-[10px] sm:text-[11px] shadow-sm';
+        } else {
+          btn.className = 'watch-filter-btn flex-1 py-1 rounded-md text-slate-400 hover:text-white cursor-pointer transition-colors text-center text-[10px] sm:text-[11px]';
+        }
+      });
+      applyWatchlistFilter();
+    }
+
+    function clearWatchSearch() {
+      const searchInput = document.getElementById('watch-search');
+      if (searchInput) searchInput.value = '';
+      const clearBtn = document.getElementById('watch-search-clear');
+      if (clearBtn) clearBtn.classList.add('hidden');
+      closeWatchSearchDropdown();
+      applyWatchlistFilter();
+    }
+
+    function applyWatchlistFilter() {
+      const searchVal = (document.getElementById('watch-search')?.value || '').toLowerCase().trim();
+      const clearBtn = document.getElementById('watch-search-clear');
+      if (clearBtn) {
+        if (searchVal) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+      }
+
+      let visibleCount = 0;
+      document.querySelectorAll('#watchlist-container > div').forEach(el => {
+        const sym = el.getAttribute('data-symbol') || '';
+        const text = el.innerText.toLowerCase();
+        
+        let matchesCategory = true;
+        if (!searchVal) {
+          if (currentWatchFilter === 'INDICES') {
+            matchesCategory = sym.includes('INDEX');
+          } else if (currentWatchFilter === 'FUTURES') {
+            matchesCategory = sym.includes('FUT');
+          } else if (currentWatchFilter === 'EQUITY') {
+            matchesCategory = !sym.includes('INDEX') && !sym.includes('FUT');
+          }
+        }
+        
+        const matchesSearch = !searchVal || text.includes(searchVal) || sym.toLowerCase().includes(searchVal);
+
+        if (matchesCategory && matchesSearch) {
+          el.style.display = 'flex';
+          visibleCount++;
+        } else {
+          el.style.display = 'none';
+        }
+      });
+
+      const countPill = document.getElementById('watch-count-pill');
+      if (countPill) countPill.innerText = visibleCount;
+    }
+
+    // ------------------ INTERACTIVE SEARCH & ADD TO WATCHLIST ------------------
+    let searchDebounceTimer = null;
+    let lastSearchResults = [];
+
+    function openWatchSearchDropdown() {
+      const val = (document.getElementById('watch-search')?.value || '').trim();
+      if (val) {
+        const drop = document.getElementById('watch-search-dropdown');
+        if (drop) drop.classList.remove('hidden');
+      }
+    }
+
+    function closeWatchSearchDropdown() {
+      const drop = document.getElementById('watch-search-dropdown');
+      if (drop) drop.classList.add('hidden');
+    }
+
+    function handleWatchSearchInput(val) {
+      applyWatchlistFilter();
+      clearTimeout(searchDebounceTimer);
+      const q = (val || '').trim();
+      const drop = document.getElementById('watch-search-dropdown');
+      if (!q) {
+        if (drop) drop.classList.add('hidden');
+        return;
+      }
+      if (drop) drop.classList.remove('hidden');
+
+      searchDebounceTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+          const data = await res.json();
+          lastSearchResults = data.results || [];
+          renderSearchResultsList(lastSearchResults);
+        } catch (e) {
+          console.error('Symbol search error:', e);
+        }
+      }, 180);
+    }
+
+    function renderSearchResultsList(results) {
+      const listEl = document.getElementById('watch-search-results-list');
+      if (!listEl) return;
+      if (!results || results.length === 0) {
+        listEl.innerHTML = '<div class="p-3 text-center text-slate-500 text-xs">No matching symbols found.</div>';
+        return;
+      }
+
+      const activeList = getActiveWatchlist();
+      let html = '';
+      results.forEach(item => {
+        const isAdded = activeList.includes(item.symbol);
+        const typeBadge = item.type === 'INDEX'
+          ? '<span class="text-[9px] bg-slate-800 text-slate-400 font-mono px-1.5 py-0.5 rounded font-bold">INDEX SPOT</span>'
+          : item.type === 'FUTURES'
+          ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono px-1.5 py-0.5 rounded font-bold">FUT</span>'
+          : '<span class="text-[9px] bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono px-1.5 py-0.5 rounded font-bold">EQ</span>';
+
+        html += `
+          <div class="p-2.5 px-3 flex items-center justify-between hover:bg-slate-800/60 transition-colors">
+            <div class="min-w-0 pr-2">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-white text-xs">${item.short_name}</span>
+                ${typeBadge}
+              </div>
+              <div class="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-0.5">
+                <span>${item.symbol}</span>
+                <span class="text-slate-300 font-bold">₹${Number(item.ltp).toFixed(2)}</span>
+              </div>
+            </div>
+            <div>
+              ${isAdded ? `
+                <button disabled class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 font-semibold text-[11px] flex items-center gap-1 border border-emerald-500/30 cursor-default">
+                  <i data-lucide="check" class="w-3 h-3"></i> Added
+                </button>
+              ` : `
+                <button onclick="addToWatchlist('${item.symbol}')" class="px-3 py-1 rounded-md bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-[11px] flex items-center gap-1 active:scale-95 transition-all shadow-sm cursor-pointer">
+                  <i data-lucide="plus" class="w-3 h-3 stroke-[3]"></i> Add
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    async function addToWatchlist(sym) {
+      const list = getActiveWatchlist();
+      if (!list.includes(sym)) {
+        list.push(sym);
+        saveActiveWatchlist(list);
+        showToast(`Added ${sym} to Watchlist`, 'success');
+        await refreshWatchlist();
+      } else {
+        showToast(`${sym} is already in Watchlist`, 'info');
+      }
+      renderSearchResultsList(lastSearchResults);
+    }
+
+    async function removeFromWatchlist(sym) {
+      let list = getActiveWatchlist();
+      list = list.filter(s => s !== sym);
+      saveActiveWatchlist(list);
+      const rowId = 'watch-item-' + sym.replace(/[:.-]/g, '_');
+      const el = document.getElementById(rowId);
+      if (el) el.remove();
+      showToast(`Removed ${sym} from Watchlist`, 'info');
+      applyWatchlistFilter();
+      renderSearchResultsList(lastSearchResults);
+    }
+
+    // Close dropdown on click outside
+    document.addEventListener('click', function(e) {
+      const searchWrapper = document.getElementById('watch-search-wrapper');
+      if (searchWrapper && !searchWrapper.contains(e.target)) {
+        closeWatchSearchDropdown();
+      }
+    });
+
+    // ------------------ WATCHLIST RENDERING ------------------
+    async function refreshWatchlist() {
+      try {
+        const activeList = getActiveWatchlist();
+        const res = await fetch(`/api/quotes?symbols=${activeList.join(',')}`);
+        const result = await res.json();
+        const quotes = result.data || [];
+        const container = document.getElementById('watchlist-container');
+
+        // Remove elements from DOM that were deleted from activeList
+        document.querySelectorAll('#watchlist-container > div').forEach(el => {
+          const elSym = el.getAttribute('data-symbol');
+          if (elSym && !activeList.includes(elSym)) {
+            el.remove();
+          }
+        });
+
+        quotes.forEach(q => {
+          const isSelected = (q.symbol === currentSymbol);
+          const isUp = q.change >= 0;
+          const colorClass = isUp ? 'text-emerald-400' : 'text-danger';
+          const rowId = 'watch-item-' + q.symbol.replace(/[:.-]/g, '_');
+          let item = document.getElementById(rowId);
+
+          const prev = prevQuotes[q.symbol];
+          let tickClass = '';
+          if (prev !== undefined && prev !== q.ltp) {
+            tickClass = (q.ltp > prev) ? 'flash-up' : 'flash-down';
+          }
+          prevQuotes[q.symbol] = q.ltp;
+
+          const isIndex = q.symbol.includes('INDEX');
+          const isFut = q.symbol.includes('FUT');
+
+          const typeBadge = isIndex
+            ? '<span class="text-[8px] bg-slate-800 text-slate-400 px-1 py-0.2 rounded font-bold font-mono">SPOT</span>'
+            : (isFut 
+              ? '<span class="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.2 rounded font-bold font-mono">FUT</span>'
+              : '<span class="text-[8px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1 py-0.2 rounded font-bold font-mono">EQ</span>');
+
+          // Action buttons: Spot Index is strictly unbuyable (shows SPOT badge only)
+          const actionButtons = isIndex ? `
+            <div class="hidden lg:group-hover:flex items-center gap-1">
+              <span class="px-2.5 py-0.5 rounded bg-slate-800/90 border border-slate-700/80 text-slate-400 font-mono text-[10px] font-semibold tracking-wider">SPOT</span>
+            </div>
+            <div class="flex lg:hidden items-center ml-1">
+              <span class="px-2 py-0.5 rounded bg-slate-800/80 border border-slate-700/60 text-slate-400 font-mono text-[9px] font-semibold">SPOT</span>
+            </div>
+          ` : `
+            <!-- Desktop Quick Action Buttons (shown on hover) -->
+            <div class="hidden lg:group-hover:flex items-center gap-1">
+              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="px-2 py-1 rounded bg-brand text-slate-950 font-bold text-xs hover:bg-emerald-400 active:scale-95 transition-all shadow-sm" title="Buy ${q.short_name}">BUY</button>
+              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="px-2 py-1 rounded bg-danger text-white font-bold text-xs hover:bg-rose-600 active:scale-95 transition-all shadow-sm" title="Sell ${q.short_name}">SELL</button>
+              <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="p-1 text-slate-500 hover:text-rose-400 cursor-pointer transition-colors" title="Remove from Watchlist">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <!-- Mobile Persistent Action Buttons -->
+            <div class="flex lg:hidden items-center gap-1 ml-1">
+              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="w-7 h-7 rounded-lg bg-brand/20 text-brand active:bg-brand active:text-slate-950 font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Buy ${q.short_name}">B</button>
+              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="w-7 h-7 rounded-lg bg-danger/20 text-danger active:bg-danger active:text-white font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Sell ${q.short_name}">S</button>
+            </div>
+          `;
+
+          if (!item) {
+            item = document.createElement('div');
+            item.id = rowId;
+            item.setAttribute('data-symbol', q.symbol);
+            item.className = `group p-2.5 px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-slate-800/60 border-l-2 border-brand' : 'hover:bg-slate-800/30'} transition-colors`;
+            item.onclick = () => selectSymbol(q.symbol);
+            item.innerHTML = `
+              <div class="min-w-0 pr-2">
+                <div class="font-bold text-xs text-white truncate">${q.short_name}</div>
+                <div class="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                  <span>${q.symbol.split(':')[0]}</span>
+                  ${typeBadge}
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="text-right font-mono group-hover:hidden lg:group-hover:hidden">
+                  <div class="watch-price text-xs font-bold ${colorClass}">₹ ${q.ltp.toFixed(2)}</div>
+                  <div class="watch-chg text-[10px] ${colorClass}">${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%</div>
+                </div>
+                ${actionButtons}
+              </div>
+            `;
+            container.appendChild(item);
+            try { lucide.createIcons(); } catch (e) {}
+          } else {
+            item.setAttribute('data-symbol', q.symbol);
+            item.className = `group p-2.5 px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-slate-800/60 border-l-2 border-brand' : 'hover:bg-slate-800/30'} transition-colors`;
+            const priceEl = item.querySelector('.watch-price');
+            const chgEl = item.querySelector('.watch-chg');
+            if (priceEl) {
+              if (tickClass) {
+                priceEl.classList.remove('flash-up', 'flash-down');
+                void priceEl.offsetWidth;
+                priceEl.classList.add(tickClass);
+              }
+              priceEl.innerText = `₹ ${q.ltp.toFixed(2)}`;
+              priceEl.className = `watch-price text-xs font-bold ${colorClass} ${tickClass}`;
+            }
+            if (chgEl) {
+              chgEl.innerText = `${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%`;
+              chgEl.className = `watch-chg text-[10px] ${colorClass}`;
+            }
+          }
+
+          // Header Live Index Tickers: NIFTY 50, BANK NIFTY, SENSEX, FINNIFTY
+          const headerTickers = {
+            'NSE:NIFTY50-INDEX': ['top-nifty-ltp', 'top-nifty-chg'],
+            'NSE:NIFTYBANK-INDEX': ['top-banknifty-ltp', 'top-banknifty-chg'],
+            'BSE:SENSEX-INDEX': ['top-sensex-ltp', 'top-sensex-chg'],
+            'NSE:FINNIFTY-INDEX': ['top-finnifty-ltp', 'top-finnifty-chg']
+          };
+
+          if (headerTickers[q.symbol]) {
+            const [ltpId, chgId] = headerTickers[q.symbol];
+            const ltpEl = document.getElementById(ltpId);
+            const chgEl = document.getElementById(chgId);
+            if (ltpEl) {
+              if (tickClass) {
+                ltpEl.classList.remove('flash-up', 'flash-down');
+                void ltpEl.offsetWidth;
+                ltpEl.classList.add(tickClass);
+              }
+              ltpEl.innerText = Number(q.ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+            if (chgEl) {
+              chgEl.innerText = `${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%`;
+              chgEl.className = `text-[10px] ${colorClass} font-semibold`;
+            }
+          }
+
+          // Active Selected Symbol
+          if (q.symbol === currentSymbol) {
+            const symLtp = document.getElementById('active-symbol-ltp');
+            if (symLtp) {
+              if (tickClass) {
+                symLtp.classList.remove('flash-up', 'flash-down');
+                void symLtp.offsetWidth;
+                symLtp.classList.add(tickClass);
+              }
+              symLtp.innerText = q.ltp.toFixed(2);
+              symLtp.className = `font-mono text-sm font-bold ${colorClass} ${tickClass}`;
+            }
+            const symChg = document.getElementById('active-symbol-chg');
+            if (symChg) {
+              symChg.innerText = `${isUp ? '+' : ''}${q.change.toFixed(2)} (${q.chg_percent.toFixed(2)}%)`;
+              symChg.className = `font-mono text-xs ${colorClass}`;
+            }
+
+            // Real-Time Candlestick Chart Live Streaming Tick
+            if (candleSeries && lastCandle) {
+              const curPrice = q.ltp;
+              lastCandle.close = curPrice;
+              if (curPrice > lastCandle.high) lastCandle.high = curPrice;
+              if (curPrice < lastCandle.low) lastCandle.low = curPrice;
+              candleSeries.update(lastCandle);
+            }
+          }
+        });
+
+        applyWatchlistFilter();
+      } catch (err) {
+        console.error('Watchlist fetch error:', err);
+      }
+    }
+
+    // ------------------ FUNDS & STATUS ------------------
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/status');
+        await res.json();
+      } catch (e) {
+        console.error('Status check error:', e);
+      }
+    }
+
+    async function refreshFunds() {
+      try {
+        const res = await fetch('/api/funds', { headers: getAuthHeaders() });
+        const r = await res.json();
+        if (r.data) {
+          const avail = Number(r.data.available_cash || 0);
+          const used = Number(r.data.used_margin || 0);
+          const real = Number(r.data.realized_pnl || 0);
+          const unreal = Number(r.data.unrealized_pnl || 0);
+          const pnl = real + unreal;
+          const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+          const pnlSign = pnl >= 0 ? '+' : '';
+
+          // Desktop header
+          const deskFunds = document.getElementById('header-funds');
+          if (deskFunds) deskFunds.innerText = `₹ ${avail.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+          const deskPnl = document.getElementById('header-pnl');
+          if (deskPnl) {
+            deskPnl.innerText = `${pnlSign}₹ ${pnl.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            deskPnl.className = `font-mono font-bold ${pnlColor}`;
+          }
+
+          // Mobile top header mini badge
+          const mobPnl = document.getElementById('mob-header-pnl');
+          if (mobPnl) {
+            mobPnl.innerText = `${pnlSign}₹ ${pnl.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            mobPnl.className = `text-[11px] font-mono font-bold ${pnlColor}`;
+          }
+
+          // Mobile Account Sheet values
+          const sFunds = document.getElementById('mob-sheet-funds');
+          if (sFunds) sFunds.innerText = `₹ ${avail.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+          const sMargin = document.getElementById('mob-sheet-margin');
+          if (sMargin) sMargin.innerText = `₹ ${used.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+          const sReal = document.getElementById('mob-sheet-realized');
+          if (sReal) {
+            sReal.innerText = `${real >= 0 ? '+' : ''}₹ ${real.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            sReal.className = `text-sm font-mono font-bold ${real >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+          }
+          const sUnreal = document.getElementById('mob-sheet-unrealized');
+          if (sUnreal) {
+            sUnreal.innerText = `${unreal >= 0 ? '+' : ''}₹ ${unreal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            sUnreal.className = `text-sm font-mono font-bold ${unreal >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+          }
+        }
+      } catch (e) {
+        console.error('Funds fetch error:', e);
+      }
+    }
+
+    // ------------------ ORDER CONTROLS ------------------
+    function setOrderSide(side) {
+      currentSide = side;
+      const buyBtn = document.getElementById('btn-side-buy');
+      const sellBtn = document.getElementById('btn-side-sell');
+
+      if (side === 1) {
+        buyBtn.className = 'py-2 text-xs font-bold rounded-md bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1 cursor-pointer';
+        sellBtn.className = 'py-2 text-xs font-bold rounded-md text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1 cursor-pointer';
+      } else {
+        buyBtn.className = 'py-2 text-xs font-bold rounded-md text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1 cursor-pointer';
+        sellBtn.className = 'py-2 text-xs font-bold rounded-md bg-danger text-white pill-btn flex items-center justify-center gap-1 cursor-pointer';
+      }
+      updateMarginEstimate();
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function setProduct(prod) {
+      currentProduct = prod;
+      document.querySelectorAll('.prod-btn').forEach(b => {
+        if (b.dataset.prod === prod) {
+          b.className = 'prod-btn py-1 text-xs rounded bg-slate-800 text-white font-medium border border-borderSubtle';
+        } else {
+          b.className = 'prod-btn py-1 text-xs rounded text-slate-400 hover:text-white border border-borderSubtle';
+        }
+      });
+    }
+
+    function setOrderType(type) {
+      currentOrderType = type;
+      document.querySelectorAll('.type-btn').forEach(b => {
+        if (Number(b.dataset.type) === type) {
+          b.className = 'type-btn py-1 text-xs rounded bg-slate-800 text-white font-medium border border-borderSubtle';
+        } else {
+          b.className = 'type-btn py-1 text-xs rounded text-slate-400 hover:text-white border border-borderSubtle';
+        }
+      });
+
+      const priceInput = document.getElementById('price-input-container');
+      if (type === 2) {
+        priceInput.className = 'opacity-50 pointer-events-none';
+      } else {
+        priceInput.className = 'opacity-100';
+      }
+    }
+
+    function addQty(delta) {
+      const q = document.getElementById('order-qty');
+      q.value = Math.max(1, (parseInt(q.value) || 0) + delta);
+    }
+
+    async function executeOrder() {
+      if (!getAuthToken()) {
+        showToast('Please sign in with your Login ID to place virtual trades', 'info');
+        openAuthModal('login');
+        return;
+      }
+      if (currentSymbol.includes('INDEX')) {
+        showToast('Spot indices cannot be traded directly in Indian markets. Please trade Index Futures (e.g. NIFTY-FUT) or Options.', 'error');
+        return;
+      }
+      const qty = parseInt(document.getElementById('order-qty').value) || 1;
+      const price = parseFloat(document.getElementById('order-price').value) || 0.0;
+
+      const payload = {
+        symbol: currentSymbol,
+        qty: qty,
+        side: currentSide,
+        order_type: currentOrderType,
+        product_type: currentProduct,
+        limit_price: price,
+        stop_price: 0.0
+      };
+
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify(payload)
+        });
+        if (res.status === 401) {
+          clearAuthSession();
+          syncAuthUI(null);
+          showToast('Session expired. Please sign in again.', 'error');
+          openAuthModal('login');
+          return;
+        }
+        const r = await res.json();
+        if (r.s === 'ok') {
+          showToast(`Order Placed: ${currentSide === 1 ? 'BUY' : 'SELL'} ${qty} ${currentSymbol}`, 'success');
+          loadDockContent();
+          refreshFunds();
+          // Auto-close order pad drawer on mobile
+          if (window.innerWidth < 1024) {
+            closeOrderPad();
+          }
+        } else {
+          showToast(`Order Failed: ${r.message || 'Error'}`, 'error');
+        }
+      } catch (err) {
+        showToast(`Order Error: ${err}`, 'error');
+      }
+    }
+
+    // ------------------ DOCK TABS ------------------
+    function switchDockTab(tab) {
+      currentDockTab = tab;
+      document.querySelectorAll('.dock-tab').forEach(t => {
+        t.className = 'dock-tab py-2 text-slate-400 hover:text-white cursor-pointer';
+      });
+      const activeBtn = document.getElementById(`tab-${tab}`);
+      if (activeBtn) activeBtn.className = 'dock-tab py-2 tab-active cursor-pointer';
+      loadDockContent();
+    }
+
+    async function loadDockContent() {
+      const container = document.getElementById('dock-content');
+      if (!container) return;
+
+      if (currentDockTab === 'positions') {
+        const res = await fetch('/api/positions', { headers: getAuthHeaders() });
+        const d = await res.json();
+        const positions = d.positions || [];
+
+        // Sync tab counter
+        const tabPosBtn = document.getElementById('tab-positions');
+        if (tabPosBtn) tabPosBtn.innerText = `Positions (${positions.length})`;
+
+        // Mobile notification badge
+        const mobBadge = document.getElementById('mob-pos-badge');
+        if (mobBadge) {
+          if (positions.length > 0) mobBadge.classList.remove('hidden');
+          else mobBadge.classList.add('hidden');
+        }
+
+        if (!positions.length) {
+          const dockMtm = document.getElementById('dock-total-mtm-val');
+          if (dockMtm) {
+            dockMtm.innerText = '+₹ 0.00';
+            dockMtm.className = 'font-bold text-emerald-400';
+          }
+          container.innerHTML = `
+            <div class="py-12 px-4 text-center">
+              <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+                <i data-lucide="briefcase" class="w-6 h-6"></i>
+              </div>
+              <div class="text-sm font-bold text-slate-300">No Open Positions</div>
+              <div class="text-xs text-slate-500 mt-1">Tap Option Chain or Watchlist to take your first trade</div>
+            </div>
+          `;
+          try { lucide.createIcons(); } catch (e) {}
+          return;
+        }
+
+        // Fast In-Place Update (if already rendered and count hasn't changed)
+        const existingPosTable = document.getElementById('pos-table-body');
+        if (existingPosTable && existingPosTable.children.length === positions.length) {
+          let runningTotalPnl = 0;
+          positions.forEach(p => {
+            const rowKey = p.symbol.replace(/[: -]/g, '_');
+            const ltpEl = document.getElementById(`pos-ltp-${rowKey}`);
+            const pnlEl = document.getElementById(`pos-pnl-${rowKey}`);
+            const mobLtpEl = document.getElementById(`pos-mob-ltp-${rowKey}`);
+            const mobPnlEl = document.getElementById(`pos-mob-pnl-${rowKey}`);
+            const pnl = Number(p.pnl || 0);
+            runningTotalPnl += pnl;
+            const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+
+            if (ltpEl) ltpEl.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
+            if (pnlEl) {
+              pnlEl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
+              pnlEl.className = `${pnlColor} font-bold`;
+            }
+            if (mobLtpEl) mobLtpEl.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
+            if (mobPnlEl) {
+              mobPnlEl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
+              mobPnlEl.className = `text-xs font-mono font-bold ${pnlColor}`;
+            }
+          });
+
+          const mobTotalPnlEl = document.getElementById('pos-mob-total-pnl');
+          if (mobTotalPnlEl) {
+            mobTotalPnlEl.innerText = `${runningTotalPnl >= 0 ? '+' : ''}₹ ${runningTotalPnl.toFixed(2)}`;
+            mobTotalPnlEl.className = `text-base font-mono font-bold ${runningTotalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+          }
+          const dockMtm = document.getElementById('dock-total-mtm-val');
+          if (dockMtm) {
+            dockMtm.innerText = `${runningTotalPnl >= 0 ? '+' : ''}₹ ${runningTotalPnl.toFixed(2)}`;
+            dockMtm.className = `font-bold ${runningTotalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+          }
+          return;
+        }
+
+        const totalPnl = positions.reduce((acc, p) => acc + Number(p.pnl || 0), 0);
+        const dockMtm = document.getElementById('dock-total-mtm-val');
+        if (dockMtm) {
+          dockMtm.innerText = `${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toFixed(2)}`;
+          dockMtm.className = `font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+        }
+
+        let html = `
+          <!-- MOBILE HERO SUMMARY -->
+          <div class="lg:hidden bg-cardBg border border-borderSubtle rounded-2xl p-3.5 mb-3 flex items-center justify-between shadow-sm">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Total Unrealized P&L</div>
+              <div id="pos-mob-total-pnl" class="text-base font-mono font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-danger'} mt-0.5">
+                ${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toFixed(2)}
+              </div>
+            </div>
+            <button onclick="exitAllPositions()" class="px-3.5 py-1.5 rounded-xl bg-danger/15 text-danger border border-danger/30 text-xs font-bold active:scale-95 transition-all">
+              Square Off All
+            </button>
+          </div>
+
+          <!-- MOBILE CARDS -->
+          <div class="lg:hidden flex flex-col gap-2.5 pb-6">
+        `;
+
+        positions.forEach(p => {
+          const rowKey = p.symbol.replace(/[: -]/g, '_');
+          const pnl = Number(p.pnl || 0);
+          const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+          const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
+          html += `
+            <div class="bg-cardBg border border-borderSubtle rounded-xl p-3.5 space-y-2.5 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-xs text-white">${p.symbol}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">MIS</span>
+                </div>
+                <div class="text-right">
+                  <span id="pos-mob-pnl-${rowKey}" class="text-xs font-mono font-bold ${pnlColor}">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-2 border-t border-borderSubtle/50">
+                <div class="flex items-center gap-3">
+                  <span>Qty: <strong class="text-white">${p.net_qty}</strong></span>
+                  <span>Avg: <strong class="text-white">₹${Number(avgPrice).toFixed(2)}</strong></span>
+                  <span>LTP: <strong class="text-white" id="pos-mob-ltp-${rowKey}">₹${Number(p.ltp || 0).toFixed(2)}</strong></span>
+                </div>
+                <button onclick="exitPosition('${p.symbol}')" class="px-3 py-1 rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white border border-danger/30 text-xs font-bold active:scale-95 transition-all">Exit</button>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `
+          </div>
+
+          <!-- DESKTOP TABLE -->
+          <div class="hidden lg:block overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="text-slate-400 border-b border-borderSubtle pb-1">
+                <tr>
+                  <th class="py-1">Symbol</th>
+                  <th>Side</th>
+                  <th>Qty</th>
+                  <th>Buy Avg</th>
+                  <th>LTP</th>
+                  <th>P&L</th>
+                  <th class="text-right pr-2">Action</th>
+                </tr>
+              </thead>
+              <tbody id="pos-table-body">
+        `;
+
+        positions.forEach(p => {
+          const rowKey = p.symbol.replace(/[: -]/g, '_');
+          const pnl = Number(p.pnl || 0);
+          const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+          const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
+          html += `
+            <tr id="pos-row-${rowKey}" class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
+              <td class="py-2 text-white font-bold">${p.symbol}</td>
+              <td><span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800">${p.side || 'BUY'}</span></td>
+              <td>${p.net_qty}</td>
+              <td>₹ ${Number(avgPrice).toFixed(2)}</td>
+              <td id="pos-ltp-${rowKey}">₹ ${Number(p.ltp || 0).toFixed(2)}</td>
+              <td id="pos-pnl-${rowKey}" class="${pnlColor} font-bold">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</td>
+              <td class="text-right pr-2">
+                <button onclick="exitPosition('${p.symbol}')" class="px-2 py-0.5 text-[10px] rounded bg-danger/10 text-danger hover:bg-danger/20 border border-danger/30 cursor-pointer">Exit</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        try { lucide.createIcons(); } catch (e) {}
+
+      } else if (currentDockTab === 'orders') {
+        const res = await fetch('/api/orders', { headers: getAuthHeaders() });
+        const d = await res.json();
+        const orders = d.orders || [];
+
+        const tabOrdBtn = document.getElementById('tab-orders');
+        if (tabOrdBtn) tabOrdBtn.innerText = `Orders (${orders.length})`;
+
+        if (!orders.length) {
+          container.innerHTML = `
+            <div class="py-12 px-4 text-center">
+              <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+                <i data-lucide="clock" class="w-6 h-6"></i>
+              </div>
+              <div class="text-sm font-bold text-slate-300">No Orders Placed Today</div>
+              <div class="text-xs text-slate-500 mt-1">Executed orders will appear here automatically</div>
+            </div>
+          `;
+          try { lucide.createIcons(); } catch (e) {}
+          return;
+        }
+
+        let html = `
+          <!-- MOBILE ORDERS CARDS -->
+          <div class="lg:hidden flex flex-col gap-2.5 pb-6">
+        `;
+
+        orders.forEach(o => {
+          const statusColor = o.status === 'FILLED' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : (o.status === 'CANCELLED' ? 'text-slate-500 bg-slate-800/50 border-slate-700/50' : 'text-amber-400 bg-amber-500/10 border-amber-500/20');
+          html += `
+            <div class="bg-cardBg border border-borderSubtle rounded-xl p-3.5 space-y-2 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-xs text-white">${o.symbol}</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${o.type === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${o.type}</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-mono">${o.product || 'MIS'}</span>
+                </div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusColor}">${o.status}</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1.5 border-t border-borderSubtle/50">
+                <div class="flex items-center gap-3">
+                  <span>Qty: <strong class="text-white">${o.qty}</strong></span>
+                  <span>Price: <strong class="text-white">₹${Number(o.price || 0).toFixed(2)}</strong></span>
+                </div>
+                <span class="text-[10px] text-slate-500">${o.time || '--:--'}</span>
+              </div>
+            </div>
+          `;
+        });
+
+        html += `
+          </div>
+
+          <!-- DESKTOP ORDERS TABLE -->
+          <div class="hidden lg:block overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="text-slate-400 border-b border-borderSubtle pb-1">
+                <tr>
+                  <th class="py-1">Order ID</th>
+                  <th>Time</th>
+                  <th>Symbol</th>
+                  <th>Side</th>
+                  <th>Type</th>
+                  <th>Qty</th>
+                  <th>Price</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        orders.forEach(o => {
+          const statusColor = o.status === 'FILLED' ? 'text-emerald-400 bg-emerald-500/10' : (o.status === 'CANCELLED' ? 'text-slate-500' : 'text-amber-400 bg-amber-500/10');
+          html += `
+            <tr class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
+              <td class="py-2 text-slate-400 text-[11px]">${o.id}</td>
+              <td class="text-slate-500">${o.time || '--:--'}</td>
+              <td class="text-white font-bold">${o.symbol}</td>
+              <td><span class="px-1.5 py-0.5 rounded text-[10px] ${o.type === 'BUY' ? 'bg-brand/10 text-brand' : 'bg-danger/10 text-danger'}">${o.type}</span></td>
+              <td>${o.product || 'MIS'}</td>
+              <td>${o.qty}</td>
+              <td>₹ ${Number(o.price || 0).toFixed(2)}</td>
+              <td><span class="px-1.5 py-0.5 rounded text-[10px] ${statusColor}">${o.status}</span></td>
+            </tr>
+          `;
+        });
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        try { lucide.createIcons(); } catch (e) {}
+
+      } else if (currentDockTab === 'holdings') {
+        const res = await fetch('/api/holdings', { headers: getAuthHeaders() });
+        const d = await res.json();
+        const holdings = d.holdings || [];
+
+        const tabHoldBtn = document.getElementById('tab-holdings');
+        if (tabHoldBtn) tabHoldBtn.innerText = `Holdings (${holdings.length})`;
+
+        if (!holdings.length) {
+          container.innerHTML = `
+            <div class="py-12 px-4 text-center">
+              <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+                <i data-lucide="wallet" class="w-6 h-6"></i>
+              </div>
+              <div class="text-sm font-bold text-slate-300">No Holdings Found</div>
+              <div class="text-xs text-slate-500 mt-1">Delivery positions will show here</div>
+            </div>
+          `;
+          try { lucide.createIcons(); } catch (e) {}
+          return;
+        }
+
+        let html = `
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs font-mono">
+              <thead class="text-slate-400 border-b border-borderSubtle pb-1">
+                <tr>
+                  <th class="py-1">Symbol</th>
+                  <th>Qty</th>
+                  <th>Avg Cost</th>
+                  <th>LTP</th>
+                  <th>Current Value</th>
+                  <th>Overall P&L</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        holdings.forEach(h => {
+          const pl = Number(h.pl || 0);
+          const plColor = pl >= 0 ? 'text-emerald-400' : 'text-danger';
+          const curVal = (h.quantity || 0) * (h.ltp || 0);
+          html += `
+            <tr class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
+              <td class="py-2 text-white font-bold">${h.symbol}</td>
+              <td>${h.quantity}</td>
+              <td>₹ ${Number(h.costPrice || 0).toFixed(2)}</td>
+              <td>₹ ${Number(h.ltp || 0).toFixed(2)}</td>
+              <td>₹ ${curVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+              <td class="${plColor} font-bold">${pl >= 0 ? '+' : ''}₹ ${pl.toFixed(2)} (${Number(h.plPercent || 0).toFixed(2)}%)</td>
+            </tr>
+          `;
+        });
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+
+      } else if (currentDockTab === 'funds') {
+        const res = await fetch('/api/funds', { headers: getAuthHeaders() });
+        const d = await res.json();
+        const f = d.data || {};
+        container.innerHTML = `
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 md:gap-4 p-2 md:p-4 pb-12 lg:pb-4">
+            <div class="bg-darkBg p-3.5 rounded-xl border border-borderSubtle">
+              <div class="text-[11px] text-slate-400">Available Cash</div>
+              <div class="text-base sm:text-lg font-mono font-bold text-white mt-1">₹ ${Number(f.available_cash || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+            </div>
+            <div class="bg-darkBg p-3.5 rounded-xl border border-borderSubtle">
+              <div class="text-[11px] text-slate-400">Used Margin</div>
+              <div class="text-base sm:text-lg font-mono font-bold text-amber-400 mt-1">₹ ${Number(f.used_margin || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+            </div>
+            <div class="bg-darkBg p-3.5 rounded-xl border border-borderSubtle">
+              <div class="text-[11px] text-slate-400">Realized P&L</div>
+              <div class="text-base sm:text-lg font-mono font-bold ${Number(f.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-danger'} mt-1">₹ ${Number(f.realized_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+            </div>
+            <div class="bg-darkBg p-3.5 rounded-xl border border-borderSubtle">
+              <div class="text-[11px] text-slate-400">Unrealized P&L (MTM)</div>
+              <div class="text-base sm:text-lg font-mono font-bold ${Number(f.unrealized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-danger'} mt-1">₹ ${Number(f.unrealized_pnl || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    // ------------------ AUTHENTICATION & SESSION MANAGEMENT ------------------
+    function getAuthToken() {
+      return localStorage.getItem('insta_trade_token') || '';
+    }
+
+    function getAuthHeaders(customHeaders = {}) {
+      const token = getAuthToken();
+      const headers = { ...customHeaders };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      return headers;
+    }
+
+    function setAuthSession(token, user) {
+      if (token) {
+        localStorage.setItem('insta_trade_token', token);
+      }
+      if (user) {
+        localStorage.setItem('insta_trade_user', JSON.stringify(user));
+      }
+      syncAuthUI(user);
+    }
+
+    function clearAuthSession() {
+      localStorage.removeItem('insta_trade_token');
+      localStorage.removeItem('insta_trade_user');
+      syncAuthUI(null);
+    }
+
+    function syncAuthUI(user, funds = null) {
+      const headerUserBtn = document.getElementById('header-user-btn');
+      const headerLoginBtn = document.getElementById('header-login-btn');
+      const deskAvatar = document.getElementById('desktop-avatar-letter');
+      const deskName = document.getElementById('header-user-name');
+      const deskId = document.getElementById('header-user-id');
+      const accTitle = document.getElementById('acc-display-title');
+      const accSubtitle = document.getElementById('acc-display-subtitle');
+      const accAvatar = document.getElementById('acc-avatar-letter');
+      const accUserInput = document.getElementById('acc-input-username');
+      const accNameInput = document.getElementById('acc-input-name');
+      const accClientIdInput = document.getElementById('acc-input-client-id');
+      const mobSheetAuthLabel = document.getElementById('mob-sheet-auth-label');
+      const mobSheetAuthIcon = document.getElementById('mob-sheet-auth-icon');
+      const accHeroLogoutBtn = document.getElementById('acc-hero-logout-btn');
+      const accHeroLoginBtn = document.getElementById('acc-hero-login-btn');
+      const accUnauthCard = document.getElementById('acc-unauth-card');
+      const accAuthCredCard = document.getElementById('acc-auth-credentials-card');
+      const accBadge = document.getElementById('acc-badge');
+
+      if (user && user.username) {
+        // Authenticated State (AFTER LOGIN)
+        if (headerUserBtn) headerUserBtn.classList.remove('hidden');
+        if (headerLoginBtn) headerLoginBtn.classList.add('hidden');
+
+        const letter = (user.display_name || user.username).charAt(0).toUpperCase();
+        if (deskAvatar) deskAvatar.innerText = letter;
+        if (deskName) deskName.innerText = user.display_name || user.username;
+        if (deskId) deskId.innerText = `(${user.client_id || 'PRO'})`;
+
+        if (accAvatar) accAvatar.innerText = letter;
+        if (accTitle) accTitle.innerText = user.display_name || user.username;
+        if (accSubtitle) accSubtitle.innerText = `User: ${user.username} • Client ID: ${user.client_id || 'PRO'}`;
+        if (accBadge) accBadge.innerText = 'PRO';
+
+        if (accHeroLogoutBtn) accHeroLogoutBtn.classList.remove('hidden');
+        if (accHeroLoginBtn) accHeroLoginBtn.classList.add('hidden');
+        if (accUnauthCard) accUnauthCard.classList.add('hidden');
+        if (accAuthCredCard) accAuthCredCard.classList.remove('hidden');
+
+        if (accUserInput) {
+          accUserInput.value = user.username;
+          accUserInput.disabled = true;
+          accUserInput.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+        if (accNameInput) accNameInput.value = user.display_name || '';
+        if (accClientIdInput) accClientIdInput.value = user.client_id || '';
+
+        if (mobSheetAuthLabel) mobSheetAuthLabel.innerText = `Log Out (${user.username})`;
+        if (mobSheetAuthIcon) mobSheetAuthIcon.setAttribute('data-lucide', 'log-out');
+
+        if (funds) {
+          const fCash = document.getElementById('acc-funds-cash');
+          if (fCash) fCash.innerText = `₹ ${Number(funds.available_cash || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+          const fMargin = document.getElementById('acc-funds-margin');
+          if (fMargin) fMargin.innerText = `₹ ${Number(funds.used_margin || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        }
+      } else {
+        // Unauthenticated State (BEFORE LOGIN)
+        if (headerUserBtn) headerUserBtn.classList.add('hidden');
+        if (headerLoginBtn) headerLoginBtn.classList.remove('hidden');
+
+        if (accAvatar) accAvatar.innerText = '?';
+        if (accTitle) accTitle.innerText = 'Guest Trader (Demo Mode)';
+        if (accSubtitle) accSubtitle.innerText = 'Sign in or create account to trade';
+        if (accBadge) accBadge.innerText = 'GUEST';
+
+        if (accHeroLogoutBtn) accHeroLogoutBtn.classList.add('hidden');
+        if (accHeroLoginBtn) accHeroLoginBtn.classList.remove('hidden');
+        if (accUnauthCard) accUnauthCard.classList.remove('hidden');
+        if (accAuthCredCard) accAuthCredCard.classList.add('hidden');
+
+        if (accUserInput) {
+          accUserInput.value = '';
+          accUserInput.disabled = false;
+          accUserInput.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+        if (accNameInput) accNameInput.value = '';
+        if (accClientIdInput) accClientIdInput.value = '';
+
+        if (mobSheetAuthLabel) mobSheetAuthLabel.innerText = 'Sign In / Register';
+        if (mobSheetAuthIcon) mobSheetAuthIcon.setAttribute('data-lucide', 'user-check');
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ AUTH MODAL CONTROLS ------------------
+    function openAuthModal(tab = 'login') {
+      const modal = document.getElementById('auth-modal');
+      if (modal) modal.classList.remove('hidden');
+      switchAuthTab(tab);
+    }
+
+    function closeAuthModal() {
+      const modal = document.getElementById('auth-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function switchAuthTab(tab) {
+      const tabLogin = document.getElementById('tab-auth-login');
+      const tabReg = document.getElementById('tab-auth-register');
+      const formLogin = document.getElementById('auth-form-login');
+      const formReg = document.getElementById('auth-form-register');
+      const modalTitle = document.getElementById('auth-modal-title');
+      const modalDesc = document.getElementById('auth-modal-desc');
+
+      if (tab === 'login') {
+        if (tabLogin) {
+          tabLogin.className = 'py-2 rounded-lg bg-cardBg text-white shadow-sm transition-all cursor-pointer';
+        }
+        if (tabReg) {
+          tabReg.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer';
+        }
+        if (formLogin) formLogin.classList.remove('hidden');
+        if (formReg) formReg.classList.add('hidden');
+        if (modalTitle) modalTitle.innerText = 'Sign In to Insta Trade';
+        if (modalDesc) modalDesc.innerText = 'Each trader gets a dedicated account with ₹10,00,000 virtual capital';
+      } else {
+        if (tabLogin) {
+          tabLogin.className = 'py-2 rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer';
+        }
+        if (tabReg) {
+          tabReg.className = 'py-2 rounded-lg bg-cardBg text-white shadow-sm transition-all cursor-pointer';
+        }
+        if (formLogin) formLogin.classList.add('hidden');
+        if (formReg) formReg.classList.remove('hidden');
+        if (modalTitle) modalTitle.innerText = 'Create Trader Account';
+        if (modalDesc) modalDesc.innerText = 'Get ₹10,00,000 virtual balance & private trade isolation';
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function toggleAuthPasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    async function submitLogin() {
+      const username = (document.getElementById('auth-login-username').value || '').trim();
+      const password = (document.getElementById('auth-login-password').value || '').trim();
+      const btn = document.getElementById('btn-login-submit');
+
+      if (!username || !password) {
+        showToast('Please enter both Login ID and password', 'error');
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const r = await res.json();
+        if (r.s === 'ok' && r.data) {
+          setAuthSession(r.data.token, r.data);
+          closeAuthModal();
+          showToast(`Welcome back, ${r.data.display_name || username}!`, 'success');
+          await loadUserProfile();
+          await refreshFunds();
+          await loadDockContent();
+        } else {
+          showToast(r.message || 'Login failed. Check your credentials.', 'error');
+        }
+      } catch (e) {
+        showToast('Login request error: ' + e, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function submitRegister() {
+      const username = (document.getElementById('auth-reg-username').value || '').trim();
+      const password = (document.getElementById('auth-reg-password').value || '').trim();
+      const displayName = (document.getElementById('auth-reg-name').value || '').trim();
+      const btn = document.getElementById('btn-reg-submit');
+
+      if (!username || username.length < 3) {
+        showToast('Username must be at least 3 characters', 'error');
+        return;
+      }
+      if (!password || password.length < 4) {
+        showToast('Password must be at least 4 characters', 'error');
+        return;
+      }
+
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: username,
+            password: password,
+            display_name: displayName
+          })
+        });
+        const r = await res.json();
+        if (r.s === 'ok' && r.data) {
+          setAuthSession(r.data.token, r.data);
+          closeAuthModal();
+          showToast(`Account created! ₹10,00,000 added to your balance.`, 'success');
+          await loadUserProfile();
+          await refreshFunds();
+          await loadDockContent();
+        } else {
+          showToast(r.message || 'Registration failed', 'error');
+        }
+      } catch (e) {
+        showToast('Registration request error: ' + e, 'error');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function logoutTrader() {
+      const userStr = localStorage.getItem('insta_trade_user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      clearAuthSession();
+      showToast(`Logged out of ${user ? user.username : 'account'}. Virtual data saved safely.`, 'info');
+      refreshFunds();
+      loadDockContent();
+      loadUserProfile();
+    }
+
+    function handleAuthActionClick() {
+      if (getAuthToken()) {
+        logoutTrader();
+      } else {
+        openAuthModal('login');
+      }
+    }
+
+    // ------------------ POSITIONS & FUNDS CONTROLS ------------------
+    async function exitPosition(symbol) {
+      if (!getAuthToken()) {
+        showToast('Please sign in to manage positions', 'info');
+        openAuthModal('login');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/positions?symbol=${encodeURIComponent(symbol)}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+        if (res.status === 401) {
+          clearAuthSession();
+          showToast('Session expired. Please sign in.', 'error');
+          openAuthModal('login');
+          return;
+        }
+        showToast(`Position exited for ${symbol}`, 'success');
+        loadDockContent();
+        refreshFunds();
+      } catch (e) {
+        showToast('Exit position failed', 'error');
+      }
+    }
+
+    async function exitAllPositions() {
+      if (!getAuthToken()) {
+        showToast('Please sign in to manage positions', 'info');
+        openAuthModal('login');
+        return;
+      }
+      try {
+        const res = await fetch('/api/positions', {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        });
+        if (res.status === 401) {
+          clearAuthSession();
+          showToast('Session expired. Please sign in.', 'error');
+          openAuthModal('login');
+          return;
+        }
+        showToast('All open positions closed', 'success');
+        loadDockContent();
+        refreshFunds();
+      } catch (e) {
+        showToast('Close all failed', 'error');
+      }
+    }
+
+    async function resetVirtualFunds() {
+      if (!getAuthToken()) {
+        showToast('Please sign in to reset your virtual capital', 'info');
+        openAuthModal('login');
+        return;
+      }
+      try {
+        const res = await fetch('/api/virtual/reset', {
+          method: 'POST',
+          headers: getAuthHeaders()
+        });
+        if (res.status === 401) {
+          clearAuthSession();
+          showToast('Session expired. Please sign in.', 'error');
+          openAuthModal('login');
+          return;
+        }
+        const d = await res.json();
+        showToast(d.message || 'Virtual Balance reset to ₹10,00,000', 'success');
+        await refreshFunds();
+        await loadDockContent();
+      } catch (e) {
+        showToast('Reset failed: ' + e, 'error');
+      }
+    }
+
+    // ------------------ TOAST NOTIFICATION ------------------
+    function showToast(msg, type = 'info') {
+      const t = document.getElementById('toast');
+      const text = document.getElementById('toast-msg');
+      const icon = document.getElementById('toast-icon');
+
+      text.innerText = msg;
+      if (type === 'success') {
+        icon.className = 'w-4 h-4 text-brand';
+      } else if (type === 'error') {
+        icon.className = 'w-4 h-4 text-danger';
+      } else {
+        icon.className = 'w-4 h-4 text-blue-400';
+      }
+
+      t.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        t.classList.add('translate-y-20', 'opacity-0');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
