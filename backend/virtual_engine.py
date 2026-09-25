@@ -19,16 +19,18 @@ logger = logging.getLogger("virtual_engine")
 
 SYMBOL_MAP = {
     # 1. Spot Indices (Benchmark Underlyings - Not Directly Tradable)
-    "NSE:NIFTY50-INDEX": ("^NSEI", "NIFTY 50", 23050.0),
-    "NSE:NIFTYBANK-INDEX": ("^NSEBANK", "BANK NIFTY", 55380.0),
+    "NSE:NIFTY50-INDEX": ("^NSEI", "NIFTY 50", 23085.0),
+    "NSE:NIFTYBANK-INDEX": ("^NSEBANK", "BANK NIFTY", 55605.0),
     "BSE:SENSEX-INDEX": ("^BSESN", "SENSEX", 73650.0),
     "NSE:FINNIFTY-INDEX": ("NIFTY_FIN_SERVICE.NS", "FINNIFTY", 24650.0),
+    "NSE:MIDCPNIFTY-INDEX": ("NIFTY_MID_SELECT.NS", "MIDCPNIFTY", 13965.0),
 
-    # 2. Tradable Index Futures (Current Month Contracts)
-    "NSE:NIFTY-FUT": ("^NSEI", "NIFTY FUT", 23075.0),
-    "NSE:BANKNIFTY-FUT": ("^NSEBANK", "BANK NIFTY FUT", 55440.0),
-    "BSE:SENSEX-FUT": ("^BSESN", "SENSEX FUT", 73730.0),
-    "NSE:FINNIFTY-FUT": ("NIFTY_FIN_SERVICE.NS", "FINNIFTY FUT", 24670.0),
+    # 2. Tradable Index Futures (Current Month Contracts with realistic dynamic basis)
+    "NSE:NIFTY-FUT": ("^NSEI", "NIFTY FUT", 23132.0),
+    "NSE:BANKNIFTY-FUT": ("^NSEBANK", "BANK NIFTY FUT", 55732.0),
+    "BSE:SENSEX-FUT": ("^BSESN", "SENSEX FUT", 73810.0),
+    "NSE:FINNIFTY-FUT": ("NIFTY_FIN_SERVICE.NS", "FINNIFTY FUT", 24695.0),
+    "NSE:MIDCPNIFTY-FUT": ("NIFTY_MID_SELECT.NS", "MIDCPNIFTY FUT", 13993.0),
 
     # 3. Top Indian Equities (Tradable Stocks)
     "NSE:RELIANCE-EQ": ("RELIANCE.NS", "RELIANCE", 1222.0),
@@ -176,19 +178,22 @@ class VirtualTradingEngine:
         # 1. Handle Index Futures (Synthetic live tracking from spot index with basis)
         if sym.endswith("-FUT"):
             underlying_sym = "NSE:NIFTY50-INDEX"
-            basis = 25.0
+            basis = 47.0
             if "BANKNIFTY" in sym:
                 underlying_sym = "NSE:NIFTYBANK-INDEX"
-                basis = 60.0
+                basis = 127.0
             elif "SENSEX" in sym:
                 underlying_sym = "BSE:SENSEX-INDEX"
-                basis = 85.0
+                basis = 160.0
             elif "FINNIFTY" in sym:
                 underlying_sym = "NSE:FINNIFTY-INDEX"
-                basis = 20.0
+                basis = 45.0
+            elif "MIDCP" in sym:
+                underlying_sym = "NSE:MIDCPNIFTY-INDEX"
+                basis = 28.0
             elif "NIFTY" in sym:
                 underlying_sym = "NSE:NIFTY50-INDEX"
-                basis = 25.0
+                basis = 47.0
 
             underlying_quote = self.quotes_cache.get(underlying_sym)
             if not underlying_quote:
@@ -251,18 +256,25 @@ class VirtualTradingEngine:
 
     def _feed_worker(self):
         last_external_fetch = 0
-        primary_benchmarks = ["NSE:NIFTY50-INDEX", "NSE:NIFTYBANK-INDEX", "BSE:SENSEX-INDEX", "NSE:FINNIFTY-INDEX", "NSE:RELIANCE-EQ"]
+        primary_benchmarks = [
+            "NSE:NIFTY50-INDEX",
+            "NSE:NIFTYBANK-INDEX",
+            "BSE:SENSEX-INDEX",
+            "NSE:FINNIFTY-INDEX",
+            "NSE:MIDCPNIFTY-INDEX",
+            "NSE:RELIANCE-EQ",
+        ]
 
         while True:
             try:
                 now = time.time()
                 all_symbols = list(set(list(SYMBOL_MAP.keys()) + list(self.quotes_cache.keys())))
 
-                # 1. External sync for primary benchmarks periodically (every 45s) to avoid rate limits & low CPU
-                if now - last_external_fetch > 45.0:
+                # 1. External sync for primary benchmarks periodically (every 2.5s) for real-time live data (<1-2s delay)
+                if now - last_external_fetch > 2.5:
                     last_external_fetch = now
                     try:
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
                             results = list(pool.map(self._fetch_single_quote, primary_benchmarks))
                             for quote in results:
                                 if quote:
@@ -311,10 +323,11 @@ class VirtualTradingEngine:
 
                 # 3. Synchronize Index Futures tightly with their spot underlying + fixed basis (zero drift)
                 fut_pairs = [
-                    ("NSE:NIFTY-FUT", "NSE:NIFTY50-INDEX", 25.0, "NIFTY FUT"),
-                    ("NSE:BANKNIFTY-FUT", "NSE:NIFTYBANK-INDEX", 60.0, "BANK NIFTY FUT"),
-                    ("BSE:SENSEX-FUT", "BSE:SENSEX-INDEX", 85.0, "SENSEX FUT"),
-                    ("NSE:FINNIFTY-FUT", "NSE:FINNIFTY-INDEX", 20.0, "FINNIFTY FUT"),
+                    ("NSE:NIFTY-FUT", "NSE:NIFTY50-INDEX", 47.0, "NIFTY FUT"),
+                    ("NSE:BANKNIFTY-FUT", "NSE:NIFTYBANK-INDEX", 127.0, "BANK NIFTY FUT"),
+                    ("BSE:SENSEX-FUT", "BSE:SENSEX-INDEX", 160.0, "SENSEX FUT"),
+                    ("NSE:FINNIFTY-FUT", "NSE:FINNIFTY-INDEX", 45.0, "FINNIFTY FUT"),
+                    ("NSE:MIDCPNIFTY-FUT", "NSE:MIDCPNIFTY-INDEX", 28.0, "MIDCPNIFTY FUT"),
                 ]
                 for fut_sym, spot_sym, basis, name in fut_pairs:
                     spot_q = self.quotes_cache.get(spot_sym)
@@ -380,13 +393,15 @@ class VirtualTradingEngine:
         basis = 0.0
         if symbol.endswith("-FUT"):
             if "BANKNIFTY" in symbol:
-                basis = 60.0
+                basis = 127.0
             elif "SENSEX" in symbol:
-                basis = 85.0
+                basis = 160.0
             elif "FINNIFTY" in symbol:
-                basis = 20.0
+                basis = 45.0
+            elif "MIDCP" in symbol:
+                basis = 28.0
             else:
-                basis = 25.0
+                basis = 47.0
 
         interval_map = {"1": "1m", "5": "5m", "15": "15m", "60": "60m", "1D": "1d"}
         range_map = {"1": "1d", "5": "5d", "15": "5d", "60": "1mo", "1D": "3mo"}
@@ -495,12 +510,12 @@ class VirtualTradingEngine:
         elif "FIN" in underlying:
             name = "FINNIFTY"
             exchange = "NSE"
-            base_sym = "NSE:NIFTY50-INDEX"
+            base_sym = "NSE:FINNIFTY-INDEX"
             sigma = 0.150
         elif "MID" in underlying:
             name = "MIDCPNIFTY"
             exchange = "NSE"
-            base_sym = "NSE:NIFTY50-INDEX"
+            base_sym = "NSE:MIDCPNIFTY-INDEX"
             sigma = 0.160
         else:
             name = "NIFTY"
@@ -551,7 +566,7 @@ class VirtualTradingEngine:
                 elif data.get("livePrice") and data["livePrice"].get("value"):
                     spot = float(data["livePrice"]["value"])
                 else:
-                    spot = 55600.0 if name == "BANKNIFTY" else (74000.0 if name == "SENSEX" else 23200.0)
+                    spot = 55600.0 if name == "BANKNIFTY" else (74000.0 if name == "SENSEX" else (14000.0 if name == "MIDCPNIFTY" else (24700.0 if name == "FINNIFTY" else 23200.0)))
 
                 atm = int(round(spot / step) * step)
                 raw_chains = data.get("optionChain", {}).get("optionChains", [])
