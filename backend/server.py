@@ -100,6 +100,13 @@ def get_current_username(
             if user:
                 return user["username"]
 
+    # Fallback: if valid X-User-Name is passed and user exists
+    if x_user_name and len(x_user_name.strip()) >= 3:
+        clean = x_user_name.strip().lower()
+        user = db.get_user(clean)
+        if user:
+            return user["username"]
+
     return None
 
 

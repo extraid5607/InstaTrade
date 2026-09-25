@@ -580,9 +580,9 @@
         <!-- DOCK TAB HEADERS -->
         <div class="h-10 border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 text-xs font-semibold overflow-x-auto touch-scroll">
           <div class="flex items-center gap-4 md:gap-6 flex-shrink-0">
-            <button onclick="switchDockTab('positions')" id="tab-positions" class="dock-tab py-2 tab-active cursor-pointer">Positions (1)</button>
-            <button onclick="switchDockTab('orders')" id="tab-orders" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Orders (2)</button>
-            <button onclick="switchDockTab('holdings')" id="tab-holdings" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Holdings (2)</button>
+            <button onclick="switchDockTab('positions')" id="tab-positions" class="dock-tab py-2 tab-active cursor-pointer">Positions (0)</button>
+            <button onclick="switchDockTab('orders')" id="tab-orders" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Orders (0)</button>
+            <button onclick="switchDockTab('holdings')" id="tab-holdings" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Holdings (0)</button>
             <button onclick="switchDockTab('funds')" id="tab-funds" class="dock-tab py-2 text-slate-400 hover:text-white cursor-pointer">Funds & Margins</button>
           </div>
           <div class="flex items-center gap-3 flex-shrink-0">
@@ -1033,6 +1033,18 @@
   </div>
 
   <script>
+    window.currentProfile = null;
+    function getActiveUsername() {
+      try {
+        const u = localStorage.getItem('insta_trade_user');
+        if (u) {
+          const parsed = JSON.parse(u);
+          if (parsed && parsed.username) return parsed.username;
+        }
+      } catch (e) {}
+      return localStorage.getItem('insta_trade_username') || 'aman_trader';
+    }
+
     // Theme Management
     let currentTheme = localStorage.getItem('theme') || 'dark';
 
@@ -2797,7 +2809,7 @@
           positions = d.positions || [];
         } catch (e) {}
 
-        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const activeUser = getActiveUsername();
         const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
         const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
 
@@ -2902,67 +2914,18 @@
         }
 
         let html = `
-          <!-- MOBILE HERO SUMMARY -->
-          <div class="lg:hidden bg-cardBg border border-borderSubtle rounded-2xl p-3.5 mb-3 flex items-center justify-between shadow-sm">
-            <div>
-              <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Total Unrealized P&L</div>
-              <div id="pos-mob-total-pnl" class="text-base font-mono font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-danger'} mt-0.5">
-                ${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toFixed(2)}
-              </div>
-            </div>
-            <button onclick="exitAllPositions()" class="px-3.5 py-1.5 rounded-xl bg-danger/15 text-danger border border-danger/30 text-xs font-bold active:scale-95 transition-all">
-              Square Off All
-            </button>
-          </div>
-
-          <!-- MOBILE CARDS -->
-          <div class="lg:hidden flex flex-col gap-2.5 pb-6">
-        `;
-
-        positions.forEach(p => {
-          const rowKey = p.symbol.replace(/[: -]/g, '_');
-          const pnl = Number(p.pnl || 0);
-          const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
-          const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
-          html += `
-            <div class="bg-cardBg border border-borderSubtle rounded-xl p-3.5 space-y-2.5 shadow-sm">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-xs text-white">${p.symbol}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">MIS</span>
-                </div>
-                <div class="text-right">
-                  <span id="pos-mob-pnl-${rowKey}" class="text-xs font-mono font-bold ${pnlColor}">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</span>
-                </div>
-              </div>
-              <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-2 border-t border-borderSubtle/50">
-                <div class="flex items-center gap-3">
-                  <span>Qty: <strong class="text-white">${p.net_qty}</strong></span>
-                  <span>Avg: <strong class="text-white">₹${Number(avgPrice).toFixed(2)}</strong></span>
-                  <span>LTP: <strong class="text-white" id="pos-mob-ltp-${rowKey}">₹${Number(p.ltp || 0).toFixed(2)}</strong></span>
-                </div>
-                <button onclick="exitPosition('${p.symbol}')" class="px-3 py-1 rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white border border-danger/30 text-xs font-bold active:scale-95 transition-all">Exit</button>
-              </div>
-            </div>
-          `;
-        });
-
-        html += `
-          </div>
-
-          <!-- DESKTOP TABLE -->
-          <div class="hidden lg:block overflow-x-auto">
+          <!-- POSITIONS TABLE (Visible on all screen sizes) -->
+          <div class="w-full overflow-x-auto">
             <table class="w-full text-left text-xs font-mono">
               <thead class="text-slate-400 border-b border-borderSubtle pb-1">
                 <tr>
-                  <th class="py-1">Symbol</th>
+                  <th class="py-2 pl-2">Symbol</th>
                   <th>Side</th>
                   <th>Qty</th>
-                  <th>Buy Avg</th>
+                  <th>Buy/Sell Avg</th>
                   <th>LTP</th>
                   <th>P&L</th>
-                  <th class="text-right pr-2">Action</th>
+                  <th class="text-right pr-3">Action</th>
                 </tr>
               </thead>
               <tbody id="pos-table-body">
@@ -2975,14 +2938,14 @@
           const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
           html += `
             <tr id="pos-row-${rowKey}" class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
-              <td class="py-2 text-white font-bold">${p.symbol}</td>
-              <td><span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800">${p.side || 'BUY'}</span></td>
-              <td>${p.net_qty}</td>
+              <td class="py-2.5 pl-2 text-white font-bold">${p.symbol}</td>
+              <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span></td>
+              <td class="font-bold text-white">${p.net_qty}</td>
               <td>₹ ${Number(avgPrice).toFixed(2)}</td>
-              <td id="pos-ltp-${rowKey}">₹ ${Number(p.ltp || 0).toFixed(2)}</td>
+              <td id="pos-ltp-${rowKey}" class="font-bold text-white">₹ ${Number(p.ltp || 0).toFixed(2)}</td>
               <td id="pos-pnl-${rowKey}" class="${pnlColor} font-bold">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</td>
-              <td class="text-right pr-2">
-                <button onclick="exitPosition('${p.symbol}')" class="px-2 py-0.5 text-[10px] rounded bg-danger/10 text-danger hover:bg-danger/20 border border-danger/30 cursor-pointer">Exit</button>
+              <td class="text-right pr-3">
+                <button onclick="exitPosition('${p.symbol}')" class="px-3 py-1 text-xs font-bold rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white border border-danger/30 cursor-pointer active:scale-95 transition-all">Exit</button>
               </td>
             </tr>
           `;
@@ -3000,7 +2963,7 @@
           orders = d.orders || [];
         } catch (e) {}
 
-        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const activeUser = getActiveUsername();
         const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
 
         if (orders.length > 0) {
@@ -3035,42 +2998,12 @@
         }
 
         let html = `
-          <!-- MOBILE ORDERS CARDS -->
-          <div class="lg:hidden flex flex-col gap-2.5 pb-6">
-        `;
-
-        orders.forEach(o => {
-          const statusColor = o.status === 'FILLED' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : (o.status === 'CANCELLED' ? 'text-slate-500 bg-slate-800/50 border-slate-700/50' : 'text-amber-400 bg-amber-500/10 border-amber-500/20');
-          html += `
-            <div class="bg-cardBg border border-borderSubtle rounded-xl p-3.5 space-y-2 shadow-sm">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-xs text-white">${o.symbol}</span>
-                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${o.type === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${o.type}</span>
-                  <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-400 font-mono">${o.product || 'MIS'}</span>
-                </div>
-                <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${statusColor}">${o.status}</span>
-              </div>
-              <div class="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-1.5 border-t border-borderSubtle/50">
-                <div class="flex items-center gap-3">
-                  <span>Qty: <strong class="text-white">${o.qty}</strong></span>
-                  <span>Price: <strong class="text-white">₹${Number(o.price || 0).toFixed(2)}</strong></span>
-                </div>
-                <span class="text-[10px] text-slate-500">${o.time || '--:--'}</span>
-              </div>
-            </div>
-          `;
-        });
-
-        html += `
-          </div>
-
-          <!-- DESKTOP ORDERS TABLE -->
-          <div class="hidden lg:block overflow-x-auto">
+          <!-- ORDERS TABLE (Visible on all screen sizes) -->
+          <div class="w-full overflow-x-auto">
             <table class="w-full text-left text-xs font-mono">
               <thead class="text-slate-400 border-b border-borderSubtle pb-1">
                 <tr>
-                  <th class="py-1">Order ID</th>
+                  <th class="py-2 pl-2">Order ID</th>
                   <th>Time</th>
                   <th>Symbol</th>
                   <th>Side</th>
@@ -3087,14 +3020,14 @@
           const statusColor = o.status === 'FILLED' ? 'text-emerald-400 bg-emerald-500/10' : (o.status === 'CANCELLED' ? 'text-slate-500' : 'text-amber-400 bg-amber-500/10');
           html += `
             <tr class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
-              <td class="py-2 text-slate-400 text-[11px]">${o.id}</td>
+              <td class="py-2.5 pl-2 text-slate-400 text-[11px]">${o.id}</td>
               <td class="text-slate-500">${o.time || '--:--'}</td>
               <td class="text-white font-bold">${o.symbol}</td>
-              <td><span class="px-1.5 py-0.5 rounded text-[10px] ${o.type === 'BUY' ? 'bg-brand/10 text-brand' : 'bg-danger/10 text-danger'}">${o.type}</span></td>
+              <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${o.type === 'BUY' ? 'bg-brand/10 text-brand' : 'bg-danger/10 text-danger'}">${o.type}</span></td>
               <td>${o.product || 'MIS'}</td>
-              <td>${o.qty}</td>
-              <td>₹ ${Number(o.price || 0).toFixed(2)}</td>
-              <td><span class="px-1.5 py-0.5 rounded text-[10px] ${statusColor}">${o.status}</span></td>
+              <td class="font-bold text-white">${o.qty}</td>
+              <td class="font-bold text-white">₹ ${Number(o.price || 0).toFixed(2)}</td>
+              <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusColor}">${o.status}</span></td>
             </tr>
           `;
         });
@@ -3587,7 +3520,7 @@
           return;
         }
         // Remove exited position from local backup
-        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const activeUser = getActiveUsername();
         const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
         try {
           const saved = JSON.parse(localStorage.getItem(cacheKeyPos) || '[]');
@@ -3621,7 +3554,7 @@
           return;
         }
         // Clear positions in local backup
-        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const activeUser = getActiveUsername();
         const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
         try {
           window._userExplicitlyClosedAll = true;
@@ -3654,7 +3587,7 @@
           return;
         }
         // Clear local backup
-        const activeUser = (currentProfile && currentProfile.username) || localStorage.getItem('insta_trade_username') || 'aman_trader';
+        const activeUser = getActiveUsername();
         try {
           window._userExplicitlyClosedAll = true;
           localStorage.removeItem('insta_trade_saved_positions_' + activeUser);
