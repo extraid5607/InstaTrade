@@ -232,6 +232,43 @@
       background-color: #ffffff !important;
       border-color: #e2e8f0 !important;
     }
+    [data-theme="light"] .text-emerald-500 {
+      color: #047857 !important;
+    }
+    [data-theme="light"] .text-sky-300,
+    [data-theme="light"] .text-sky-400 {
+      color: #0369a1 !important;
+    }
+    [data-theme="light"] .text-orange-400,
+    [data-theme="light"] .text-amber-300,
+    [data-theme="light"] .text-amber-400 {
+      color: #b45309 !important;
+    }
+    [data-theme="light"] input[type="text"],
+    [data-theme="light"] input[type="number"],
+    [data-theme="light"] input[type="password"] {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    [data-theme="light"] input::placeholder {
+      color: #94a3b8 !important;
+    }
+    [data-theme="light"] .mob-zk-pos-row {
+      border-color: #e2e8f0 !important;
+    }
+    [data-theme="light"] .divide-borderSubtle\/60 > :not([hidden]) ~ :not([hidden]) {
+      border-color: #e2e8f0 !important;
+    }
+    [data-theme="light"] #pos-exit-modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.4) !important;
+    }
+    [data-theme="light"] .bg-sky-500\/15 {
+      background-color: rgba(14, 165, 233, 0.15) !important;
+    }
+    [data-theme="light"] .bg-orange-500\/15 {
+      background-color: rgba(249, 115, 22, 0.15) !important;
+    }
 
     /* Status & Badge Pills */
     [data-theme="light"] .bg-emerald-500\/10,
@@ -624,25 +661,42 @@
 
         <!-- RIGHT TAB 1: WATCHLIST PANE -->
         <div id="rd-pane-watchlist" class="rd-pane flex-1 flex flex-col overflow-hidden">
+          
+          <!-- Zerodha Kite Mobile Marketwatch Heading (visible on mobile / smaller viewports) -->
+          <div class="block lg:hidden px-4 pt-3 pb-2 border-b border-borderSubtle bg-panelBg">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 cursor-pointer">
+                <h1 class="text-xl font-bold text-white tracking-tight">Marketwatch</h1>
+                <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+              </div>
+            </div>
+          </div>
+
           <div class="p-3 border-b border-borderSubtle bg-panelBg flex flex-col gap-2.5">
-            <!-- Filter tabs: Indices, Futures, Stocks -->
-            <div class="flex items-center gap-1 bg-darkBg p-1 rounded-xl border border-borderSubtle text-[11px] font-semibold" id="watchlist-filters">
-              <button onclick="filterWatchlist('INDICES')" class="watch-filter-btn flex-1 py-1 rounded-lg bg-brand text-slate-950 font-bold cursor-pointer transition-all text-center text-[11px] shadow-sm" data-filter="INDICES">Indices</button>
-              <button onclick="filterWatchlist('FUTURES')" class="watch-filter-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center text-[11px]" data-filter="FUTURES">Futures</button>
-              <button onclick="filterWatchlist('EQUITY')" class="watch-filter-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center text-[11px]" data-filter="EQUITY">Stocks</button>
+            <!-- Filter tabs: Watchlist 1 (Indices), Watchlist 2 (Futures), Watchlist 3 (Stocks) -->
+            <div class="flex items-center border-b border-borderSubtle/60 overflow-x-auto no-scrollbar gap-1 px-1" id="watchlist-filters">
+              <button onclick="filterWatchlist('INDICES')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-brand border-b-2 border-brand cursor-pointer transition-all whitespace-nowrap" data-filter="INDICES">Watchlist 1</button>
+              <button onclick="filterWatchlist('FUTURES')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap" data-filter="FUTURES">Watchlist 2</button>
+              <button onclick="filterWatchlist('EQUITY')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap" data-filter="EQUITY">Watchlist 3</button>
             </div>
 
-            <!-- Search input -->
-            <div class="relative" id="watch-search-wrapper">
-              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5"></i>
-              <input type="text" id="watch-search" placeholder="Search stock or index (e.g. RELIANCE, NIFTY-FUT)..." 
+            <!-- Search input with Zerodha Kite 'Search & add', Item Count & Filter Controls -->
+            <div class="relative flex items-center" id="watch-search-wrapper">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none"></i>
+              <input type="text" id="watch-search" placeholder="Search & add" 
                      oninput="handleWatchSearchInput(this.value)"
                      onfocus="openWatchSearchDropdown()"
                      autocomplete="off"
-                     class="w-full bg-darkBg text-xs pl-8 pr-7 py-2 rounded-xl border border-borderSubtle focus:outline-none focus:border-brand text-slate-200 placeholder-slate-500">
-              <button onclick="clearWatchSearch()" id="watch-search-clear" class="hidden absolute right-2.5 top-2.5 text-slate-500 hover:text-white cursor-pointer">
-                <i data-lucide="x" class="w-3.5 h-3.5"></i>
-              </button>
+                     class="w-full bg-darkBg text-xs pl-8 pr-20 py-2.5 rounded-xl border border-borderSubtle focus:outline-none focus:border-brand text-slate-200 placeholder-slate-500 transition-all">
+              <div class="absolute right-2.5 flex items-center gap-2">
+                <span id="watch-count-pill-inner" class="text-[11px] font-mono text-slate-400 select-none">6/50</span>
+                <button type="button" onclick="openWatchSearchDropdown()" class="text-slate-400 hover:text-white p-0.5 cursor-pointer" title="Search Filters">
+                  <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="clearWatchSearch()" id="watch-search-clear" class="hidden text-slate-500 hover:text-white cursor-pointer" title="Clear">
+                  <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
 
               <!-- Interactive Search Dropdown -->
               <div id="watch-search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-[#0d121c] border border-borderSubtle rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 flex flex-col">
@@ -781,35 +835,10 @@
       
       <!-- MOBILE ZERODHA KITE STYLE TOP CONTROLS (< md) -->
       <div id="mob-zerodha-header-container" class="block md:hidden bg-cardBg border-b border-borderSubtle flex-shrink-0">
-        <!-- Top Indices Strip: NIFTY & SENSEX -->
-        <div class="px-4 py-2 border-b border-borderSubtle/60 flex items-center justify-between">
-          <div class="flex items-center gap-6">
-            <!-- NIFTY -->
-            <div onclick="selectSymbol('NSE:NIFTY50-INDEX')" class="cursor-pointer">
-              <div class="text-[10px] font-bold text-slate-400 tracking-wider">NIFTY</div>
-              <div class="flex items-center gap-1.5 font-mono">
-                <span id="mob-zk-nifty-ltp" class="font-bold text-xs text-white">25,425.00</span>
-                <span id="mob-zk-nifty-chg" class="text-[10px] font-semibold text-emerald-400">+0.45%</span>
-              </div>
-            </div>
-            <!-- SENSEX -->
-            <div onclick="selectSymbol('BSE:SENSEX-INDEX')" class="cursor-pointer">
-              <div class="text-[10px] font-bold text-slate-400 tracking-wider">SENSEX</div>
-              <div class="flex items-center gap-1.5 font-mono">
-                <span id="mob-zk-sensex-ltp" class="font-bold text-xs text-white">83,180.00</span>
-                <span id="mob-zk-sensex-chg" class="text-[10px] font-semibold text-emerald-400">+0.32%</span>
-              </div>
-            </div>
-          </div>
-          <div class="text-slate-400 p-1">
-            <i data-lucide="chevron-down" class="w-4 h-4"></i>
-          </div>
-        </div>
-
-        <!-- Zerodha Dual Tabs: INVESTMENTS vs POSITIONS -->
+        <!-- Zerodha Dual Tabs: ORDERS vs POSITIONS -->
         <div class="flex items-center border-b border-borderSubtle bg-darkBg/30">
           <button onclick="switchPositionsSubTab('orders')" id="mob-zk-tab-investments" class="flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer">
-            INVESTMENTS <span id="mob-zk-inv-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">0</span>
+            ORDERS <span id="mob-zk-inv-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">0</span>
           </button>
           <button onclick="switchPositionsSubTab('positions')" id="mob-zk-tab-positions" class="flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer">
             POSITIONS <span id="mob-zk-pos-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-brand text-slate-950 font-mono font-bold">0</span>
@@ -3275,9 +3304,9 @@
       currentWatchFilter = filter;
       document.querySelectorAll('.watch-filter-btn').forEach(btn => {
         if (btn.getAttribute('data-filter') === filter) {
-          btn.className = 'watch-filter-btn flex-1 py-1 rounded-md bg-brand text-slate-950 font-bold cursor-pointer transition-colors text-center text-[10px] sm:text-[11px] shadow-sm';
+          btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-brand border-b-2 border-brand cursor-pointer transition-all whitespace-nowrap';
         } else {
-          btn.className = 'watch-filter-btn flex-1 py-1 rounded-md text-slate-400 hover:text-white cursor-pointer transition-colors text-center text-[10px] sm:text-[11px]';
+          btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap';
         }
       });
       applyWatchlistFilter();
@@ -3328,6 +3357,8 @@
 
       const countPill = document.getElementById('watch-count-pill');
       if (countPill) countPill.innerText = visibleCount;
+      const countPillInner = document.getElementById('watch-count-pill-inner');
+      if (countPillInner) countPillInner.innerText = `${visibleCount}/50`;
     }
 
     // ------------------ INTERACTIVE SEARCH & ADD TO WATCHLIST ------------------
@@ -3528,15 +3559,15 @@
               ? '<span class="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.2 rounded font-bold font-mono">FUT</span>'
               : '<span class="text-[8px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1 py-0.2 rounded font-bold font-mono">EQ</span>');
 
-          // Up / Down Re-shuffle Controls (for all items on desktop & mobile)
+          // Up / Down Re-shuffle Controls (desktop only)
           const reorderButtons = `
-            <div class="flex flex-col gap-0.5 mr-0.5 text-slate-400 flex-shrink-0 select-none">
+            <div class="hidden lg:flex flex-col gap-0.5 mr-0.5 text-slate-400 flex-shrink-0 select-none">
               <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', -1)" title="Move Up" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▲</button>
               <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', 1)" title="Move Down" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▼</button>
             </div>
           `;
 
-          // Action buttons: Reorder, Buy/Sell, and Remove (available for ALL items, both desktop & mobile)
+          // Action buttons: Reorder, Buy/Sell, and Remove (desktop only)
           const actionButtons = isIndex ? `
             <div class="flex items-center gap-1.5 flex-shrink-0">
               ${reorderButtons}
@@ -3544,10 +3575,6 @@
               <!-- Desktop Remove Button -->
               <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="hidden lg:flex p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors" title="Remove from Watchlist">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-              <!-- Mobile Remove Button -->
-              <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="flex lg:hidden w-6 h-6 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 items-center justify-center cursor-pointer transition-colors active:scale-90" title="Remove ${q.short_name}">
-                <i data-lucide="trash-2" class="w-3 h-3"></i>
               </button>
             </div>
           ` : `
@@ -3561,14 +3588,6 @@
                   <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
               </div>
-              <!-- Mobile Persistent Action Buttons -->
-              <div class="flex lg:hidden items-center gap-1 ml-1">
-                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="w-6 h-6 rounded-lg bg-brand/20 text-brand active:bg-brand active:text-slate-950 font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Buy ${q.short_name}">B</button>
-                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="w-6 h-6 rounded-lg bg-danger/20 text-danger active:bg-danger active:text-white font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Sell ${q.short_name}">S</button>
-                <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 flex items-center justify-center cursor-pointer transition-colors active:scale-90" title="Remove ${q.short_name}">
-                  <i data-lucide="trash-2" class="w-3 h-3"></i>
-                </button>
-              </div>
             </div>
           `;
 
@@ -3576,22 +3595,22 @@
             item = document.createElement('div');
             item.id = rowId;
             item.setAttribute('data-symbol', q.symbol);
-            item.className = `group p-2.5 px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
+            item.className = `group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
             item.onclick = () => selectSymbol(q.symbol);
             item.innerHTML = `
               <div class="min-w-0 pr-2">
-                <div class="font-bold text-xs text-white truncate">${q.short_name}</div>
-                <div class="text-[10px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
+                <div class="font-bold text-sm lg:text-xs text-white truncate">${q.short_name}</div>
+                <div class="text-[11px] lg:text-[10px] text-slate-500 font-mono flex items-center gap-1 mt-0.5">
                   <span>${q.symbol.split(':')[0]}</span>
-                  ${typeBadge}
+                  <span class="hidden lg:inline">${typeBadge}</span>
                 </div>
               </div>
               <div class="flex items-center gap-2.5">
                 <div class="text-right font-mono flex-shrink-0">
-                  <div class="watch-price text-xs font-bold ${colorClass}">₹ ${q.ltp.toFixed(2)}</div>
-                  <div class="watch-chg text-[10px] font-semibold ${colorClass}">${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%</div>
+                  <div class="watch-price text-sm lg:text-xs font-bold ${colorClass}">${q.ltp.toFixed(2)}</div>
+                  <div class="watch-chg text-[11px] lg:text-[10px] font-semibold ${colorClass}">${isUp ? '+' : ''}${q.change.toFixed(2)} (${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%)</div>
                 </div>
-                <div class="watch-action-wrapper flex items-center">
+                <div class="watch-action-wrapper hidden lg:flex items-center">
                   ${actionButtons}
                 </div>
               </div>
@@ -3600,7 +3619,7 @@
             try { lucide.createIcons(); } catch (e) {}
           } else {
             item.setAttribute('data-symbol', q.symbol);
-            item.className = `group p-2.5 px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
+            item.className = `group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
             const priceEl = item.querySelector('.watch-price');
             const chgEl = item.querySelector('.watch-chg');
             if (priceEl) {
@@ -3609,12 +3628,12 @@
                 void priceEl.offsetWidth;
                 priceEl.classList.add(tickClass);
               }
-              priceEl.innerText = `₹ ${q.ltp.toFixed(2)}`;
-              priceEl.className = `watch-price text-xs font-bold ${colorClass} ${tickClass}`;
+              priceEl.innerText = q.ltp.toFixed(2);
+              priceEl.className = `watch-price text-sm lg:text-xs font-bold ${colorClass} ${tickClass}`;
             }
             if (chgEl) {
-              chgEl.innerText = `${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%`;
-              chgEl.className = `watch-chg text-[10px] ${colorClass}`;
+              chgEl.innerText = `${isUp ? '+' : ''}${q.change.toFixed(2)} (${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%)`;
+              chgEl.className = `watch-chg text-[11px] lg:text-[10px] font-semibold ${colorClass}`;
             }
             const actWrap = item.querySelector('.watch-action-wrapper');
             if (actWrap) {
@@ -4156,7 +4175,6 @@
                     <div class="flex items-center gap-1.5 flex-wrap">
                       <span class="font-bold text-sm ${isClosed ? 'text-slate-400' : 'text-white'}">${info.underlying}</span>
                       ${badgeHtml}
-                      ${expBadge}
                     </div>
                     <div class="text-right">
                       <span id="mob-pos-pnl-${rowKey}" class="font-bold font-mono text-sm ${pnlColor}">${pnlFormatted}</span>
