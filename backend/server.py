@@ -71,6 +71,7 @@ class OrderPayload(BaseModel):
     product_type: str = "INTRADAY"  # "CNC", "INTRADAY", "MARGIN"
     limit_price: float = 0.0
     stop_price: float = 0.0
+    expiry: Optional[str] = None
 
 
 class SyncStatePayload(BaseModel):
@@ -412,6 +413,7 @@ def place_order(order: OrderPayload, username: str = Depends(require_authenticat
         order_type=ot,
         product=order.product_type,
         limit_price=order.limit_price,
+        expiry=order.expiry,
     )
 
 

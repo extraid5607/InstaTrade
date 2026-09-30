@@ -109,7 +109,9 @@ class DatabaseManager:
                     net_qty INTEGER NOT NULL,
                     buy_avg REAL DEFAULT 0.0,
                     sell_avg REAL DEFAULT 0.0,
-                    margin_held REAL DEFAULT 0.0
+                    margin_held REAL DEFAULT 0.0,
+                    expiry VARCHAR(50) DEFAULT '',
+                    created_date VARCHAR(50) DEFAULT ''
                 )
             """)
 
@@ -126,6 +128,7 @@ class DatabaseManager:
                     qty INTEGER NOT NULL,
                     price REAL NOT NULL,
                     status VARCHAR(50) NOT NULL,
+                    expiry VARCHAR(50) DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -139,11 +142,23 @@ class DatabaseManager:
                 )
             """)
 
-            # Safe column migration for existing user_orders tables
-            try:
-                self._execute(cursor, "ALTER TABLE user_orders ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-            except Exception:
-                pass
+            # Safe column migrations for existing tables
+            migrations = [
+                ("user_orders", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+                ("user_orders", "expiry", "VARCHAR(50) DEFAULT ''"),
+                ("user_positions", "expiry", "VARCHAR(50) DEFAULT ''"),
+                ("user_positions", "created_date", "VARCHAR(50) DEFAULT ''"),
+            ]
+            for tbl, col, col_def in migrations:
+                try:
+                    self._execute(cursor, f"ALTER TABLE {tbl} ADD COLUMN {col} {col_def}")
+                    conn.commit()
+                except Exception:
+                    if self.is_postgres:
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
 
             conn.commit()
 
@@ -349,14 +364,18 @@ class DatabaseManager:
                     if not p or not p.get("symbol") or not p.get("net_qty"):
                         continue
                     pos_id = p.get("id") or f"{clean_user}:{p['symbol']}"
+                    expiry = p.get("expiry") or ""
+                    created_date = p.get("created_date") or datetime.date.today().strftime("%Y-%m-%d")
                     self._execute(cursor, """
-                        INSERT INTO user_positions (id, username, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO user_positions (id, username, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held, expiry, created_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(id) DO UPDATE SET
                             net_qty = excluded.net_qty,
                             buy_avg = excluded.buy_avg,
                             sell_avg = excluded.sell_avg,
-                            margin_held = excluded.margin_held
+                            margin_held = excluded.margin_held,
+                            expiry = CASE WHEN excluded.expiry IS NOT NULL AND excluded.expiry != '' THEN excluded.expiry ELSE user_positions.expiry END,
+                            created_date = COALESCE(user_positions.created_date, excluded.created_date)
                     """, (
                         pos_id,
                         clean_user,
@@ -367,6 +386,8 @@ class DatabaseManager:
                         float(p.get("buy_avg", 0.0)),
                         float(p.get("sell_avg", 0.0)),
                         float(p.get("margin_held", 0.0)),
+                        expiry,
+                        created_date
                     ))
             if orders:
                 for o in orders:
@@ -467,7 +488,7 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
-                SELECT id, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held
+                SELECT id, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held, expiry, created_date
                 FROM user_positions WHERE username = ?
             """, (username,))
             rows = cursor.fetchall()
@@ -475,18 +496,22 @@ class DatabaseManager:
 
     def save_position(self, username: str, pos: Dict[str, Any]):
         pos_id = f"{username}:{pos['symbol']}"
+        expiry = pos.get("expiry") or ""
+        created_date = pos.get("created_date") or datetime.date.today().strftime("%Y-%m-%d")
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
-                INSERT INTO user_positions (id, username, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO user_positions (id, username, symbol, side, product, net_qty, buy_avg, sell_avg, margin_held, expiry, created_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     side = excluded.side,
                     product = excluded.product,
                     net_qty = excluded.net_qty,
                     buy_avg = excluded.buy_avg,
                     sell_avg = excluded.sell_avg,
-                    margin_held = excluded.margin_held
+                    margin_held = excluded.margin_held,
+                    expiry = CASE WHEN excluded.expiry IS NOT NULL AND excluded.expiry != '' THEN excluded.expiry ELSE user_positions.expiry END,
+                    created_date = COALESCE(user_positions.created_date, excluded.created_date)
             """, (
                 pos_id,
                 username,
@@ -496,7 +521,9 @@ class DatabaseManager:
                 int(pos["net_qty"]),
                 float(pos.get("buy_avg", 0.0)),
                 float(pos.get("sell_avg", 0.0)),
-                float(pos.get("margin_held", 0.0))
+                float(pos.get("margin_held", 0.0)),
+                expiry,
+                created_date
             ))
             conn.commit()
 
@@ -518,7 +545,7 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
-                SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status
+                SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status, expiry
                 FROM user_orders WHERE username = ? ORDER BY rowid DESC
             """, (username,))
             rows = cursor.fetchall()
@@ -528,11 +555,12 @@ class DatabaseManager:
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
-                INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status, expiry)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     order_time = excluded.order_time,
-                    status = excluded.status
+                    status = excluded.status,
+                    expiry = excluded.expiry
             """, (
                 order["id"],
                 username,
@@ -543,7 +571,8 @@ class DatabaseManager:
                 order.get("product", "INTRADAY"),
                 int(order["qty"]),
                 float(order["price"]),
-                order.get("status", "FILLED")
+                order.get("status", "FILLED"),
+                order.get("expiry", "")
             ))
             conn.commit()
 

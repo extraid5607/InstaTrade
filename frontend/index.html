@@ -492,6 +492,7 @@
             <div class="flex items-center gap-2">
               <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Order Placement</span>
               <span class="text-[11px] font-mono text-brand font-bold bg-brand/10 border border-brand/20 px-2 py-0.5 rounded" id="order-symbol-tag">NIFTY 50</span>
+              <span class="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded hidden" id="order-expiry-tag"></span>
             </div>
             <button onclick="closeOrderPad()" class="p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 cursor-pointer transition-colors" title="Close Order Placement Panel">
               <i data-lucide="x" class="w-4 h-4"></i>
@@ -1034,6 +1035,25 @@
 
   <script>
     window.currentProfile = null;
+    let currentOrderExpiry = '';
+
+    function formatExpiryBadge(exp) {
+      if (!exp) return '<span class="text-slate-500 font-mono text-[11px]">-</span>';
+      try {
+        const parts = String(exp).split('-');
+        if (parts.length === 3) {
+          const yr = parts[0];
+          const moIdx = parseInt(parts[1], 10) - 1;
+          const day = parts[2];
+          const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+          if (months[moIdx]) {
+            return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">${day} ${months[moIdx]} ${yr}</span>`;
+          }
+        }
+      } catch (e) {}
+      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 font-mono">${exp}</span>`;
+    }
+
     function getActiveUsername() {
       try {
         const u = localStorage.getItem('insta_trade_user');
@@ -1569,6 +1589,7 @@
         if (data.spot) {
           currentSpotPrice = data.spot;
         }
+        const activeChainExpiry = currentOptionExpiry || data.current_expiry || '';
 
         const srcBadge = document.getElementById('chain-source-badge');
         if (srcBadge) {
@@ -1761,11 +1782,11 @@
                 </div>
               </td>
               <td id="ce-delta-${s.strike}" class="py-2 px-2 text-right text-slate-400 ${ceItmBg}">${ce.delta ? ce.delta.toFixed(2) : '0.50'}</td>
-              <td id="ce-ltp-${s.strike}" data-val="${ce.ltp}" onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size})" class="py-2 px-3 text-right font-bold text-emerald-400 cursor-pointer active:scale-95 transition-transform hover:underline ${ceItmBg}" title="Tap to Buy ${ce.display_name}">₹ ${Number(ce.ltp || 0).toFixed(2)}</td>
+              <td id="ce-ltp-${s.strike}" data-val="${ce.ltp}" onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" class="py-2 px-3 text-right font-bold text-emerald-400 cursor-pointer active:scale-95 transition-transform hover:underline ${ceItmBg}" title="Tap to Buy ${ce.display_name}">₹ ${Number(ce.ltp || 0).toFixed(2)}</td>
               <td class="py-2 px-2 text-center border-r border-borderSubtle ${ceItmBg}">
                 <div class="flex items-center justify-center gap-1.5">
-                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-brand/20 text-brand hover:bg-brand hover:text-slate-950 font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Buy ${ce.display_name}">B</button>
-                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, -1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-danger/20 text-danger hover:bg-danger hover:text-white font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Sell ${ce.display_name}">S</button>
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" class="w-6 h-6 rounded-md bg-brand/20 text-brand hover:bg-brand hover:text-slate-950 font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Buy ${ce.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, -1, ${data.lot_size}, '${activeChainExpiry}')" class="w-6 h-6 rounded-md bg-danger/20 text-danger hover:bg-danger hover:text-white font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Sell ${ce.display_name}">S</button>
                 </div>
               </td>
 
@@ -1780,11 +1801,11 @@
               <!-- PUTS -->
               <td class="py-2 px-2 text-center border-l border-borderSubtle ${peItmBg}">
                 <div class="flex items-center justify-center gap-1.5">
-                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-brand/20 text-brand hover:bg-brand hover:text-slate-950 font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Buy ${pe.display_name}">B</button>
-                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, -1, ${data.lot_size})" class="w-6 h-6 rounded-md bg-danger/20 text-danger hover:bg-danger hover:text-white font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Sell ${pe.display_name}">S</button>
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" class="w-6 h-6 rounded-md bg-brand/20 text-brand hover:bg-brand hover:text-slate-950 font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Buy ${pe.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, -1, ${data.lot_size}, '${activeChainExpiry}')" class="w-6 h-6 rounded-md bg-danger/20 text-danger hover:bg-danger hover:text-white font-bold text-[11px] flex items-center justify-center cursor-pointer transition-all active:scale-90" title="Sell ${pe.display_name}">S</button>
                 </div>
               </td>
-              <td id="pe-ltp-${s.strike}" data-val="${pe.ltp}" onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size})" class="py-2 px-3 text-left font-bold text-danger cursor-pointer active:scale-95 transition-transform hover:underline ${peItmBg}" title="Tap to Buy ${pe.display_name}">₹ ${Number(pe.ltp || 0).toFixed(2)}</td>
+              <td id="pe-ltp-${s.strike}" data-val="${pe.ltp}" onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" class="py-2 px-3 text-left font-bold text-danger cursor-pointer active:scale-95 transition-transform hover:underline ${peItmBg}" title="Tap to Buy ${pe.display_name}">₹ ${Number(pe.ltp || 0).toFixed(2)}</td>
               <td id="pe-delta-${s.strike}" class="py-2 px-2 text-right text-slate-400 ${peItmBg}">${pe.delta ? pe.delta.toFixed(2) : '-0.50'}</td>
               <td id="pe-oi-${s.strike}" class="py-2 px-2.5 text-slate-300 ${peItmBg} relative overflow-hidden" title="Put OI: ${pe.oi || 0} (${pePercent}%)">
                 <div class="pe-oi-bar absolute inset-y-1 left-0 bg-rose-500/20 rounded-r transition-all duration-300 pointer-events-none" style="width: ${pePercent}%;"></div>
@@ -1809,11 +1830,24 @@
       }
     }
 
-    function selectOptionForTrade(symbol, price, side, lotSize) {
+    function selectOptionForTrade(symbol, price, side, lotSize, expiry) {
       currentSymbol = symbol;
       currentLotSize = lotSize;
+      currentOrderExpiry = expiry || currentOptionExpiry || '';
+
       const symTag = document.getElementById('order-symbol-tag');
       if (symTag) symTag.innerText = symbol;
+
+      const expTag = document.getElementById('order-expiry-tag');
+      if (expTag) {
+        if (currentOrderExpiry) {
+          expTag.innerText = currentOrderExpiry;
+          expTag.classList.remove('hidden');
+        } else {
+          expTag.classList.add('hidden');
+        }
+      }
+
       const qtyInput = document.getElementById('order-qty');
       if (qtyInput) qtyInput.value = lotSize;
       const priceInput = document.getElementById('order-price');
@@ -1823,7 +1857,8 @@
       setOrderSide(side);
       onQtyChange();
 
-      showToast(`Selected ${symbol} @ ₹${Number(price || 0).toFixed(2)} (Lot: ${lotSize})`, 'info');
+      const expNote = currentOrderExpiry ? ` (Exp: ${currentOrderExpiry})` : '';
+      showToast(`Selected ${symbol}${expNote} @ ₹${Number(price || 0).toFixed(2)} (Lot: ${lotSize})`, 'info');
 
       // Auto-open Order Pad slide drawer on mobile & desktop
       openOrderPad();
@@ -2735,7 +2770,8 @@
         order_type: currentOrderType,
         product_type: currentProduct,
         limit_price: price,
-        stop_price: 0.0
+        stop_price: 0.0,
+        expiry: currentOrderExpiry || currentOptionExpiry || ''
       };
 
       try {
@@ -2816,25 +2852,7 @@
         if (positions.length > 0) {
           try { localStorage.setItem(cacheKeyPos, JSON.stringify(positions)); } catch (e) {}
         } else {
-          try {
-            const saved = localStorage.getItem(cacheKeyPos);
-            const savedOrders = localStorage.getItem(cacheKeyOrd);
-            if (saved && !window._userExplicitlyClosedAll) {
-              const parsedSaved = JSON.parse(saved);
-              if (Array.isArray(parsedSaved) && parsedSaved.length > 0) {
-                const parsedOrd = savedOrders ? JSON.parse(savedOrders) : [];
-                const syncRes = await fetch('/api/positions/sync', {
-                  method: 'POST',
-                  headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                  body: JSON.stringify({ positions: parsedSaved, orders: parsedOrd })
-                });
-                const syncData = await syncRes.json();
-                if (syncData && syncData.positions && syncData.positions.length > 0) {
-                  positions = syncData.positions;
-                }
-              }
-            }
-          } catch (e) {}
+          try { localStorage.removeItem(cacheKeyPos); } catch (e) {}
         }
 
         // Sync tab counter
@@ -2920,6 +2938,7 @@
               <thead class="text-slate-400 border-b border-borderSubtle pb-1">
                 <tr>
                   <th class="py-2 pl-2">Symbol</th>
+                  <th>Expiry</th>
                   <th>Side</th>
                   <th>Qty</th>
                   <th>Buy/Sell Avg</th>
@@ -2939,6 +2958,7 @@
           html += `
             <tr id="pos-row-${rowKey}" class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
               <td class="py-2.5 pl-2 text-white font-bold">${p.symbol}</td>
+              <td>${formatExpiryBadge(p.expiry)}</td>
               <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span></td>
               <td class="font-bold text-white">${p.net_qty}</td>
               <td>₹ ${Number(avgPrice).toFixed(2)}</td>

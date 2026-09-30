@@ -12,6 +12,7 @@ import threading
 import random
 import concurrent.futures
 from typing import Dict, Any, List, Optional
+import re
 import httpx
 from backend.storage import db
 
@@ -127,6 +128,47 @@ STEP_MAP = {
     "MIDCPNIFTY": 25,
     "SENSEX": 100,
 }
+
+
+def parse_expiry_date(exp_str: Optional[str]) -> Optional[datetime.date]:
+    if not exp_str:
+        return None
+    cleaned = str(exp_str).strip()
+    if not cleaned:
+        return None
+    for fmt in ("%Y-%m-%d", "%d-%b-%Y", "%d-%B-%Y", "%d%b%Y", "%d%b%y", "%Y/%m/%d", "%d/%m/%Y"):
+        try:
+            return datetime.datetime.strptime(cleaned, fmt).date()
+        except Exception:
+            pass
+    return None
+
+
+def get_default_expiry_for_symbol(symbol: str) -> str:
+    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    now_ist = datetime.datetime.now(IST)
+    ref_date = now_ist.date()
+    # If today is after 15:30 IST, contracts expiring today cannot be traded; start from tomorrow
+    if now_ist.time() >= datetime.time(15, 30):
+        ref_date = ref_date + datetime.timedelta(days=1)
+
+    sym_u = symbol.upper()
+    weekday_map = {
+        "MIDCPNIFTY": 0,  # Monday
+        "FINNIFTY": 1,    # Tuesday
+        "BANKNIFTY": 2,   # Wednesday
+        "NIFTY": 3,       # Thursday
+        "SENSEX": 4,      # Friday
+    }
+    target_weekday = 3  # default Thursday
+    for k, v in weekday_map.items():
+        if k in sym_u:
+            target_weekday = v
+            break
+
+    days_ahead = (target_weekday - ref_date.weekday()) % 7
+    exp_date = ref_date + datetime.timedelta(days=days_ahead)
+    return exp_date.strftime("%Y-%m-%d")
 
 
 class VirtualTradingEngine:
@@ -441,6 +483,14 @@ class VirtualTradingEngine:
                         time.sleep(0.5)
             except Exception as e:
                 logger.debug(f"Option chain worker loop error: {e}")
+
+            # Periodic background auto-expiry check
+            try:
+                if time.time() - getattr(self, "_last_expiry_check", 0) > 20.0:
+                    self._last_expiry_check = time.time()
+                    self.check_and_expire_positions()
+            except Exception as ex:
+                logger.debug(f"Auto-expire background check error: {ex}")
 
             time.sleep(3.5)
 
@@ -1183,12 +1233,174 @@ class VirtualTradingEngine:
             "total_value": round(f["available_cash"] + f["used_margin"] + unrealized, 2),
         }
 
+    def check_and_expire_positions(self, username: Optional[str] = None) -> int:
+        """
+        Auto-settles and closes positions whose expiry date has passed.
+        In Indian markets, options expire at 15:30 IST on the expiry date.
+        Settlement calculation:
+          - CE: max(0.0, Spot - Strike)
+          - PE: max(0.0, Strike - Spot)
+          - OTM options expire worthless (0.0).
+        Realized P&L is credited/debited, margin released, order logged as EXPIRED,
+        and position is deleted.
+        """
+        IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        now_ist = datetime.datetime.now(IST)
+        today_ist = now_ist.date()
+        time_ist = now_ist.time()
+        is_market_closed_today = time_ist >= datetime.time(15, 30)
+
+        users_to_check = [username] if username else [u["username"] for u in db.get_all_users()]
+        expired_count = 0
+
+        for user in users_to_check:
+            if not user:
+                continue
+            raw_positions = db.get_positions(user)
+            if not raw_positions:
+                continue
+
+            for pos in raw_positions:
+                sym = pos["symbol"]
+                is_option = sym.endswith("CE") or sym.endswith("PE") or (" CE" in sym) or (" PE" in sym)
+                is_future = "-FUT" in sym
+                if not (is_option or is_future):
+                    continue
+
+                exp_date = None
+                exp_str = pos.get("expiry")
+                if exp_str:
+                    exp_date = parse_expiry_date(exp_str)
+
+                # Fallback for positions without explicit expiry date:
+                if not exp_date:
+                    c_date_str = pos.get("created_date")
+                    c_date = parse_expiry_date(c_date_str) if c_date_str else None
+                    if c_date and c_date < today_ist:
+                        # Position created yesterday or earlier -> expired!
+                        exp_date = c_date
+                    else:
+                        # Legacy untracked option: treat as yesterday's expired contract
+                        exp_date = today_ist - datetime.timedelta(days=1)
+
+                is_expired = False
+                if exp_date:
+                    if exp_date < today_ist:
+                        is_expired = True
+                    elif exp_date == today_ist and is_market_closed_today:
+                        is_expired = True
+
+                if not is_expired:
+                    continue
+
+                expired_count += 1
+                net_qty = pos["net_qty"]
+                margin_held = float(pos.get("margin_held", 0.0))
+                buy_avg = float(pos.get("buy_avg", 0.0))
+                sell_avg = float(pos.get("sell_avg", 0.0))
+
+                if "SENSEX" in sym:
+                    base_sym = "BSE:SENSEX-INDEX"
+                    default_spot = 74000.0
+                elif "BANK" in sym:
+                    base_sym = "NSE:NIFTYBANK-INDEX"
+                    default_spot = 55600.0
+                elif "FIN" in sym:
+                    base_sym = "NSE:FINNIFTY-INDEX"
+                    default_spot = 24600.0
+                elif "MID" in sym:
+                    base_sym = "NSE:MIDCPNIFTY-INDEX"
+                    default_spot = 13700.0
+                else:
+                    base_sym = "NSE:NIFTY50-INDEX"
+                    default_spot = 23200.0
+
+                spot = self.quotes_cache.get(base_sym, {}).get("ltp", default_spot)
+
+                # Intrinsic settlement value
+                settle_price = 0.0
+                if is_option:
+                    strike = 0.0
+                    opt_type = "CE" if ("CE" in sym) else "PE"
+                    m = re.search(r'(\d+(?:\.\d+)?)\s*(CE|PE)', sym)
+                    if m:
+                        strike = float(m.group(1))
+                        opt_type = m.group(2)
+                    if opt_type == "CE":
+                        settle_price = max(0.0, spot - strike)
+                    else:
+                        settle_price = max(0.0, strike - spot)
+                elif is_future:
+                    settle_price = spot
+
+                # Calculate realized P&L on settlement
+                if net_qty > 0:
+                    trade_pnl = round((settle_price - buy_avg) * net_qty, 2)
+                else:
+                    trade_pnl = round((sell_avg - settle_price) * abs(net_qty), 2)
+
+                user_funds = db.get_funds(user)
+                avail = round(user_funds["available_cash"] + margin_held + trade_pnl, 2)
+                used = round(max(0.0, user_funds["used_margin"] - margin_held), 2)
+                realized = round(user_funds["realized_pnl"] + trade_pnl, 2)
+                db.update_funds(user, avail, used, realized)
+
+                now_str = now_ist.strftime("%H:%M:%S")
+                settle_order = {
+                    "id": f"EXP-{int(time.time() * 1000) % 1000000}",
+                    "time": now_str,
+                    "symbol": sym,
+                    "side": "BUY" if net_qty < 0 else "SELL",
+                    "type": "BUY" if net_qty < 0 else "SELL",
+                    "order_type": "EXPIRY",
+                    "product": pos.get("product", "INTRADAY"),
+                    "qty": abs(net_qty),
+                    "price": round(settle_price, 2),
+                    "status": "EXPIRED",
+                    "expiry": exp_date.strftime("%Y-%m-%d") if exp_date else "",
+                }
+                db.add_order(user, settle_order)
+                db.delete_position(user, sym)
+                logger.info(
+                    f"Auto-settled expired position {sym} for user {user}: "
+                    f"settle_price={settle_price:.2f}, trade_pnl={trade_pnl:.2f}, "
+                    f"released_margin={margin_held:.2f}"
+                )
+
+        return expired_count
+
     def get_positions_for_user(self, username: str) -> List[Dict[str, Any]]:
+        # 1. Auto-settle any expired positions first
+        try:
+            self.check_and_expire_positions(username)
+        except Exception as e:
+            logger.error(f"Error checking position expiry for {username}: {e}")
+
+        # 2. Retrieve remaining active positions
         raw_positions = db.get_positions(username)
         enriched = []
+        IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        today_ist = datetime.datetime.now(IST).date()
+
         for pos in raw_positions:
             p = dict(pos)
             sym = p["symbol"]
+
+            # Ensure expiry string is present
+            if not p.get("expiry"):
+                if sym.endswith("CE") or sym.endswith("PE") or "-FUT" in sym:
+                    p["expiry"] = get_default_expiry_for_symbol(sym)
+                else:
+                    p["expiry"] = ""
+
+            exp_str = p.get("expiry")
+            t_years = 4 / 365.0
+            if exp_str:
+                exp_d = parse_expiry_date(exp_str)
+                if exp_d:
+                    days_left = max(0, (exp_d - today_ist).days)
+                    t_years = max(0.2, days_left) / 365.0
+
             ltp = p.get("ltp", 100.0)
             if sym in self.quotes_cache and self.quotes_cache[sym].get("ltp"):
                 ltp = self.quotes_cache[sym]["ltp"]
@@ -1209,7 +1421,7 @@ class VirtualTradingEngine:
                             base_sym = "NSE:NIFTY50-INDEX"
                             default_spot = 23200.0
                         spot = self.quotes_cache.get(base_sym, {}).get("ltp", default_spot)
-                        ce_p, pe_p, _, _ = bs_prices(spot, strike)
+                        ce_p, pe_p, _, _ = bs_prices(spot, strike, T=t_years)
                         ltp = ce_p if opt_type == "CE" else pe_p
                 except Exception:
                     pass
@@ -1238,6 +1450,7 @@ class VirtualTradingEngine:
         order_type: int = 2,  # 2 = Market, 1 = Limit
         product: str = "INTRADAY",
         limit_price: float = 0.0,
+        expiry: Optional[str] = None,
     ) -> Dict[str, Any]:
         if qty <= 0:
             return {"s": "error", "message": "Quantity must be greater than 0"}
@@ -1259,8 +1472,13 @@ class VirtualTradingEngine:
 
         execution_price = limit_price if (order_type == 1 and limit_price > 0) else current_ltp
 
-        is_option = symbol.endswith("CE") or symbol.endswith("PE")
+        is_option = symbol.endswith("CE") or symbol.endswith("PE") or (" CE" in symbol) or (" PE" in symbol)
         is_future = "-FUT" in symbol
+
+        order_expiry = expiry or ""
+        if (is_option or is_future) and not order_expiry:
+            order_expiry = get_default_expiry_for_symbol(symbol)
+
         if is_option:
             if side == 1:
                 required_margin = execution_price * qty
@@ -1301,6 +1519,7 @@ class VirtualTradingEngine:
             "qty": qty,
             "price": round(execution_price, 2),
             "status": "FILLED",
+            "expiry": order_expiry,
         }
         db.add_order(username, order_record)
 
@@ -1316,6 +1535,8 @@ class VirtualTradingEngine:
                 "buy_avg": execution_price if side == 1 else 0.0,
                 "sell_avg": execution_price if side == -1 else 0.0,
                 "margin_held": required_margin,
+                "expiry": order_expiry,
+                "created_date": datetime.date.today().strftime("%Y-%m-%d"),
             }
             db.save_position(username, new_pos)
         else:
@@ -1342,6 +1563,7 @@ class VirtualTradingEngine:
                 else:
                     pos["sell_avg"] = execution_price
                 pos["margin_held"] = pos.get("margin_held", 0.0) + required_margin
+                pos["expiry"] = order_expiry or pos.get("expiry", "")
                 db.save_position(username, pos)
 
         db.update_funds(username, avail, used, realized)
