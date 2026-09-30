@@ -20,6 +20,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: ['selector', '[data-theme="dark"]'],
@@ -197,9 +198,10 @@
 <body class="h-screen flex flex-col overflow-hidden select-none">
 
   <!-- TOP NAVIGATION BAR -->
-  <header class="h-14 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 z-20">
+  <header class="h-14 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 z-20 flex-shrink-0">
+    <!-- LEFT: BRAND & IST MARKET CLOCK -->
     <div class="flex items-center gap-2 md:gap-3">
-      <div class="flex items-center gap-1.5 md:gap-2 text-brand font-black text-lg md:text-xl tracking-tight select-none cursor-pointer" onclick="switchMobileTab('watchlist')">
+      <div class="flex items-center gap-1.5 md:gap-2 text-brand font-black text-lg md:text-xl tracking-tight select-none cursor-pointer" onclick="switchWorkstation('chart')">
         <i data-lucide="zap" class="w-5 h-5 md:w-6 md:h-6 fill-current text-brand"></i>
         <span>INSTA<span class="text-white font-semibold">TRADE</span></span>
       </div>
@@ -210,50 +212,38 @@
         <span id="nse-status-text" class="text-emerald-400 font-bold">NSE LIVE</span>
         <span id="header-clock" class="text-slate-400 border-l border-borderSubtle pl-2">--:--:-- IST</span>
       </div>
-      
-      <!-- QUICK INDEX STRIP (Desktop) -->
-      <div class="hidden lg:flex items-center gap-2.5 ml-2 text-xs border-l border-borderSubtle pl-3 font-mono">
-        <div id="index-nifty" class="flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2.5 py-1 rounded-xl border border-borderSubtle/60 hover:border-brand/40 transition-all shadow-sm" onclick="selectSymbol('NSE:NIFTY50-INDEX')" title="Switch to NIFTY 50">
-          <span class="text-slate-400 font-semibold text-[10px] uppercase">NIFTY 50</span>
-          <span class="font-bold text-emerald-400 text-xs" id="top-nifty-ltp">25,425.00</span>
-          <span class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1.5 py-0.2 rounded" id="top-nifty-chg">+0.45%</span>
-        </div>
-        <div id="index-banknifty" class="flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2.5 py-1 rounded-xl border border-borderSubtle/60 hover:border-danger/40 transition-all shadow-sm" onclick="selectSymbol('NSE:NIFTYBANK-INDEX')" title="Switch to BANK NIFTY">
-          <span class="text-slate-400 font-semibold text-[10px] uppercase">BANK NIFTY</span>
-          <span class="font-bold text-danger text-xs" id="top-banknifty-ltp">53,850.00</span>
-          <span class="text-[10px] text-danger font-semibold bg-rose-500/10 px-1.5 py-0.2 rounded" id="top-banknifty-chg">-0.22%</span>
-        </div>
-        <div id="index-sensex" class="hidden xl:flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2.5 py-1 rounded-xl border border-borderSubtle/60 hover:border-brand/40 transition-all shadow-sm" onclick="selectSymbol('BSE:SENSEX-INDEX')" title="Switch to SENSEX">
-          <span class="text-slate-400 font-semibold text-[10px] uppercase">SENSEX</span>
-          <span class="font-bold text-emerald-400 text-xs" id="top-sensex-ltp">83,180.00</span>
-          <span class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1.5 py-0.2 rounded" id="top-sensex-chg">+0.32%</span>
-        </div>
-        <div id="index-finnifty" class="hidden 2xl:flex items-center gap-1.5 cursor-pointer hover:bg-slate-800/60 px-2.5 py-1 rounded-xl border border-borderSubtle/60 hover:border-brand/40 transition-all shadow-sm" onclick="selectSymbol('NSE:FINNIFTY-INDEX')" title="Switch to FINNIFTY">
-          <span class="text-slate-400 font-semibold text-[10px] uppercase">FINNIFTY</span>
-          <span class="font-bold text-emerald-400 text-xs" id="top-finnifty-ltp">24,610.00</span>
-          <span class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1.5 py-0.2 rounded" id="top-finnifty-chg">+0.15%</span>
-        </div>
-      </div>
     </div>
 
-    <!-- RIGHT STATUS & SETTINGS -->
-    <div class="flex items-center gap-2 md:gap-3">
-      <!-- VIRTUAL TRADING INDICATOR (Large screens) -->
-      <div id="mode-badge" class="hidden 2xl:flex items-center gap-2 text-xs px-3 py-1.5 rounded-xl bg-darkBg text-emerald-300 border border-borderSubtle shadow-sm">
-        <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
-        <span class="font-bold text-[11px] tracking-wide text-slate-300">VIRTUAL TRADING</span>
-        <button onclick="resetVirtualFunds()" title="Reset Virtual Funds to ₹10 Lakhs" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-0.5 rounded cursor-pointer transition-colors border border-amber-500/30">
-          Reset ₹10L
-        </button>
-      </div>
+    <!-- CENTER: PRIMARY WORKSTATION NAV TABS (DESKTOP) -->
+    <div class="hidden xl:flex items-center bg-darkBg p-1 rounded-2xl border border-borderSubtle shadow-sm font-semibold text-xs gap-1">
+      <button onclick="switchWorkstation('chart')" id="ws-btn-chart" class="px-3.5 py-1.5 rounded-xl bg-slate-800 text-white font-bold flex items-center gap-2 cursor-pointer transition-all shadow-sm">
+        <i data-lucide="line-chart" class="w-3.5 h-3.5 text-brand"></i>
+        <span>Chart Desk</span>
+      </button>
+      <button onclick="switchWorkstation('optionchain')" id="ws-btn-optionchain" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white flex items-center gap-2 cursor-pointer transition-all">
+        <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span>Option Chain Studio</span>
+      </button>
+      <button onclick="switchWorkstation('positions')" id="ws-btn-positions" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white flex items-center gap-2 cursor-pointer transition-all relative">
+        <i data-lucide="briefcase" class="w-3.5 h-3.5 text-sky-400"></i>
+        <span>Positions & P&L</span>
+        <span id="header-pos-dot" class="hidden w-2 h-2 rounded-full bg-brand animate-pulse"></span>
+      </button>
+      <button onclick="switchWorkstation('split')" id="ws-btn-split" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white flex items-center gap-2 cursor-pointer transition-all">
+        <i data-lucide="columns-2" class="w-3.5 h-3.5 text-purple-400"></i>
+        <span>Split View</span>
+      </button>
+    </div>
 
+    <!-- RIGHT: STATUS, FUNDS, USER, THEME -->
+    <div class="flex items-center gap-2 md:gap-3">
       <!-- Desktop Funds & PnL Cards -->
       <div class="hidden md:flex items-center gap-2 text-xs">
         <div class="bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle flex items-center gap-2 shadow-sm">
           <span class="text-slate-400 text-[11px]">Available:</span>
           <span class="font-mono font-bold text-white text-xs" id="header-funds">₹ 10,00,000.00</span>
         </div>
-        <div class="bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle flex items-center gap-2 shadow-sm">
+        <div class="bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle flex items-center gap-2 shadow-sm cursor-pointer" onclick="switchWorkstation('positions')" title="View Positions & PnL">
           <span class="text-slate-400 text-[11px]">Day P&L:</span>
           <span class="font-mono font-bold text-emerald-400 text-xs" id="header-pnl">+₹ 0.00</span>
         </div>
@@ -261,7 +251,7 @@
 
       <!-- Desktop User Account Buttons (Dynamic) -->
       <div id="header-auth-container" class="hidden md:flex items-center gap-2">
-        <button id="header-user-btn" onclick="switchMobileTab('account')" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-darkBg hover:bg-slate-800 border border-borderSubtle text-xs cursor-pointer transition-all hover:border-slate-600 shadow-sm" title="Account Credentials & Security">
+        <button id="header-user-btn" onclick="switchWorkstation('account')" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-darkBg hover:bg-slate-800 border border-borderSubtle text-xs cursor-pointer transition-all hover:border-slate-600 shadow-sm" title="Account Credentials & Security">
           <div class="w-6 h-6 rounded-lg bg-brand/20 text-brand flex items-center justify-center font-bold text-xs" id="desktop-avatar-letter">A</div>
           <span class="font-bold text-white" id="header-user-name">Trader</span>
           <span class="text-[10px] font-mono text-slate-400" id="header-user-id"></span>
@@ -272,7 +262,7 @@
         </button>
       </div>
 
-      <!-- Mobile Mini PnL Pill (Visible on small screens) -->
+      <!-- Mobile Mini PnL Pill -->
       <button onclick="openMobileAccountSheet()" class="md:hidden flex items-center gap-1 px-2.5 py-1 rounded-xl bg-darkBg border border-borderSubtle text-xs font-mono shadow-sm" title="Tap to view account details">
         <span class="text-slate-400 text-[10px]">P&L:</span>
         <span id="mob-header-pnl" class="font-bold text-emerald-400">+₹0.00</span>
@@ -290,6 +280,49 @@
       </button>
     </div>
   </header>
+
+  <!-- HORIZONTAL MARKET TICKER RIBBON (Full-width Live Tape) -->
+  <div id="market-ticker-ribbon" class="h-10 bg-panelBg/95 border-b border-borderSubtle flex items-center gap-2.5 px-3 overflow-x-auto touch-scroll text-xs font-mono select-none flex-shrink-0 z-10 shadow-sm">
+    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1.5 mr-1 flex-shrink-0">
+      <i data-lucide="activity" class="w-3.5 h-3.5 text-brand"></i> MARKETS:
+    </span>
+    <!-- Major Indices Chips with 1-click focus -->
+    <div onclick="selectSymbol('NSE:NIFTY50-INDEX')" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle hover:border-brand/40 cursor-pointer transition-all flex-shrink-0" title="Switch to NIFTY 50">
+      <span class="text-slate-400 font-bold text-[10px]">NIFTY 50</span>
+      <span id="top-nifty-ltp" class="font-bold text-emerald-400 text-xs">25,425.00</span>
+      <span id="top-nifty-chg" class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1 rounded">+0.45%</span>
+    </div>
+    <div onclick="selectSymbol('NSE:NIFTYBANK-INDEX')" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle hover:border-danger/40 cursor-pointer transition-all flex-shrink-0" title="Switch to BANK NIFTY">
+      <span class="text-slate-400 font-bold text-[10px]">BANK NIFTY</span>
+      <span id="top-banknifty-ltp" class="font-bold text-danger text-xs">53,850.00</span>
+      <span id="top-banknifty-chg" class="text-[10px] text-danger font-semibold bg-rose-500/10 px-1 rounded">-0.22%</span>
+    </div>
+    <div onclick="selectSymbol('BSE:SENSEX-INDEX')" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle hover:border-brand/40 cursor-pointer transition-all flex-shrink-0" title="Switch to SENSEX">
+      <span class="text-slate-400 font-bold text-[10px]">SENSEX</span>
+      <span id="top-sensex-ltp" class="font-bold text-emerald-400 text-xs">83,180.00</span>
+      <span id="top-sensex-chg" class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1 rounded">+0.32%</span>
+    </div>
+    <div onclick="selectSymbol('NSE:FINNIFTY-INDEX')" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle hover:border-brand/40 cursor-pointer transition-all flex-shrink-0" title="Switch to FINNIFTY">
+      <span class="text-slate-400 font-bold text-[10px]">FINNIFTY</span>
+      <span id="top-finnifty-ltp" class="font-bold text-emerald-400 text-xs">24,610.00</span>
+      <span id="top-finnifty-chg" class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1 rounded">+0.15%</span>
+    </div>
+    <div onclick="selectSymbol('NSE:RELIANCE-EQ')" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle hover:border-brand/40 cursor-pointer transition-all flex-shrink-0" title="Switch to RELIANCE">
+      <span class="text-slate-400 font-bold text-[10px]">RELIANCE</span>
+      <span class="font-bold text-emerald-400 text-xs">₹3,010.50</span>
+      <span class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1 rounded">+1.12%</span>
+    </div>
+    <div onclick="selectSymbol('NSE:HDFCBANK-EQ')" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle hover:border-brand/40 cursor-pointer transition-all flex-shrink-0" title="Switch to HDFCBANK">
+      <span class="text-slate-400 font-bold text-[10px]">HDFCBANK</span>
+      <span class="font-bold text-white text-xs">₹1,675.20</span>
+      <span class="text-[10px] text-slate-400 font-semibold bg-slate-800 px-1 rounded">0.00%</span>
+    </div>
+    <div onclick="selectSymbol('NSE:ICICIBANK-EQ')" class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-darkBg border border-borderSubtle hover:border-brand/40 cursor-pointer transition-all flex-shrink-0" title="Switch to ICICIBANK">
+      <span class="text-slate-400 font-bold text-[10px]">ICICIBANK</span>
+      <span class="font-bold text-emerald-400 text-xs">₹1,248.80</span>
+      <span class="text-[10px] text-emerald-500 font-semibold bg-emerald-500/10 px-1 rounded">+0.85%</span>
+    </div>
+  </div>
 
   <!-- MOBILE ACCOUNT & FUNDS SHEET (Slide-up drawer) -->
   <div id="mob-account-backdrop" onclick="closeMobileAccountSheet()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity"></div>
@@ -343,538 +376,602 @@
     </div>
   </div>
 
-  <!-- MAIN TERMINAL LAYOUT -->
-  <div class="flex-1 flex overflow-hidden relative">
-    
-    <!-- LEFT: MARKET WATCH (Collapsible on lg) -->
-    <aside id="market-watch-panel" class="hidden lg:flex w-full lg:w-72 bg-panelBg border-r border-borderSubtle flex-col flex-shrink-0 z-10 transition-all duration-200">
-      <div class="p-3 border-b border-borderSubtle bg-panelBg flex flex-col gap-2.5">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2 font-bold text-xs text-white">
-            <i data-lucide="trending-up" class="w-4 h-4 text-brand"></i>
-            <span class="tracking-wide">Watchlist</span>
-            <span class="text-[10px] text-slate-400 font-mono bg-darkBg border border-borderSubtle px-2 py-0.5 rounded-full" id="watch-count-pill">7</span>
-          </div>
-          <button onclick="toggleWatchlistCollapse()" id="btn-collapse-watchlist" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer transition-colors" title="Collapse Watchlist Sidebar">
-            <i data-lucide="chevrons-left" class="w-4 h-4" id="icon-watchlist-collapse"></i>
-          </button>
-        </div>
+  <!-- MAIN TERMINAL LAYOUT: MULTI-WORKSTATION ARCHITECTURE -->
+  <div class="flex-1 flex overflow-hidden relative" id="main-terminal-viewport">
 
-        <!-- Filter tabs: Indices, Futures, Stocks -->
-        <div class="flex items-center gap-1 bg-darkBg p-1 rounded-xl border border-borderSubtle text-[11px] font-semibold" id="watchlist-filters">
-          <button onclick="filterWatchlist('INDICES')" class="watch-filter-btn flex-1 py-1 rounded-lg bg-brand text-slate-950 font-bold cursor-pointer transition-all text-center text-[11px] shadow-sm" data-filter="INDICES">Indices</button>
-          <button onclick="filterWatchlist('FUTURES')" class="watch-filter-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center text-[11px]" data-filter="FUTURES">Futures</button>
-          <button onclick="filterWatchlist('EQUITY')" class="watch-filter-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center text-[11px]" data-filter="EQUITY">Stocks</button>
-        </div>
-
-        <div class="relative" id="watch-search-wrapper">
-          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5"></i>
-          <input type="text" id="watch-search" placeholder="Search stock or index (e.g. RELIANCE, NIFTY-FUT)..." 
-                 oninput="handleWatchSearchInput(this.value)"
-                 onfocus="openWatchSearchDropdown()"
-                 autocomplete="off"
-                 class="w-full bg-darkBg text-xs pl-8 pr-7 py-2 rounded-xl border border-borderSubtle focus:outline-none focus:border-brand text-slate-200 placeholder-slate-500">
-          <button onclick="clearWatchSearch()" id="watch-search-clear" class="hidden absolute right-2.5 top-2.5 text-slate-500 hover:text-white cursor-pointer">
-            <i data-lucide="x" class="w-3.5 h-3.5"></i>
-          </button>
-
-          <!-- Interactive Search Dropdown with '+ Add to Watchlist' -->
-          <div id="watch-search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-[#0d121c] border border-borderSubtle rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 flex flex-col">
-            <div class="p-2.5 px-3 border-b border-borderSubtle text-[10px] text-slate-400 flex items-center justify-between font-mono bg-[#070a0f]">
-              <span class="flex items-center gap-1.5 font-bold tracking-wider text-slate-300">
-                <i data-lucide="sparkles" class="w-3 h-3 text-brand"></i> MARKET SEARCH & ADD
-              </span>
-              <button onclick="closeWatchSearchDropdown()" class="text-slate-400 hover:text-white cursor-pointer"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
-            </div>
-            <div id="watch-search-results-list" class="overflow-y-auto divide-y divide-borderSubtle/60 text-xs max-h-64">
-              <div class="p-3 text-center text-slate-500 text-xs">Type symbol or stock name to search...</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="flex-1 overflow-y-auto pb-16 lg:pb-0 touch-scroll" id="watchlist-container">
-        <!-- Watchlist items dynamically injected -->
-      </div>
-    </aside>
-
-    <!-- Mini Watchlist Expand Button (when collapsed) -->
-    <button onclick="toggleWatchlistCollapse()" id="btn-expand-watchlist" class="hidden fixed left-0 top-20 z-20 bg-panelBg border-r border-y border-borderSubtle rounded-r-lg p-2 text-slate-400 hover:text-white shadow-xl cursor-pointer hover:bg-slate-800 transition-colors" title="Expand Watchlist">
-      <i data-lucide="chevrons-right" class="w-4 h-4 text-brand"></i>
-    </button>
-
-    <!-- CENTER & RIGHT SPLIT -->
-    <main id="main-content-panel" class="flex-1 flex flex-col min-w-0 pb-14 lg:pb-0">
-      
-      <!-- UPPER: CHART & ORDER ENTRY -->
-      <div id="chart-option-split" class="flex-1 flex min-h-0 border-b lg:border-b border-borderSubtle relative">
+    <!-- WORKSTATION 1: CHART DESK (Wide Chart Left + Right Trading Dock) -->
+    <div id="ws-chart-desk" class="workstation-view flex-1 flex overflow-hidden w-full h-full">
+      <!-- LEFT: Chart Canvas & Precision Header -->
+      <div class="flex-1 flex flex-col min-w-0 bg-darkBg relative border-r border-borderSubtle">
         
-        <!-- CENTER: CHART OR OPTION CHAIN CONTAINER -->
-        <div class="flex-1 flex flex-col min-w-0 bg-darkBg relative">
-          <!-- VIEW TOGGLE TOOLBAR -->
-          <div class="min-h-12 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 py-1.5 text-xs flex-wrap sm:flex-nowrap gap-2">
-            <div class="flex items-center gap-2.5 md:gap-3 flex-wrap sm:flex-nowrap">
-              <!-- Switch buttons (Desktop and tablet) -->
-              <div class="flex items-center bg-darkBg p-0.5 rounded-xl border border-borderSubtle shadow-sm">
-                <button onclick="switchMainView('chart')" id="view-btn-chart" class="px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-white flex items-center gap-1.5 cursor-pointer transition-all shadow-sm">
-                  <i data-lucide="line-chart" class="w-3.5 h-3.5 text-brand"></i> Chart
-                </button>
-                <button onclick="switchMainView('optionchain')" id="view-btn-chain" class="px-3 py-1 rounded-lg text-xs text-slate-400 hover:text-white flex items-center gap-1.5 cursor-pointer transition-all">
-                  <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i> Option Chain
-                </button>
-              </div>
-
-              <!-- Ticker info (visible in chart mode) -->
-              <div id="chart-ticker-strip" class="flex items-center gap-2 font-mono">
-                <span class="font-bold text-white text-xs sm:text-sm font-sans" id="active-symbol-title">NSE:NIFTY50-INDEX</span>
-                <span class="font-mono text-brand font-bold text-xs sm:text-sm" id="active-symbol-ltp">25,425.00</span>
-                <span class="font-mono text-[10px] sm:text-xs text-brand font-semibold" id="active-symbol-chg">+115.00 (+0.45%)</span>
-              </div>
+        <!-- Precision Chart Header Toolbar -->
+        <div class="h-12 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 text-xs z-10 flex-shrink-0">
+          <!-- Active Symbol & Live Quote Info -->
+          <div class="flex items-center gap-2.5 sm:gap-4">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-white text-xs sm:text-sm font-sans tracking-tight" id="active-symbol-title">NSE:NIFTY50-INDEX</span>
+              <span class="text-[9px] text-brand font-mono font-bold bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded" id="chart-market-type">F&O ACTIVE</span>
             </div>
+            <div class="flex items-center gap-1.5 font-mono">
+              <span class="text-brand font-bold text-xs sm:text-sm" id="active-symbol-ltp">25,425.00</span>
+              <span class="text-[10px] sm:text-xs text-brand font-semibold" id="active-symbol-chg">+115.00 (+0.45%)</span>
+            </div>
+          </div>
 
-            <!-- RIGHT CONTROLS: TIMEFRAMES, QUICK TRADE & FULLSCREEN (in chart mode) -->
-            <div id="chart-controls-right" class="flex items-center gap-2">
-              <!-- Quick Trade Buttons directly on Chart toolbar -->
-              <div class="hidden sm:flex items-center gap-1.5 mr-1 font-mono">
-                <button onclick="openOrderWithSide(1)" class="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm" title="Quick Buy Active Symbol">
-                  <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> BUY
-                </button>
-                <button onclick="openOrderWithSide(-1)" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500 hover:text-white text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm" title="Quick Sell Active Symbol">
-                  <i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i> SELL
-                </button>
-              </div>
-
-              <!-- TIMEFRAME SELECTOR -->
-              <div id="chart-timeframes" class="flex items-center gap-0.5 bg-darkBg p-0.5 rounded-xl border border-borderSubtle shadow-sm">
-                <button onclick="setResolution('1')" class="res-btn px-2.5 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1">1m</button>
-                <button onclick="setResolution('5')" class="res-btn px-2.5 py-1 rounded-lg text-[11px] bg-slate-800 text-white font-bold transition-colors" data-res="5">5m</button>
-                <button onclick="setResolution('15')" class="res-btn px-2.5 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="15">15m</button>
-                <button onclick="setResolution('60')" class="res-btn px-2.5 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="60">1h</button>
-                <button onclick="setResolution('1D')" class="res-btn px-2.5 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1D">1D</button>
-              </div>
-
-              <!-- ORDER PAD TOGGLE (Desktop) -->
-              <button onclick="toggleOrderPanelDesktop()" id="btn-toggle-order-pad" class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 border border-borderSubtle text-xs font-semibold cursor-pointer transition-colors shadow-sm" title="Toggle Order Placement Panel">
-                <i data-lucide="panel-right" class="w-3.5 h-3.5 text-brand"></i>
-                <span id="label-toggle-order-pad">Order Pad</span>
+          <!-- Timeframes & Scalper Actions -->
+          <div class="flex items-center gap-2">
+            <!-- Fast Scalper Buy/Sell Buttons directly on chart -->
+            <div class="hidden sm:flex items-center gap-1 font-mono">
+              <button onclick="openOrderWithSide(1)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm" title="Quick Buy Active Symbol">
+                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> BUY
+              </button>
+              <button onclick="openOrderWithSide(-1)" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500 hover:text-white text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm" title="Quick Sell Active Symbol">
+                <i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i> SELL
               </button>
             </div>
 
-            <!-- OPTION CHAIN CONTROLS (visible in option chain mode) -->
-            <div id="chain-controls" class="hidden flex items-center gap-2 flex-wrap w-full sm:w-auto">
-              <!-- Index Selector -->
-              <div class="flex items-center gap-1.5">
-                <span class="hidden sm:inline text-slate-400 text-[11px] font-semibold">Index:</span>
-                <select id="chain-underlying-select" onchange="changeChainUnderlying(this.value)" class="bg-darkBg border border-borderSubtle text-white text-xs px-2.5 py-1.5 rounded-xl font-bold cursor-pointer focus:outline-none focus:border-brand shadow-sm">
-                  <option value="BANKNIFTY" selected>BANK NIFTY (Lot: 30)</option>
-                  <option value="NIFTY">NIFTY 50 (Lot: 65)</option>
-                  <option value="SENSEX">SENSEX (Lot: 20)</option>
-                  <option value="FINNIFTY">FINNIFTY (Lot: 60)</option>
-                  <option value="MIDCPNIFTY">MIDCP (Lot: 120)</option>
-                </select>
-              </div>
-
-              <!-- Expiry Selector -->
-              <div class="flex items-center gap-1.5">
-                <select id="chain-expiry-select" onchange="changeChainExpiry(this.value)" class="bg-darkBg border border-borderSubtle text-white text-xs px-2.5 py-1.5 rounded-xl font-bold font-mono cursor-pointer max-w-[135px] sm:max-w-none focus:outline-none focus:border-brand shadow-sm">
-                  <option value="">Current Expiry</option>
-                </select>
-              </div>
-
-              <!-- Spot & ATM pill -->
-              <div class="flex items-center gap-2 bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle text-[11px] font-mono shadow-sm">
-                <span class="text-slate-400 text-[10px]">Spot:</span>
-                <span class="font-bold text-white text-[11px]" id="chain-spot-price">--</span>
-                <span class="text-amber-400 font-bold text-[10px] border-l border-borderSubtle pl-2" id="chain-atm-strike">ATM: --</span>
-              </div>
-
-              <!-- PCR Metric Pill -->
-              <div class="hidden md:flex items-center gap-1.5 bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle text-[11px] font-mono shadow-sm" id="chain-pcr-badge" title="Put Call Ratio">
-                <span class="text-slate-400 text-[10px]">PCR:</span>
-                <span class="font-bold text-emerald-400" id="chain-pcr-val">1.12</span>
-                <span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-bold border border-emerald-500/20" id="chain-pcr-tag">BULLISH</span>
-              </div>
-
-              <!-- Live Data Feed Indicator & Fyers Settings Button -->
-              <div class="flex items-center gap-1.5 bg-darkBg px-2.5 py-1.5 rounded-xl border border-borderSubtle text-[10px] font-mono cursor-pointer hover:border-brand/40 transition-colors ml-auto shadow-sm" onclick="openFyersModal()" title="View Feed Status / Connect Fyers Broker API">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span id="chain-source-badge" class="font-bold text-emerald-400">NSE Live</span>
-                <span class="text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded hover:text-white border border-slate-700">Fyers API</span>
-              </div>
-
-              <!-- Refresh Button -->
-              <button onclick="loadOptionChain(true)" class="p-1.5 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors shadow-sm" title="Refresh Option Chain">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- CHART CANVAS -->
-          <div id="chart-area" class="flex-1 w-full relative"></div>
-
-          <!-- MOBILE FLOATING TRADE ACTION BAR (Visible on Chart in mobile) -->
-          <div id="mob-chart-action-bar" class="hidden absolute bottom-4 inset-x-4 z-20 flex gap-3 pointer-events-auto">
-            <button onclick="openOrderWithSide(1)" class="flex-1 py-3 bg-brand hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-2xl shadow-glowBrand flex items-center justify-center gap-2 pill-btn active:scale-95 transition-all">
-              <i data-lucide="arrow-up-right" class="w-4 h-4 stroke-[3]"></i> BUY
-            </button>
-            <button onclick="openOrderWithSide(-1)" class="flex-1 py-3 bg-danger hover:bg-rose-600 text-white font-black text-xs rounded-2xl shadow-glowDanger flex items-center justify-center gap-2 pill-btn active:scale-95 transition-all">
-              <i data-lucide="arrow-down-right" class="w-4 h-4 stroke-[3]"></i> SELL
-            </button>
-          </div>
-
-          <!-- OPTION CHAIN CONTAINER -->
-          <div id="option-chain-view" class="hidden flex-1 overflow-y-auto bg-darkBg p-2 touch-scroll">
-            <!-- Table dynamically injected via JS -->
-          </div>
-        </div>
-
-        <!-- MOBILE ORDER BACKDROP -->
-        <div id="order-modal-backdrop" onclick="closeOrderPad()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity"></div>
-
-        <!-- ORDER ENTRY PANEL (Right sidebar on lg, bottom sheet on mobile) -->
-        <div id="order-panel" class="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl max-h-[92vh] overflow-y-auto transform translate-y-full bottom-sheet lg:translate-y-0 lg:static lg:w-84 lg:rounded-none lg:max-h-none lg:z-auto bg-panelBg border-t lg:border-t-0 lg:border-l border-borderSubtle flex flex-col p-4 flex-shrink-0 shadow-2xl lg:shadow-none transition-all duration-200">
-          <!-- Mobile Drag Handle -->
-          <div class="lg:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-3"></div>
-
-          <div class="flex items-center justify-between pb-3 border-b border-borderSubtle">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Order Placement</span>
-              <span class="text-[11px] font-mono text-brand font-bold bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg" id="order-symbol-tag">NIFTY 50</span>
-              <span class="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg hidden" id="order-expiry-tag"></span>
-            </div>
-            <button onclick="closeOrderPad()" class="p-1.5 rounded-xl text-slate-400 hover:text-white bg-darkBg hover:bg-slate-800 border border-borderSubtle cursor-pointer transition-colors" title="Close Order Placement Panel">
-              <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
-          </div>
-
-          <!-- BUY / SELL SWITCH -->
-          <div class="grid grid-cols-2 gap-2 mt-4 bg-darkBg p-1.5 rounded-xl border border-borderSubtle">
-            <button onclick="setOrderSide(1)" id="btn-side-buy" class="py-2.5 text-xs font-bold rounded-lg bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1.5 cursor-pointer shadow-glowBrand">
-              <i data-lucide="arrow-up-right" class="w-4 h-4"></i> BUY
-            </button>
-            <button onclick="setOrderSide(-1)" id="btn-side-sell" class="py-2.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1.5 cursor-pointer">
-              <i data-lucide="arrow-down-right" class="w-4 h-4"></i> SELL
-            </button>
-          </div>
-
-          <!-- PRODUCT TYPE -->
-          <div class="mt-4">
-            <div class="flex justify-between items-center text-[11px] text-slate-400 uppercase font-semibold">
-              <label>Product</label>
-              <span class="text-[10px] text-emerald-400 font-mono">5x Intra Leverage</span>
-            </div>
-            <div class="grid grid-cols-3 gap-1.5 mt-1.5">
-              <button onclick="setProduct('INTRADAY')" class="prod-btn py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-prod="INTRADAY">MIS (Intra)</button>
-              <button onclick="setProduct('CNC')" class="prod-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="CNC">CNC (Deliv)</button>
-              <button onclick="setProduct('MARGIN')" class="prod-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="MARGIN">NRML</button>
-            </div>
-          </div>
-
-          <!-- ORDER TYPE -->
-          <div class="mt-3.5">
-            <label class="text-[11px] text-slate-400 uppercase font-semibold">Order Type</label>
-            <div class="grid grid-cols-3 gap-1.5 mt-1.5">
-              <button onclick="setOrderType(2)" class="type-btn py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-type="2">Market</button>
-              <button onclick="setOrderType(1)" class="type-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="1">Limit</button>
-              <button onclick="setOrderType(3)" class="type-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="3">SL</button>
-            </div>
-          </div>
-
-          <!-- QUANTITY & PRICE -->
-          <div class="mt-3.5 space-y-3">
-            <div>
-              <div class="flex justify-between items-center text-[11px] text-slate-400">
-                <label class="uppercase font-semibold">Quantity</label>
-                <span id="lot-info-tag" class="text-[10px] text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg font-mono font-bold">1 Lot = 30 Qty</span>
-              </div>
-
-              <!-- Dynamic Lot Multiplier Buttons -->
-              <div class="grid grid-cols-5 gap-1 mt-1.5" id="lot-quick-buttons">
-                <button type="button" onclick="setLots(1)" id="btn-lot-1" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">1L (30)</button>
-                <button type="button" onclick="setLots(2)" id="btn-lot-2" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">2L (60)</button>
-                <button type="button" onclick="setLots(3)" id="btn-lot-3" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">3L (90)</button>
-                <button type="button" onclick="setLots(5)" id="btn-lot-5" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">5L (150)</button>
-                <button type="button" onclick="setLots(10)" id="btn-lot-10" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">10L (300)</button>
-              </div>
-
-              <!-- Quantity Input with Increment/Decrement Steppers -->
-              <div class="flex items-center gap-1.5 mt-2">
-                <button type="button" onclick="stepLots(-1)" title="Decrease 1 Lot" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">-</button>
-                <input type="number" id="order-qty" value="30" min="1" oninput="onQtyChange()" 
-                       class="flex-1 h-10 bg-darkBg border border-borderSubtle rounded-xl px-3 text-sm text-white font-mono text-center font-bold focus:outline-none focus:border-brand">
-                <button type="button" onclick="stepLots(1)" title="Increase 1 Lot" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">+</button>
-              </div>
-              <div id="lot-warning" class="text-[10px] text-amber-400 mt-1 hidden font-mono">⚠️ Quantity is not a multiple of lot size</div>
+            <!-- Chart Timeframe Selector -->
+            <div id="chart-timeframes" class="flex items-center gap-0.5 bg-darkBg p-0.5 rounded-xl border border-borderSubtle shadow-sm">
+              <button onclick="setResolution('1')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1">1m</button>
+              <button onclick="setResolution('5')" class="res-btn px-2 py-1 rounded-lg text-[11px] bg-slate-800 text-white font-bold transition-colors" data-res="5">5m</button>
+              <button onclick="setResolution('15')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="15">15m</button>
+              <button onclick="setResolution('60')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="60">1h</button>
+              <button onclick="setResolution('1D')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1D">1D</button>
             </div>
 
-            <div id="price-input-container" class="opacity-50 pointer-events-none transition-opacity">
-              <label class="text-[11px] text-slate-400 uppercase font-semibold">Limit Price</label>
-              <input type="number" id="order-price" value="0.0" step="0.05" oninput="updateMarginEstimate()"
-                     class="w-full mt-1 bg-darkBg border border-borderSubtle rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-brand">
-            </div>
-          </div>
-
-          <!-- MARGIN CALCULATION -->
-          <div class="mt-auto pt-4 border-t border-borderSubtle pb-safe">
-            <div class="flex justify-between items-center text-xs mb-3 text-slate-400">
-              <span>Required Margin:</span>
-              <span class="font-mono text-white font-bold" id="req-margin">₹ 0.00</span>
-            </div>
-            <button onclick="executeOrder()" id="btn-submit-order" class="w-full py-3 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-sm pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-glowBrand active:scale-95">
-              <i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (30 Qty)
+            <!-- Dock Toggle Button (Collapse/Expand Right Trading Dock) -->
+            <button onclick="toggleRightDock()" id="btn-toggle-right-dock" class="p-1.5 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-colors shadow-sm" title="Toggle Right Dock">
+              <i data-lucide="panel-right-close" class="w-4 h-4" id="icon-right-dock"></i>
             </button>
           </div>
         </div>
 
-      </div>
+        <!-- Chart Canvas -->
+        <div id="chart-area" class="flex-1 w-full relative"></div>
 
-      <!-- LOWER DOCK TABS: POSITIONS, ORDERS, HOLDINGS, FUNDS -->
-      <div id="dock-panel" class="hidden lg:flex flex-1 lg:flex-initial lg:h-64 bg-panelBg flex-col flex-shrink-0 border-t border-borderSubtle transition-all duration-200">
-        <!-- DOCK TAB HEADERS -->
-        <div class="h-11 border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 text-xs font-semibold overflow-x-auto touch-scroll">
-          <div class="flex items-center gap-4 md:gap-6 flex-shrink-0">
-            <button onclick="switchDockTab('positions')" id="tab-positions" class="dock-tab py-2.5 tab-active cursor-pointer">Positions (0)</button>
-            <button onclick="switchDockTab('orders')" id="tab-orders" class="dock-tab py-2.5 text-slate-400 hover:text-white cursor-pointer">Orders (0)</button>
-            <button onclick="switchDockTab('holdings')" id="tab-holdings" class="dock-tab py-2.5 text-slate-400 hover:text-white cursor-pointer">Holdings (0)</button>
-            <button onclick="switchDockTab('funds')" id="tab-funds" class="dock-tab py-2.5 text-slate-400 hover:text-white cursor-pointer">Funds & Margins</button>
-          </div>
-          <div class="flex items-center gap-3 flex-shrink-0">
-            <!-- LIVE TOTAL MTM SUMMARY PILL -->
-            <div id="dock-total-mtm-badge" class="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-xl bg-darkBg border border-borderSubtle font-mono text-xs shadow-sm">
-              <span class="text-slate-400 text-[10px] uppercase font-bold">Total MTM:</span>
-              <span id="dock-total-mtm-val" class="font-bold text-emerald-400">+₹ 0.00</span>
-            </div>
-            <button onclick="exitAllPositions()" class="text-[11px] font-bold text-danger bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-xl border border-red-500/20 flex items-center gap-1.5 cursor-pointer flex-shrink-0 active:scale-95 transition-all">
-              <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Square Off All
-            </button>
-            <!-- DOCK MINIMIZE / EXPAND TOGGLE -->
-            <button onclick="toggleDockHeight()" id="btn-toggle-dock" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-darkBg border border-transparent hover:border-borderSubtle cursor-pointer transition-colors" title="Toggle Dock Height">
-              <i data-lucide="chevron-down" class="w-4 h-4" id="dock-toggle-icon"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- DOCK CONTENT AREA -->
-        <div class="flex-1 overflow-y-auto p-2.5 touch-scroll" id="dock-content">
-          <!-- Injected via JS -->
+        <!-- Mobile Floating Quick Trade Bar -->
+        <div id="mob-chart-action-bar" class="hidden absolute bottom-4 inset-x-4 z-20 flex gap-3 pointer-events-auto">
+          <button onclick="openOrderWithSide(1)" class="flex-1 py-3 bg-brand hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-2xl shadow-glowBrand flex items-center justify-center gap-2 pill-btn active:scale-95 transition-all">
+            <i data-lucide="arrow-up-right" class="w-4 h-4 stroke-[3]"></i> BUY
+          </button>
+          <button onclick="openOrderWithSide(-1)" class="flex-1 py-3 bg-danger hover:bg-rose-600 text-white font-black text-xs rounded-2xl shadow-glowDanger flex items-center justify-center gap-2 pill-btn active:scale-95 transition-all">
+            <i data-lucide="arrow-down-right" class="w-4 h-4 stroke-[3]"></i> SELL
+          </button>
         </div>
       </div>
 
-      <!-- ACCOUNT & SECURITY PANEL (Dedicated Account View) -->
-      <div id="account-panel" class="hidden flex-1 overflow-y-auto p-4 md:p-6 pb-20 lg:pb-6 touch-scroll bg-darkBg">
-        <div class="max-w-2xl mx-auto space-y-4">
-          
-          <!-- PROFILE HERO CARD -->
-          <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 flex items-center justify-between shadow-sm">
-            <div class="flex items-center gap-3.5">
-              <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand to-emerald-400 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg shadow-brand/20" id="acc-avatar-letter">
-                ?
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h2 class="text-base md:text-lg font-bold text-white" id="acc-display-title">Guest Trader</h2>
-                  <span class="text-[10px] bg-brand/10 text-brand border border-brand/20 px-2 py-0.5 rounded-full font-mono font-bold" id="acc-badge">PRO</span>
+      <!-- RIGHT: UNIFIED PRO TRADING DOCK (Watchlist, Order Pad, Quick Positions) -->
+      <aside id="right-trading-dock" class="w-full lg:w-84 xl:w-96 bg-panelBg flex flex-col flex-shrink-0 z-10 transition-all duration-200 border-l border-borderSubtle">
+        
+        <!-- Dock Tab Selector -->
+        <div class="h-12 border-b border-borderSubtle bg-darkBg/60 flex items-center px-2 flex-shrink-0">
+          <div class="flex items-center gap-1 bg-darkBg p-1 rounded-xl border border-borderSubtle w-full text-xs font-semibold">
+            <button onclick="switchRightDockTab('watchlist')" id="rd-tab-watchlist" class="rd-tab flex-1 py-1.5 rounded-lg bg-slate-800 text-white font-bold cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px] shadow-sm">
+              <i data-lucide="list" class="w-3.5 h-3.5 text-brand"></i>
+              <span>Watchlist</span>
+              <span class="text-[9px] text-slate-400 font-mono bg-slate-900 border border-borderSubtle px-1.5 rounded-full" id="watch-count-pill">7</span>
+            </button>
+            <button onclick="switchRightDockTab('orderpad')" id="rd-tab-orderpad" class="rd-tab flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px]">
+              <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+              <span>Order Pad</span>
+            </button>
+            <button onclick="switchRightDockTab('positions')" id="rd-tab-positions" class="rd-tab flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px] relative">
+              <i data-lucide="briefcase" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>Positions</span>
+              <span id="rd-pos-count-pill" class="hidden px-1.5 py-0.2 text-[9px] font-mono bg-brand text-slate-950 font-bold rounded-full">0</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- RIGHT TAB 1: WATCHLIST PANE -->
+        <div id="rd-pane-watchlist" class="rd-pane flex-1 flex flex-col overflow-hidden">
+          <div class="p-3 border-b border-borderSubtle bg-panelBg flex flex-col gap-2.5">
+            <!-- Filter tabs: Indices, Futures, Stocks -->
+            <div class="flex items-center gap-1 bg-darkBg p-1 rounded-xl border border-borderSubtle text-[11px] font-semibold" id="watchlist-filters">
+              <button onclick="filterWatchlist('INDICES')" class="watch-filter-btn flex-1 py-1 rounded-lg bg-brand text-slate-950 font-bold cursor-pointer transition-all text-center text-[11px] shadow-sm" data-filter="INDICES">Indices</button>
+              <button onclick="filterWatchlist('FUTURES')" class="watch-filter-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center text-[11px]" data-filter="FUTURES">Futures</button>
+              <button onclick="filterWatchlist('EQUITY')" class="watch-filter-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center text-[11px]" data-filter="EQUITY">Stocks</button>
+            </div>
+
+            <!-- Search input -->
+            <div class="relative" id="watch-search-wrapper">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5"></i>
+              <input type="text" id="watch-search" placeholder="Search stock or index (e.g. RELIANCE, NIFTY-FUT)..." 
+                     oninput="handleWatchSearchInput(this.value)"
+                     onfocus="openWatchSearchDropdown()"
+                     autocomplete="off"
+                     class="w-full bg-darkBg text-xs pl-8 pr-7 py-2 rounded-xl border border-borderSubtle focus:outline-none focus:border-brand text-slate-200 placeholder-slate-500">
+              <button onclick="clearWatchSearch()" id="watch-search-clear" class="hidden absolute right-2.5 top-2.5 text-slate-500 hover:text-white cursor-pointer">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <!-- Interactive Search Dropdown -->
+              <div id="watch-search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-[#0d121c] border border-borderSubtle rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 flex flex-col">
+                <div class="p-2.5 px-3 border-b border-borderSubtle text-[10px] text-slate-400 flex items-center justify-between font-mono bg-[#070a0f]">
+                  <span class="flex items-center gap-1.5 font-bold tracking-wider text-slate-300">
+                    <i data-lucide="sparkles" class="w-3 h-3 text-brand"></i> MARKET SEARCH & ADD
+                  </span>
+                  <button onclick="closeWatchSearchDropdown()" class="text-slate-400 hover:text-white cursor-pointer"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
                 </div>
-                <div class="text-xs text-slate-400 font-mono mt-0.5" id="acc-display-subtitle">Sign in or create account to trade</div>
-                <div class="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-1 font-semibold">
-                  <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
-                  <span id="acc-trading-mode-label">Virtual Paper Trading (Active)</span>
+                <div id="watch-search-results-list" class="overflow-y-auto divide-y divide-borderSubtle/60 text-xs max-h-64">
+                  <div class="p-3 text-center text-slate-500 text-xs">Type symbol or stock name to search...</div>
                 </div>
               </div>
             </div>
-            <!-- Dynamic Log Out / Sign In buttons on Hero Card -->
-            <button id="acc-hero-logout-btn" onclick="logoutTrader()" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 border border-rose-500/30 cursor-pointer transition-colors" title="Log out and switch trader account">
-              <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Log Out
-            </button>
-            <button id="acc-hero-login-btn" onclick="openAuthModal('login')" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 text-xs font-bold shadow-md cursor-pointer transition-colors">
-              <i data-lucide="log-in" class="w-3.5 h-3.5"></i> Sign In
-            </button>
           </div>
 
-          <!-- BEFORE LOGIN: GUEST SIGN IN / REGISTER PROMPT CARD -->
-          <div id="acc-unauth-card" class="bg-cardBg border border-borderSubtle rounded-2xl p-6 md:p-8 shadow-sm text-center space-y-4">
-            <div class="w-14 h-14 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto border border-brand/20">
-              <i data-lucide="shield-check" class="w-7 h-7"></i>
+          <!-- Watchlist Items Container -->
+          <div class="flex-1 overflow-y-auto pb-16 lg:pb-0 touch-scroll" id="watchlist-container">
+            <!-- Watchlist items dynamically injected -->
+          </div>
+        </div>
+
+        <!-- RIGHT TAB 2: ORDER PAD PANE -->
+        <div id="rd-pane-orderpad" class="rd-pane hidden flex-1 flex flex-col overflow-y-auto p-4">
+          <div id="order-panel" class="flex flex-col flex-1">
+            <div class="flex items-center justify-between pb-3 border-b border-borderSubtle">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Order Placement</span>
+                <span class="text-[11px] font-mono text-brand font-bold bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg" id="order-symbol-tag">NIFTY 50</span>
+                <span class="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg hidden" id="order-expiry-tag"></span>
+              </div>
+              <button onclick="closeOrderPad()" class="lg:hidden p-1.5 rounded-xl text-slate-400 hover:text-white bg-darkBg hover:bg-slate-800 border border-borderSubtle cursor-pointer transition-colors" title="Close Order Panel">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <!-- BUY / SELL SWITCH -->
+            <div class="grid grid-cols-2 gap-2 mt-4 bg-darkBg p-1.5 rounded-xl border border-borderSubtle">
+              <button onclick="setOrderSide(1)" id="btn-side-buy" class="py-2.5 text-xs font-bold rounded-lg bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1.5 cursor-pointer shadow-glowBrand">
+                <i data-lucide="arrow-up-right" class="w-4 h-4"></i> BUY
+              </button>
+              <button onclick="setOrderSide(-1)" id="btn-side-sell" class="py-2.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1.5 cursor-pointer">
+                <i data-lucide="arrow-down-right" class="w-4 h-4"></i> SELL
+              </button>
+            </div>
+
+            <!-- PRODUCT TYPE -->
+            <div class="mt-4">
+              <div class="flex justify-between items-center text-[11px] text-slate-400 uppercase font-semibold">
+                <label>Product</label>
+                <span class="text-[10px] text-emerald-400 font-mono">5x Intra Leverage</span>
+              </div>
+              <div class="grid grid-cols-3 gap-1.5 mt-1.5">
+                <button onclick="setProduct('INTRADAY')" class="prod-btn py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-prod="INTRADAY">MIS (Intra)</button>
+                <button onclick="setProduct('CNC')" class="prod-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="CNC">CNC (Deliv)</button>
+                <button onclick="setProduct('MARGIN')" class="prod-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="MARGIN">NRML</button>
+              </div>
+            </div>
+
+            <!-- ORDER TYPE -->
+            <div class="mt-3.5">
+              <label class="text-[11px] text-slate-400 uppercase font-semibold">Order Type</label>
+              <div class="grid grid-cols-3 gap-1.5 mt-1.5">
+                <button onclick="setOrderType(2)" class="type-btn py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-type="2">Market</button>
+                <button onclick="setOrderType(1)" class="type-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="1">Limit</button>
+                <button onclick="setOrderType(3)" class="type-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="3">SL</button>
+              </div>
+            </div>
+
+            <!-- QUANTITY & PRICE -->
+            <div class="mt-3.5 space-y-3">
+              <div>
+                <div class="flex justify-between items-center text-[11px] text-slate-400">
+                  <label class="uppercase font-semibold">Quantity</label>
+                  <span id="lot-info-tag" class="text-[10px] text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg font-mono font-bold">1 Lot = 30 Qty</span>
+                </div>
+
+                <!-- Dynamic Lot Multiplier Buttons -->
+                <div class="grid grid-cols-5 gap-1 mt-1.5" id="lot-quick-buttons">
+                  <button type="button" onclick="setLots(1)" id="btn-lot-1" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">1L (30)</button>
+                  <button type="button" onclick="setLots(2)" id="btn-lot-2" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">2L (60)</button>
+                  <button type="button" onclick="setLots(3)" id="btn-lot-3" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">3L (90)</button>
+                  <button type="button" onclick="setLots(5)" id="btn-lot-5" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">5L (150)</button>
+                  <button type="button" onclick="setLots(10)" id="btn-lot-10" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">10L (300)</button>
+                </div>
+
+                <!-- Quantity Input with Increment/Decrement Steppers -->
+                <div class="flex items-center gap-1.5 mt-2">
+                  <button type="button" onclick="stepLots(-1)" title="Decrease 1 Lot" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">-</button>
+                  <input type="number" id="order-qty" value="30" min="1" oninput="onQtyChange()" 
+                         class="flex-1 h-10 bg-darkBg border border-borderSubtle rounded-xl px-3 text-sm text-white font-mono text-center font-bold focus:outline-none focus:border-brand">
+                  <button type="button" onclick="stepLots(1)" title="Increase 1 Lot" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">+</button>
+                </div>
+                <div id="lot-warning" class="text-[10px] text-amber-400 mt-1 hidden font-mono">⚠️ Quantity is not a multiple of lot size</div>
+              </div>
+
+              <div id="price-input-container" class="opacity-50 pointer-events-none transition-opacity">
+                <label class="text-[11px] text-slate-400 uppercase font-semibold">Limit Price</label>
+                <input type="number" id="order-price" value="0.0" step="0.05" oninput="updateMarginEstimate()"
+                       class="w-full mt-1 bg-darkBg border border-borderSubtle rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-brand">
+              </div>
+            </div>
+
+            <!-- MARGIN CALCULATION -->
+            <div class="mt-auto pt-4 border-t border-borderSubtle pb-safe">
+              <div class="flex justify-between items-center text-xs mb-3 text-slate-400">
+                <span>Required Margin:</span>
+                <span class="font-mono text-white font-bold" id="req-margin">₹ 0.00</span>
+              </div>
+              <button onclick="executeOrder()" id="btn-submit-order" class="w-full py-3 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-sm pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-glowBrand active:scale-95">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (30 Qty)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT TAB 3: POSITIONS QUICK PANE -->
+        <div id="rd-pane-positions" class="rd-pane hidden flex-1 flex flex-col overflow-y-auto p-3">
+          <div class="flex items-center justify-between pb-2 border-b border-borderSubtle">
+            <span class="text-xs font-bold text-white flex items-center gap-1.5">
+              <i data-lucide="briefcase" class="w-3.5 h-3.5 text-brand"></i> Open Positions
+            </span>
+            <button onclick="exitAllPositions()" class="text-[10px] font-bold text-danger bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-lg border border-red-500/20 flex items-center gap-1 cursor-pointer">
+              <i data-lucide="x-circle" class="w-3 h-3"></i> Square Off All
+            </button>
+          </div>
+          <div id="right-positions-quick-list" class="space-y-2 mt-2">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Mobile Order Modal Backdrop -->
+      <div id="order-modal-backdrop" onclick="closeOrderPad()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity"></div>
+    </div>
+
+    <!-- WORKSTATION 2: OPTION CHAIN STUDIO (Full-Width Pro Option Chain) -->
+    <div id="ws-optionchain-studio" class="workstation-view hidden flex-1 flex flex-col overflow-hidden bg-darkBg w-full h-full">
+      
+      <!-- Option Chain Top Controls Bar -->
+      <div class="min-h-12 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 md:px-5 py-2 text-xs flex-wrap gap-2 z-10 flex-shrink-0">
+        
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Index Selector -->
+          <div class="flex items-center gap-1.5">
+            <span class="text-slate-400 text-[11px] font-semibold">Underlying:</span>
+            <select id="chain-underlying-select" onchange="changeChainUnderlying(this.value)" class="bg-darkBg border border-borderSubtle text-white text-xs px-3 py-1.5 rounded-xl font-bold cursor-pointer focus:outline-none focus:border-brand shadow-sm">
+              <option value="BANKNIFTY" selected>BANK NIFTY (Lot: 30)</option>
+              <option value="NIFTY">NIFTY 50 (Lot: 65)</option>
+              <option value="SENSEX">SENSEX (Lot: 20)</option>
+              <option value="FINNIFTY">FINNIFTY (Lot: 60)</option>
+              <option value="MIDCPNIFTY">MIDCP (Lot: 120)</option>
+            </select>
+          </div>
+
+          <!-- Expiry Selector -->
+          <div class="flex items-center gap-1.5">
+            <select id="chain-expiry-select" onchange="changeChainExpiry(this.value)" class="bg-darkBg border border-borderSubtle text-white text-xs px-3 py-1.5 rounded-xl font-bold font-mono cursor-pointer focus:outline-none focus:border-brand shadow-sm">
+              <option value="">Current Expiry</option>
+            </select>
+          </div>
+
+          <!-- Spot & ATM Pill -->
+          <div class="flex items-center gap-2 bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle text-[11px] font-mono shadow-sm">
+            <span class="text-slate-400 text-[10px]">Spot:</span>
+            <span class="font-bold text-white text-[11px]" id="chain-spot-price">--</span>
+            <span class="text-amber-400 font-bold text-[10px] border-l border-borderSubtle pl-2" id="chain-atm-strike">ATM: --</span>
+          </div>
+
+          <!-- PCR Metric Pill -->
+          <div class="flex items-center gap-1.5 bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle text-[11px] font-mono shadow-sm" id="chain-pcr-badge" title="Put Call Ratio">
+            <span class="text-slate-400 text-[10px]">PCR:</span>
+            <span class="font-bold text-emerald-400" id="chain-pcr-val">1.12</span>
+            <span class="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded font-bold border border-emerald-500/20" id="chain-pcr-tag">BULLISH</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 ml-auto">
+          <!-- Live Data Feed Indicator & Fyers Settings Button -->
+          <div class="flex items-center gap-1.5 bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle text-[10px] font-mono cursor-pointer hover:border-brand/40 transition-colors shadow-sm" onclick="openFyersModal()" title="View Feed Status / Connect Fyers Broker API">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="chain-source-badge" class="font-bold text-emerald-400">NSE Live</span>
+            <span class="text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded hover:text-white border border-slate-700">Fyers API</span>
+          </div>
+
+          <!-- Refresh Button -->
+          <button onclick="loadOptionChain(true)" class="p-1.5 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors shadow-sm" title="Refresh Option Chain">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Option Chain Table Full Container -->
+      <div id="option-chain-view" class="flex-1 overflow-y-auto bg-darkBg p-3 touch-scroll">
+        <!-- Injected via loadOptionChain -->
+      </div>
+    </div>
+
+    <!-- WORKSTATION 3: POSITIONS & P&L COMMAND CENTER -->
+    <div id="ws-positions-desk" class="workstation-view hidden flex-1 flex flex-col overflow-y-auto bg-darkBg p-4 md:p-6 space-y-5 w-full h-full touch-scroll">
+      
+      <!-- Top Bento Header & Live Actions -->
+      <div class="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-borderSubtle">
+        <div>
+          <h1 class="text-lg md:text-xl font-black text-white flex items-center gap-2">
+            <i data-lucide="briefcase" class="w-5 h-5 text-brand"></i>
+            Portfolio & P&L Command Center
+          </h1>
+          <p class="text-xs text-slate-400 mt-0.5">Real-time MTM tracking, automated expiry controls, and position lifecycle</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="loadDockContent()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-borderSubtle flex items-center gap-1.5 cursor-pointer transition-all">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh
+          </button>
+          <button onclick="exitAllPositions()" class="px-4 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500 hover:text-white text-rose-400 text-xs font-bold border border-red-500/30 flex items-center gap-1.5 cursor-pointer transition-all shadow-glowDanger">
+            <i data-lucide="x-circle" class="w-4 h-4"></i> Square Off All Positions
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 BENTO KPI SUMMARY METRIC CARDS (Animated via Anime.js) -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <!-- Bento 1: Total Real-Time P&L (Glow Card) -->
+        <div class="bento-stat-card bg-gradient-to-br from-[#0c1815] to-cardBg border border-emerald-500/30 rounded-2xl p-4 shadow-xl relative overflow-hidden">
+          <div class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Total Day P&L (MTM)</span>
+            <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div class="text-xl md:text-2xl font-mono font-black text-emerald-400 mt-2" id="cmd-total-pnl">+₹ 0.00</div>
+          <div class="text-[10px] text-slate-400 font-mono mt-1" id="cmd-pnl-status">All positions live</div>
+        </div>
+
+        <!-- Bento 2: Available Trading Capital -->
+        <div class="bento-stat-card bg-cardBg border border-borderSubtle rounded-2xl p-4 shadow-md">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Available Capital</span>
+            <i data-lucide="wallet" class="w-4 h-4 text-brand"></i>
+          </div>
+          <div class="text-xl md:text-2xl font-mono font-black text-white mt-2" id="cmd-avail-capital">₹ 10,00,000.00</div>
+          <div class="text-[10px] text-emerald-400 font-mono mt-1">Virtual Paper Capital</div>
+        </div>
+
+        <!-- Bento 3: Used Margin -->
+        <div class="bento-stat-card bg-cardBg border border-borderSubtle rounded-2xl p-4 shadow-md">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Used Margin</span>
+            <i data-lucide="pie-chart" class="w-4 h-4 text-amber-400"></i>
+          </div>
+          <div class="text-xl md:text-2xl font-mono font-black text-amber-400 mt-2" id="cmd-used-margin">₹ 0.00</div>
+          <div class="text-[10px] text-slate-400 font-mono mt-1">Exposure utilized</div>
+        </div>
+
+        <!-- Bento 4: Active Open Positions & Orders -->
+        <div class="bento-stat-card bg-cardBg border border-borderSubtle rounded-2xl p-4 shadow-md">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+            <span>Open Trades</span>
+            <i data-lucide="layers" class="w-4 h-4 text-sky-400"></i>
+          </div>
+          <div class="text-xl md:text-2xl font-mono font-black text-sky-400 mt-2" id="cmd-pos-count">0</div>
+          <div class="text-[10px] text-slate-400 font-mono mt-1" id="cmd-orders-count">0 orders executed</div>
+        </div>
+      </div>
+
+      <!-- TABS: POSITIONS TABLE vs ORDER BOOK -->
+      <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-borderSubtle/70 pb-3 flex-wrap gap-2">
+          <div class="flex items-center gap-2 bg-darkBg p-1 rounded-xl border border-borderSubtle">
+            <button onclick="switchPositionsSubTab('positions')" id="cmd-tab-positions" class="px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm">
+              Open Positions (<span id="cmd-subtab-pos-count">0</span>)
+            </button>
+            <button onclick="switchPositionsSubTab('orders')" id="cmd-tab-orders" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer">
+              Executed Orders (<span id="cmd-subtab-ord-count">0</span>)
+            </button>
+          </div>
+          <div id="dock-total-mtm-badge" class="flex items-center gap-2 font-mono text-xs">
+            <span class="text-slate-400">MTM Glow:</span>
+            <span id="dock-total-mtm-val" class="font-bold text-emerald-400">+₹ 0.00</span>
+          </div>
+        </div>
+
+        <!-- DOCK CONTENT CONTAINER (Where loadDockContent renders positions and orders tables) -->
+        <div id="dock-content" class="min-h-48 overflow-x-auto touch-scroll">
+          <!-- Injected via loadDockContent() -->
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSTATION 4: SPLIT VIEW (Dual 50/50 Stage: Chart Left + Option Chain Right) -->
+    <div id="ws-split-desk" class="workstation-view hidden flex-1 flex overflow-hidden w-full h-full">
+      <!-- Left 50%: Mini Chart Preview Pane -->
+      <div class="w-1/2 flex flex-col border-r border-borderSubtle bg-darkBg overflow-hidden">
+        <div class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 text-xs flex-shrink-0">
+          <span class="font-bold text-white flex items-center gap-1.5 font-sans">
+            <i data-lucide="line-chart" class="w-3.5 h-3.5 text-brand"></i> Live Chart
+          </span>
+          <span class="font-mono text-brand font-bold text-xs" id="split-chart-ltp">25,425.00</span>
+        </div>
+        <div id="split-chart-area" class="flex-1 w-full relative"></div>
+      </div>
+
+      <!-- Right 50%: Option Chain Scalper Pane -->
+      <div class="w-1/2 flex flex-col bg-darkBg overflow-hidden">
+        <div class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 text-xs flex-shrink-0">
+          <span class="font-bold text-white flex items-center gap-1.5 font-sans">
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i> Option Chain Scalper
+          </span>
+          <span class="text-[10px] text-slate-400 font-mono">1-Click Trade Placement</span>
+        </div>
+        <div id="split-optionchain-view" class="flex-1 overflow-y-auto p-2 touch-scroll">
+          <!-- Mirrored Option Chain for Split Screen -->
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKSTATION 5: ACCOUNT & SETTINGS PANEL -->
+    <div id="account-panel" class="workstation-view hidden flex-1 overflow-y-auto p-4 md:p-6 pb-20 lg:pb-6 touch-scroll bg-darkBg w-full h-full">
+      <div class="max-w-2xl mx-auto space-y-4">
+        
+        <!-- PROFILE HERO CARD -->
+        <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 flex items-center justify-between shadow-sm">
+          <div class="flex items-center gap-3.5">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand to-emerald-400 text-slate-950 font-black text-xl flex items-center justify-center shadow-lg shadow-brand/20" id="acc-avatar-letter">
+              ?
             </div>
             <div>
-              <h3 class="text-base md:text-lg font-bold text-white">Sign In to Your Account</h3>
-              <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">Log in with your unique Username and Password to place trades, track your private portfolio, and manage your account settings.</p>
-            </div>
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-sm mx-auto">
-              <button onclick="openAuthModal('login')" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-brand/20 transition-all active:scale-95">
-                <i data-lucide="log-in" class="w-4 h-4"></i> Sign In
-              </button>
-              <button onclick="openAuthModal('register')" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-borderSubtle flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95">
-                <i data-lucide="user-plus" class="w-4 h-4 text-brand"></i> Register Free
-              </button>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base md:text-lg font-bold text-white" id="acc-display-title">Guest Trader</h2>
+                <span class="text-[10px] bg-brand/10 text-brand border border-brand/20 px-2 py-0.5 rounded-full font-mono font-bold" id="acc-badge">PRO</span>
+              </div>
+              <div class="text-xs text-slate-400 font-mono mt-0.5" id="acc-display-subtitle">Sign in or create account to trade</div>
+              <div class="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-1 font-semibold">
+                <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
+                <span id="acc-trading-mode-label">Virtual Paper Trading (Active)</span>
+              </div>
             </div>
           </div>
+          <!-- Dynamic Log Out / Sign In buttons on Hero Card -->
+          <button id="acc-hero-logout-btn" onclick="logoutTrader()" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 border border-rose-500/30 cursor-pointer transition-colors" title="Log out and switch trader account">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Log Out
+          </button>
+        </div>
 
-          <!-- AFTER LOGIN ONLY: USERNAME & PASSWORD CREDENTIALS CARD -->
-          <div id="acc-auth-credentials-card" class="hidden bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-4">
-            <div class="border-b border-borderSubtle/60 pb-3 flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                  <i data-lucide="shield-check" class="w-4 h-4 text-brand"></i>
-                  Account Credentials & Security
-                </h3>
-                <p class="text-[11px] text-slate-400 mt-0.5">Customize your unique username and password to secure your terminal</p>
-              </div>
-              <span class="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded font-mono">Secured</span>
-            </div>
+        <!-- PROFILE SETTINGS -->
+        <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-4">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="user-cog" class="w-4 h-4 text-brand"></i>
+            Trader Credentials & Profile
+          </h3>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
-              <div>
-                <label class="text-slate-300 font-semibold block mb-1">Unique Username</label>
-                <div class="relative">
-                  <i data-lucide="user" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-                  <input type="text" id="acc-input-username" placeholder="e.g. aman_trader" 
-                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white font-mono focus:outline-none focus:border-brand">
-                </div>
-                <span class="text-[10px] text-slate-500 mt-1 block">Your personal unique trader ID</span>
-              </div>
-
-              <div>
-                <label class="text-slate-300 font-semibold block mb-1">Password / Security PIN</label>
-                <div class="relative">
-                  <i data-lucide="lock" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-                  <input type="password" id="acc-input-password" placeholder="Enter new password to update" 
-                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-10 py-2 text-white font-mono focus:outline-none focus:border-brand">
-                  <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer">
-                    <i data-lucide="eye" class="w-4 h-4" id="acc-eye-icon"></i>
-                  </button>
-                </div>
-                <span class="text-[10px] text-slate-500 mt-1 block">Secures virtual trading & executions</span>
-              </div>
-
-              <div>
-                <label class="text-slate-300 font-semibold block mb-1">Trader Display Name</label>
-                <div class="relative">
-                  <i data-lucide="badge-check" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-                  <input type="text" id="acc-input-name" placeholder="e.g. Aman" 
-                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white focus:outline-none focus:border-brand">
-                </div>
-              </div>
-
-              <div>
-                <label class="text-slate-300 font-semibold block mb-1">Client ID / Broker Code</label>
-                <div class="relative">
-                  <i data-lucide="hash" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-                  <input type="text" id="acc-input-client-id" placeholder="e.g. XH01499" 
-                         class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-brand">
-                </div>
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Trader ID (Username)</label>
+              <div class="relative">
+                <i data-lucide="user" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                <input type="text" id="acc-input-username" readonly 
+                       class="w-full bg-slate-900/60 border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-slate-300 font-mono cursor-not-allowed">
               </div>
             </div>
 
-            <div class="pt-2">
-              <button onclick="saveUserProfile()" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md">
-                <i data-lucide="save" class="w-4 h-4"></i> Save Account Credentials
-              </button>
-            </div>
-          </div>
-
-          <!-- FUNDS & MARGINS QUICK CARD -->
-          <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
-            <div class="flex items-center justify-between border-b border-borderSubtle/60 pb-2.5">
-              <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                <i data-lucide="wallet" class="w-4 h-4 text-amber-400"></i>
-                Virtual Capital & Margin Summary
-              </h3>
-              <button onclick="resetVirtualFunds()" class="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer">
-                <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset ₹10 Lakhs
-              </button>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 text-xs">
-              <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
-                <span class="text-slate-400 text-[11px]">Available Cash</span>
-                <div class="text-base font-mono font-bold text-white mt-0.5" id="acc-funds-cash">₹ 10,00,000.00</div>
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Trader Display Name</label>
+              <div class="relative">
+                <i data-lucide="badge-check" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                <input type="text" id="acc-input-name" placeholder="e.g. Aman" 
+                       class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white focus:outline-none focus:border-brand">
               </div>
-              <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
-                <span class="text-slate-400 text-[11px]">Used Margin</span>
-                <div class="text-base font-mono font-bold text-amber-400 mt-0.5" id="acc-funds-margin">₹ 0.00</div>
+            </div>
+
+            <div>
+              <label class="text-slate-300 font-semibold block mb-1">Client ID / Broker Code</label>
+              <div class="relative">
+                <i data-lucide="hash" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+                <input type="text" id="acc-input-client-id" placeholder="e.g. XH01499" 
+                       class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-brand">
               </div>
             </div>
           </div>
 
-          <!-- TERMINAL & STORAGE INFORMATION CARD -->
-          <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
+          <div class="pt-2">
+            <button onclick="saveUserProfile()" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md">
+              <i data-lucide="save" class="w-4 h-4"></i> Save Account Credentials
+            </button>
+          </div>
+        </div>
+
+        <!-- FUNDS & MARGINS QUICK CARD -->
+        <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
+          <div class="flex items-center justify-between border-b border-borderSubtle/60 pb-2.5">
             <h3 class="text-sm font-bold text-white flex items-center gap-2">
-              <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
-              Virtual Terminal & Storage Architecture
+              <i data-lucide="wallet" class="w-4 h-4 text-amber-400"></i>
+              Virtual Capital & Margin Summary
             </h3>
-
-            <div class="space-y-2 pt-1 text-xs">
-              <div class="p-3 rounded-xl bg-darkBg border border-borderSubtle flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-brand flex-shrink-0 mt-0.5">
-                  <i data-lucide="shield-check" class="w-4 h-4"></i>
-                </div>
-                <div>
-                  <div class="font-bold text-white">Private Multi-User Isolation</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5">Each trader gets a dedicated ₹10,00,000 balance with private positions, order history, and P&L. Zero trade cross-over.</div>
-                </div>
-              </div>
-
-              <div class="p-3 rounded-xl bg-darkBg border border-borderSubtle flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0 mt-0.5">
-                  <i data-lucide="hard-drive" class="w-4 h-4"></i>
-                </div>
-                <div>
-                  <div class="font-bold text-white">Data Storage Location</div>
-                  <div class="text-[11px] text-slate-400 mt-0.5">All accounts, trades, and margins are safely stored locally in <code class="text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded font-mono">data/trading_terminal.db</code> (SQLite). 100% persistent and offline-safe.</div>
-                </div>
-              </div>
-
-              <button onclick="toggleTheme()" class="w-full p-3 rounded-xl bg-darkBg hover:bg-slate-800 border border-borderSubtle flex items-center justify-between text-xs cursor-pointer transition-colors text-left">
-                <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                    <i data-lucide="moon" class="w-4 h-4"></i>
-                  </div>
-                  <div>
-                    <div class="font-bold text-white">Theme Mode (Light / Dark)</div>
-                    <div class="text-[10px] text-slate-400">Switch terminal theme color palette</div>
-                  </div>
-                </div>
-                <span class="text-xs text-slate-400 font-mono" id="acc-theme-label">Dark</span>
-              </button>
-
-              <!-- Install PWA App Button -->
-              <button onclick="installPwaApp()" id="pwa-install-btn" class="w-full p-3 rounded-xl bg-gradient-to-r from-emerald-950/40 to-slate-900 border border-brand/40 flex items-center justify-between text-xs cursor-pointer transition-colors text-left hover:border-brand">
-                <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-brand">
-                    <i data-lucide="smartphone" class="w-4 h-4"></i>
-                  </div>
-                  <div>
-                    <div class="font-bold text-white flex items-center gap-1.5">
-                      Install Mobile App
-                      <span class="text-[9px] bg-brand text-slate-950 font-bold px-1.5 py-0.2 rounded">PWA</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400">Add to home screen for fullscreen native app feel</div>
-                  </div>
-                </div>
-                <div class="px-2.5 py-1 rounded-md bg-brand text-slate-950 font-bold text-[11px] shadow-sm flex items-center gap-1">
-                  <i data-lucide="download" class="w-3 h-3"></i> Install
-                </div>
-              </button>
-
-              <button onclick="logoutTrader()" class="w-full p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 flex items-center justify-between text-xs cursor-pointer transition-colors text-left">
-                <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
-                  </div>
-                  <div>
-                    <div class="font-bold text-rose-300">Log Out & Switch User</div>
-                    <div class="text-[10px] text-slate-400">Switch to another trader account or login ID</div>
-                  </div>
-                </div>
-                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
-              </button>
-            </div>
+            <button onclick="resetVirtualFunds()" class="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer">
+              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset ₹10 Lakhs
+            </button>
           </div>
 
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+              <span class="text-slate-400 text-[11px]">Available Cash</span>
+              <div class="text-base font-mono font-bold text-white mt-0.5" id="acc-funds-cash">₹ 10,00,000.00</div>
+            </div>
+            <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+              <span class="text-slate-400 text-[11px]">Used Margin</span>
+              <div class="text-base font-mono font-bold text-amber-400 mt-0.5" id="acc-funds-margin">₹ 0.00</div>
+            </div>
+          </div>
         </div>
-      </div>
 
-    </main>
+        <!-- TERMINAL & STORAGE INFORMATION CARD -->
+        <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-white flex items-center gap-2">
+            <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+            Virtual Terminal & Storage Architecture
+          </h3>
+
+          <div class="space-y-2 pt-1 text-xs">
+            <div class="p-3 rounded-xl bg-darkBg border border-borderSubtle flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-brand flex-shrink-0 mt-0.5">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <div class="font-bold text-white">Private Multi-User Isolation</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Each trader gets a dedicated ₹10,00,000 balance with private positions, order history, and P&L. Zero trade cross-over.</div>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-darkBg border border-borderSubtle flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 flex-shrink-0 mt-0.5">
+                <i data-lucide="hard-drive" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <div class="font-bold text-white">Data Storage Location</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">All accounts, trades, and margins are safely stored locally in <code class="text-emerald-400 bg-slate-900 px-1.5 py-0.5 rounded font-mono">data/trading_terminal.db</code> (SQLite). 100% persistent and offline-safe.</div>
+              </div>
+            </div>
+
+            <button onclick="toggleTheme()" class="w-full p-3 rounded-xl bg-darkBg hover:bg-slate-800 border border-borderSubtle flex items-center justify-between text-xs cursor-pointer transition-colors text-left">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                  <i data-lucide="moon" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-white">Theme Mode (Light / Dark)</div>
+                  <div class="text-[10px] text-slate-400">Switch terminal theme color palette</div>
+                </div>
+              </div>
+              <span class="text-xs text-slate-400 font-mono" id="acc-theme-label">Dark</span>
+            </button>
+
+            <!-- Install PWA App Button -->
+            <button onclick="installPwaApp()" id="pwa-install-btn" class="w-full p-3 rounded-xl bg-gradient-to-r from-emerald-950/40 to-slate-900 border border-brand/40 flex items-center justify-between text-xs cursor-pointer transition-colors text-left hover:border-brand">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-brand">
+                  <i data-lucide="smartphone" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-white flex items-center gap-1.5">
+                    Install Mobile App
+                    <span class="text-[9px] bg-brand text-slate-950 font-bold px-1.5 py-0.2 rounded">PWA</span>
+                  </div>
+                  <div class="text-[10px] text-slate-400">Add to home screen for fullscreen native app feel</div>
+                </div>
+              </div>
+              <div class="px-2.5 py-1 rounded-md bg-brand text-slate-950 font-bold text-[11px] shadow-sm flex items-center gap-1">
+                <i data-lucide="download" class="w-3 h-3"></i> Install
+              </div>
+            </button>
+
+            <button onclick="logoutTrader()" class="w-full p-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 flex items-center justify-between text-xs cursor-pointer transition-colors text-left">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">
+                  <i data-lucide="log-out" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-rose-300">Log Out & Switch User</div>
+                  <div class="text-[10px] text-slate-400">Switch to another trader account or login ID</div>
+                </div>
+              </div>
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
   <!-- MOBILE BOTTOM NAVIGATION BAR -->
@@ -1224,13 +1321,322 @@
     }
 
 
+    // ------------------ MULTI-WORKSTATION ARCHITECTURE CONTROLLER ------------------
+    let currentWorkstation = 'chart';
+    let currentRightDockTab = 'watchlist';
+
+    function switchWorkstation(mode) {
+      currentWorkstation = mode;
+
+      // Update Desktop Header Workstation Buttons styling
+      ['chart', 'optionchain', 'positions', 'split'].forEach(m => {
+        const btn = document.getElementById(`ws-btn-${m}`);
+        if (!btn) return;
+        if (m === mode) {
+          btn.className = 'ws-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-brand text-slate-950 flex items-center gap-1.5 cursor-pointer transition-all shadow-glowBrand';
+        } else {
+          btn.className = 'ws-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/80 flex items-center gap-1.5 cursor-pointer transition-all';
+        }
+      });
+
+      // Hide all workstation view containers
+      document.querySelectorAll('.workstation-view').forEach(view => {
+        view.classList.add('hidden');
+      });
+
+      // Show active workstation view container
+      let activeEl = null;
+      if (mode === 'chart') activeEl = document.getElementById('ws-chart-desk');
+      else if (mode === 'optionchain') activeEl = document.getElementById('ws-optionchain-studio');
+      else if (mode === 'positions') activeEl = document.getElementById('ws-positions-desk');
+      else if (mode === 'split') activeEl = document.getElementById('ws-split-desk');
+      else if (mode === 'account') activeEl = document.getElementById('account-panel');
+
+      if (activeEl) {
+        activeEl.classList.remove('hidden');
+        if (activeEl.id === 'account-panel') {
+          activeEl.classList.add('flex', 'flex-col');
+        }
+        
+        // Anime.js smooth workstation entrance transition
+        if (window.anime) {
+          try {
+            anime({
+              targets: activeEl,
+              opacity: [0.6, 1],
+              translateY: [8, 0],
+              duration: 250,
+              easing: 'easeOutCubic'
+            });
+            
+            if (mode === 'positions') {
+              anime({
+                targets: '.bento-stat-card',
+                translateY: [15, 0],
+                opacity: [0.3, 1],
+                delay: anime.stagger(60),
+                duration: 350,
+                easing: 'easeOutQuad'
+              });
+            }
+          } catch (e) {}
+        }
+      }
+
+      // Workstation specific initializers
+      if (mode === 'chart') {
+        const chartArea = document.getElementById('chart-area');
+        if (chart && chartArea && chartArea.clientWidth > 0) {
+          setTimeout(() => {
+            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+          }, 100);
+        }
+      } else if (mode === 'optionchain') {
+        loadOptionChain(true);
+      } else if (mode === 'positions') {
+        loadDockContent();
+      } else if (mode === 'split') {
+        initOrResizeSplitScreen();
+      } else if (mode === 'account') {
+        loadUserProfile();
+      }
+
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ RIGHT TRADING DOCK TABS CONTROLLER ------------------
+    function switchRightDockTab(tab) {
+      currentRightDockTab = tab;
+
+      // Update tab buttons
+      ['watchlist', 'orderpad', 'positions'].forEach(t => {
+        const btn = document.getElementById(`rd-tab-${t}`);
+        const pane = document.getElementById(`rd-pane-${t}`);
+        if (btn) {
+          if (t === tab) {
+            btn.className = 'rd-tab flex-1 py-1.5 rounded-lg bg-slate-800 text-white font-bold cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px] shadow-sm';
+          } else {
+            btn.className = 'rd-tab flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px]';
+          }
+        }
+        if (pane) {
+          if (t === tab) pane.classList.remove('hidden');
+          else pane.classList.add('hidden');
+        }
+      });
+
+      if (tab === 'positions') {
+        renderRightDockPositions();
+      } else if (tab === 'orderpad') {
+        if (window.anime) {
+          try {
+            anime({
+              targets: '#order-panel',
+              scale: [0.98, 1],
+              opacity: [0.8, 1],
+              duration: 200,
+              easing: 'easeOutQuad'
+            });
+          } catch (e) {}
+        }
+      }
+
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // Toggle Right Dock Collapse / Expand
+    function toggleRightDock() {
+      const dock = document.getElementById('right-trading-dock');
+      const icon = document.getElementById('icon-right-dock');
+      if (!dock) return;
+
+      const isHidden = dock.classList.contains('hidden');
+      if (isHidden) {
+        dock.classList.remove('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'panel-right-close');
+      } else {
+        dock.classList.add('hidden');
+        if (icon) icon.setAttribute('data-lucide', 'panel-right-open');
+      }
+
+      const chartArea = document.getElementById('chart-area');
+      if (chart && chartArea) {
+        setTimeout(() => {
+          chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+        }, 150);
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // Toggle Sub-tabs inside Portfolio & P&L Command Center
+    function switchPositionsSubTab(subTab) {
+      const posBtn = document.getElementById('cmd-tab-positions');
+      const ordBtn = document.getElementById('cmd-tab-orders');
+
+      if (subTab === 'positions') {
+        if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
+        if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        switchDockTab('positions');
+      } else {
+        if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
+        if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        switchDockTab('orders');
+      }
+    }
+
+    // Top Market Ticker Ribbon Quick Select
+    function selectTickerChip(symbol, underlying) {
+      currentSymbol = symbol;
+      if (underlying) currentOptionUnderlying = underlying;
+      if (currentWorkstation === 'chart') {
+        loadChartData();
+      } else if (currentWorkstation === 'optionchain') {
+        const sel = document.getElementById('chain-underlying-select');
+        if (sel && underlying) sel.value = underlying;
+        changeChainUnderlying(underlying || 'BANKNIFTY');
+      } else {
+        switchWorkstation('chart');
+        loadChartData();
+      }
+      showToast(`Active Ticker: ${symbol}`, 'info');
+    }
+
+    // Anime.js P&L Number Roll-up Animation
+    function animatePnlNumber(el, targetVal) {
+      if (!el) return;
+      const currentVal = parseFloat(el.getAttribute('data-val') || '0');
+      el.setAttribute('data-val', targetVal);
+      if (window.anime) {
+        try {
+          const obj = { val: currentVal };
+          anime({
+            targets: obj,
+            val: targetVal,
+            round: 2,
+            duration: 400,
+            easing: 'easeOutQuad',
+            update: function() {
+              const v = obj.val;
+              el.innerText = `${v >= 0 ? '+' : ''}₹ ${v.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+              el.className = `font-mono font-black text-xl md:text-2xl ${v >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+            }
+          });
+          return;
+        } catch (e) {}
+      }
+      el.innerText = `${targetVal >= 0 ? '+' : ''}₹ ${targetVal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      el.className = `font-mono font-black text-xl md:text-2xl ${targetVal >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+    }
+
+    // Render Mini Positions List in the Right Dock
+    async function renderRightDockPositions() {
+      const container = document.getElementById('right-positions-quick-list');
+      if (!container) return;
+      
+      let positions = [];
+      try {
+        const res = await fetch('/api/positions', { headers: getAuthHeaders() });
+        const d = await res.json();
+        positions = d.positions || [];
+      } catch (e) {}
+
+      const countPill = document.getElementById('rd-pos-count-pill');
+      if (countPill) {
+        countPill.innerText = positions.length;
+        if (positions.length > 0) countPill.classList.remove('hidden');
+        else countPill.classList.add('hidden');
+      }
+
+      if (!positions.length) {
+        container.innerHTML = `
+          <div class="py-8 text-center">
+            <div class="w-10 h-10 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+              <i data-lucide="briefcase" class="w-5 h-5"></i>
+            </div>
+            <div class="text-xs font-bold text-slate-300">No Open Positions</div>
+            <div class="text-[10px] text-slate-500 mt-1">Punch a trade from Watchlist or Option Chain</div>
+          </div>
+        `;
+        try { lucide.createIcons(); } catch (e) {}
+        return;
+      }
+
+      let html = '';
+      positions.forEach(p => {
+        const pnl = Number(p.pnl || 0);
+        const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+        const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
+        html += `
+          <div class="bg-darkBg p-2.5 rounded-xl border border-borderSubtle flex items-center justify-between text-xs font-mono">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-white text-[11px]">${p.symbol}</span>
+                <span class="text-[9px] px-1 py-0.2 rounded font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side}</span>
+              </div>
+              <div class="text-[10px] text-slate-400">
+                Qty: <span class="text-white font-bold">${p.net_qty}</span> | Avg: ₹${Number(avgPrice).toFixed(1)} | LTP: ₹${Number(p.ltp || 0).toFixed(1)}
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-1">
+              <span class="font-bold text-xs ${pnlColor}">${pnl >= 0 ? '+' : ''}₹${pnl.toFixed(2)}</span>
+              <button onclick="exitPosition('${p.symbol}')" class="px-2 py-0.5 rounded bg-danger/10 hover:bg-danger hover:text-white text-danger border border-danger/20 text-[10px] font-bold cursor-pointer transition-all active:scale-90">Exit</button>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // Split View Initializer / Mirror
+    let splitChart = null;
+    let splitCandleSeries = null;
+    function initOrResizeSplitScreen() {
+      const splitArea = document.getElementById('split-chart-area');
+      const splitChain = document.getElementById('split-optionchain-view');
+      if (!splitArea) return;
+
+      if (!splitChart && window.LightweightCharts) {
+        splitChart = LightweightCharts.createChart(splitArea, {
+          width: splitArea.clientWidth,
+          height: splitArea.clientHeight,
+          layout: { background: { color: '#070a12' }, textColor: '#94a3b8' },
+          grid: { vertLines: { color: '#141d30' }, horzLines: { color: '#141d30' } },
+          timeScale: { borderColor: '#1e293b', timeVisible: true }
+        });
+        splitCandleSeries = splitChart.addCandlestickSeries({
+          upColor: '#10b981', downColor: '#f43f5e',
+          borderVisible: false,
+          wickUpColor: '#10b981', wickDownColor: '#f43f5e'
+        });
+        if (candleData && candleData.length > 0) {
+          splitCandleSeries.setData(candleData);
+        }
+      } else if (splitChart) {
+        setTimeout(() => {
+          splitChart.applyOptions({ width: splitArea.clientWidth, height: splitArea.clientHeight });
+          if (candleData && candleData.length > 0 && splitCandleSeries) {
+            splitCandleSeries.setData(candleData);
+          }
+        }, 100);
+      }
+
+      const mainChain = document.getElementById('option-chain-view');
+      if (mainChain && splitChain) {
+        if (!mainChain.children.length) {
+          loadOptionChain(true);
+        } else {
+          splitChain.innerHTML = mainChain.innerHTML;
+        }
+      }
+    }
+
     // ------------------ MOBILE NAVIGATION CONTROLS ------------------
     function switchMobileTab(tab, pushHistory = true) {
       if (tab === 'portfolio') tab = 'positions';
       const prevTab = currentMobileTab;
       currentMobileTab = tab;
 
-      // Smart History Tracking for Back Button
       if (pushHistory && tab !== prevTab) {
         if (tab === 'watchlist') {
           history.replaceState({ tab: 'watchlist' }, '', '#watchlist');
@@ -1238,12 +1644,6 @@
           history.pushState({ tab: tab }, '', '#' + tab);
         }
       }
-      
-      const watchPanel = document.getElementById('market-watch-panel');
-      const mainPanel = document.getElementById('main-content-panel');
-      const chartOptionSplit = document.getElementById('chart-option-split');
-      const dockPanel = document.getElementById('dock-panel');
-      const chartActionBar = document.getElementById('mob-chart-action-bar');
 
       // Update mobile nav icons active state
       ['watchlist', 'options', 'chart', 'positions', 'account'].forEach(t => {
@@ -1258,119 +1658,78 @@
         }
       });
 
-      const accPanel = document.getElementById('account-panel');
+      const rightDock = document.getElementById('right-trading-dock');
+      const chartArea = document.getElementById('chart-area');
+      const chartActionBar = document.getElementById('mob-chart-action-bar');
 
       if (tab === 'watchlist') {
-        if (watchPanel) {
-          watchPanel.classList.remove('hidden');
-          watchPanel.classList.add('flex', 'w-full');
+        switchWorkstation('chart');
+        switchRightDockTab('watchlist');
+        if (rightDock) {
+          rightDock.classList.remove('hidden');
+          rightDock.classList.add('flex', 'w-full');
         }
-        if (mainPanel) mainPanel.classList.add('hidden');
-        if (accPanel) {
-          accPanel.classList.add('hidden');
-          accPanel.classList.remove('flex', 'flex-col');
+        if (chartArea && chartArea.parentElement) chartArea.parentElement.classList.add('hidden');
+        if (chartActionBar) chartActionBar.classList.add('hidden');
+      } else if (tab === 'chart') {
+        switchWorkstation('chart');
+        if (rightDock) {
+          rightDock.classList.add('hidden');
+          rightDock.classList.remove('flex', 'w-full');
         }
-      } else {
-        if (watchPanel) {
-          watchPanel.classList.add('hidden');
-          watchPanel.classList.remove('flex', 'w-full');
+        if (chartArea && chartArea.parentElement) chartArea.parentElement.classList.remove('hidden');
+        if (chartActionBar) chartActionBar.classList.remove('hidden');
+        if (chart) {
+          setTimeout(() => {
+            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+          }, 80);
         }
-        if (mainPanel) mainPanel.classList.remove('hidden');
-
-        if (tab === 'account') {
-          if (chartOptionSplit) chartOptionSplit.classList.add('hidden');
-          if (dockPanel) dockPanel.classList.add('hidden');
-          if (chartActionBar) chartActionBar.classList.add('hidden');
-          if (accPanel) {
-            accPanel.classList.remove('hidden');
-            accPanel.classList.add('flex', 'flex-col');
-          }
-          loadUserProfile();
-        } else {
-          if (accPanel) {
-            accPanel.classList.add('hidden');
-            accPanel.classList.remove('flex', 'flex-col');
-          }
-          if (tab === 'options') {
-            if (chartOptionSplit) chartOptionSplit.classList.remove('hidden');
-            if (dockPanel) dockPanel.classList.add('hidden');
-            if (chartActionBar) chartActionBar.classList.add('hidden');
-            switchMainView('optionchain');
-          } else if (tab === 'chart') {
-            if (chartOptionSplit) chartOptionSplit.classList.remove('hidden');
-            if (dockPanel) dockPanel.classList.add('hidden');
-            if (chartActionBar) chartActionBar.classList.remove('hidden');
-            switchMainView('chart');
-          } else if (tab === 'positions') {
-            if (chartOptionSplit) chartOptionSplit.classList.add('hidden');
-            if (dockPanel) {
-              dockPanel.classList.remove('hidden');
-              dockPanel.classList.add('flex', 'flex-1');
-            }
-            if (chartActionBar) chartActionBar.classList.add('hidden');
-            switchDockTab('positions');
-          } else if (tab === 'orders') {
-            if (chartOptionSplit) chartOptionSplit.classList.add('hidden');
-            if (dockPanel) {
-              dockPanel.classList.remove('hidden');
-              dockPanel.classList.add('flex', 'flex-1');
-            }
-            if (chartActionBar) chartActionBar.classList.add('hidden');
-            switchDockTab('orders');
-          }
-        }
+      } else if (tab === 'options') {
+        switchWorkstation('optionchain');
+        if (chartActionBar) chartActionBar.classList.add('hidden');
+      } else if (tab === 'positions') {
+        switchWorkstation('positions');
+        if (chartActionBar) chartActionBar.classList.add('hidden');
+      } else if (tab === 'account') {
+        switchWorkstation('account');
+        if (chartActionBar) chartActionBar.classList.add('hidden');
       }
       try { lucide.createIcons(); } catch (e) {}
     }
 
     function toggleOrderPanelDesktop() {
-      const panel = document.getElementById('order-panel');
-      if (!panel) return;
-      if (panel.classList.contains('lg:hidden')) {
-        openOrderPad();
-      } else {
-        closeOrderPad();
-      }
+      openOrderPad();
     }
 
     function openOrderPad() {
-      const panel = document.getElementById('order-panel');
-      const backdrop = document.getElementById('order-modal-backdrop');
-      if (panel) {
-        panel.classList.remove('translate-y-full', 'lg:hidden');
-        panel.classList.add('translate-y-0', 'lg:flex');
-      }
-      if (backdrop && window.innerWidth < 1024) backdrop.classList.remove('hidden');
-      const label = document.getElementById('label-toggle-order-pad');
-      if (label) label.innerText = 'Close Pad';
-      if (chart) {
-        setTimeout(() => {
-          const chartArea = document.getElementById('chart-area');
-          if (chartArea && chartArea.clientWidth > 0) {
-            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
-          }
-        }, 150);
+      if (window.innerWidth >= 1024) {
+        if (currentWorkstation !== 'chart' && currentWorkstation !== 'split') {
+          switchWorkstation('chart');
+        }
+        const rightDock = document.getElementById('right-trading-dock');
+        if (rightDock && rightDock.classList.contains('hidden')) {
+          toggleRightDock();
+        }
+        switchRightDockTab('orderpad');
+      } else {
+        const panel = document.getElementById('order-panel');
+        const backdrop = document.getElementById('order-modal-backdrop');
+        if (panel) {
+          panel.classList.remove('translate-y-full');
+          panel.classList.add('translate-y-0');
+        }
+        if (backdrop) backdrop.classList.remove('hidden');
       }
     }
 
     function closeOrderPad() {
       const panel = document.getElementById('order-panel');
       const backdrop = document.getElementById('order-modal-backdrop');
-      if (panel) {
-        panel.classList.add('translate-y-full', 'lg:hidden');
-        panel.classList.remove('translate-y-0', 'lg:flex');
+      if (panel && window.innerWidth < 1024) {
+        panel.classList.add('translate-y-full');
+        panel.classList.remove('translate-y-0');
       }
       if (backdrop) backdrop.classList.add('hidden');
-      const label = document.getElementById('label-toggle-order-pad');
-      if (label) label.innerText = 'Order Pad';
-      if (chart) {
-        setTimeout(() => {
-          const chartArea = document.getElementById('chart-area');
-          if (chartArea && chartArea.clientWidth > 0) {
-            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
-          }
-        }, 150);
-      }
     }
 
     let isDockMinimized = false;
@@ -2046,6 +2405,9 @@
 
       if (window.innerWidth < 1024) {
         switchMobileTab('watchlist', false);
+      } else {
+        switchWorkstation('chart');
+        switchRightDockTab('watchlist');
       }
       history.replaceState({ tab: 'watchlist' }, '', '#watchlist');
 
@@ -2065,9 +2427,9 @@
         try { await refreshWatchlist(); } catch (e) {}
       }, 1500);
 
-      // 2. Real-time option chain streaming poll (every 2000ms) when Option Chain view is active
+      // 2. Real-time option chain streaming poll (every 2000ms) when Option Chain or Split view is active
       setInterval(async () => {
-        if (currentMainView === 'optionchain') {
+        if (currentWorkstation === 'optionchain' || currentWorkstation === 'split') {
           try { await loadOptionChain(false); } catch (e) {}
         }
       }, 2000);
@@ -2075,7 +2437,7 @@
       // 3. Funds & dock MTM poll (every 3000ms)
       setInterval(async () => {
         try { await refreshFunds(); } catch (e) {}
-        if (currentDockTab === 'positions') {
+        if (currentWorkstation === 'positions' || currentRightDockTab === 'positions') {
           try { await loadDockContent(); } catch (e) {}
         }
       }, 3000);
@@ -2770,6 +3132,12 @@
             sUnreal.innerText = `${unreal >= 0 ? '+' : ''}₹ ${unreal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
             sUnreal.className = `text-sm font-mono font-bold ${unreal >= 0 ? 'text-emerald-400' : 'text-danger'}`;
           }
+
+          // Command Center Bento KPI Cards
+          const cmdAvail = document.getElementById('cmd-avail-capital');
+          if (cmdAvail) cmdAvail.innerText = `₹ ${avail.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+          const cmdUsed = document.getElementById('cmd-used-margin');
+          if (cmdUsed) cmdUsed.innerText = `₹ ${used.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         }
       } catch (e) {
         console.error('Funds fetch error:', e);
@@ -3069,6 +3437,30 @@
         html += `</tbody></table></div>`;
         container.innerHTML = html;
         try { lucide.createIcons(); } catch (e) {}
+
+        // Update 4 Bento KPI Metric Cards
+        const cmdTotalPnl = document.getElementById('cmd-total-pnl');
+        if (cmdTotalPnl) {
+          animatePnlNumber(cmdTotalPnl, totalPnl);
+        }
+        const cmdPnlStatus = document.getElementById('cmd-pnl-status');
+        if (cmdPnlStatus) {
+          cmdPnlStatus.innerText = `${positions.length} active position${positions.length === 1 ? '' : 's'}`;
+        }
+        const cmdPosCount = document.getElementById('cmd-pos-count');
+        if (cmdPosCount) cmdPosCount.innerText = positions.length;
+        const subPosCount = document.getElementById('cmd-subtab-pos-count');
+        if (subPosCount) subPosCount.innerText = positions.length;
+
+        const wsPosPill = document.getElementById('ws-pos-pill');
+        if (wsPosPill) {
+          wsPosPill.innerText = positions.length;
+          if (positions.length > 0) wsPosPill.classList.remove('hidden');
+          else wsPosPill.classList.add('hidden');
+        }
+
+        renderRightDockPositions();
+
 
       } else if (currentDockTab === 'orders') {
         let orders = [];
