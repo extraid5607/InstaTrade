@@ -281,7 +281,45 @@ class VirtualTradingEngine:
                     "volume": 2850000,
                 }
 
-        # 2. Standard Equity / Index Quote
+        # 2. Real-time Indian Benchmark Indices via Groww livePrice (Zero-delay spot)
+        groww_slug_map = {
+            "BSE:SENSEX-INDEX": "sp-bse-sensex",
+            "NSE:NIFTY50-INDEX": "nifty",
+            "NSE:NIFTYBANK-INDEX": "nifty-bank",
+            "NSE:FINNIFTY-INDEX": "nifty-financial-services",
+            "NSE:MIDCPNIFTY-INDEX": "nifty-midcap-select",
+        }
+        if sym in groww_slug_map:
+            try:
+                g_slug = groww_slug_map[sym]
+                g_url = f"https://groww.in/v1/api/option_chain_service/v1/option_chain/derivatives/{g_slug}"
+                g_headers = {"User-Agent": "Mozilla/5.0"}
+                g_resp = self.http_client.get(g_url, headers=g_headers, timeout=2.5)
+                if g_resp.status_code == 200:
+                    g_data = g_resp.json()
+                    lp = g_data.get("livePrice", {})
+                    val = float(lp.get("value") or 0)
+                    if val > 0:
+                        prev_c = float(lp.get("close") or val)
+                        chg = float(lp.get("dayChange") or round(val - prev_c, 2))
+                        chg_pct = float(lp.get("dayChangePerc") or (round((chg / prev_c) * 100.0, 2) if prev_c else 0.0))
+                        s_name = SYMBOL_MAP.get(sym, (None, sym.split(":")[-1], 100.0))[1]
+                        return {
+                            "symbol": sym,
+                            "short_name": s_name,
+                            "ltp": round(val, 2),
+                            "change": round(chg, 2),
+                            "chg_percent": round(chg_pct, 2),
+                            "open": round(float(lp.get("open") or prev_c), 2),
+                            "high": round(float(lp.get("high") or val), 2),
+                            "low": round(float(lp.get("low") or val), 2),
+                            "prev_close": round(prev_c, 2),
+                            "volume": 6500000,
+                        }
+            except Exception:
+                pass
+
+        # 3. Standard Equity / Fallback Quote via Yahoo Finance
         yahoo_sym, short_name, default_base = SYMBOL_MAP.get(sym, (None, sym.split(":")[-1], 100.0))
         if not yahoo_sym:
             clean = sym.split(":")[-1].replace("-EQ", "").replace("-INDEX", "")
@@ -459,6 +497,33 @@ class VirtualTradingEngine:
                             self._chain_raw_cache[f"{active}_"] = d
                             self._chain_cache_time[active] = now
                             self._chain_cache_time[f"{active}_"] = now
+                        lp = d.get("livePrice", {}) if d else {}
+                        if lp and lp.get("value"):
+                            idx_sym = {
+                                "NIFTY": "NSE:NIFTY50-INDEX",
+                                "BANKNIFTY": "NSE:NIFTYBANK-INDEX",
+                                "SENSEX": "BSE:SENSEX-INDEX",
+                                "FINNIFTY": "NSE:FINNIFTY-INDEX",
+                                "MIDCPNIFTY": "NSE:MIDCPNIFTY-INDEX"
+                            }.get(active)
+                            if idx_sym:
+                                val = float(lp.get("value"))
+                                prev_c = float(lp.get("close") or val)
+                                chg = float(lp.get("dayChange") or round(val - prev_c, 2))
+                                chg_pct = float(lp.get("dayChangePerc") or (round((chg / prev_c) * 100.0, 2) if prev_c else 0.0))
+                                self.quotes_cache[idx_sym] = {
+                                    "symbol": idx_sym,
+                                    "short_name": active,
+                                    "ltp": round(val, 2),
+                                    "change": round(chg, 2),
+                                    "chg_percent": round(chg_pct, 2),
+                                    "open": round(float(lp.get("open") or prev_c), 2),
+                                    "high": round(float(lp.get("high") or val), 2),
+                                    "low": round(float(lp.get("low") or val), 2),
+                                    "prev_close": round(prev_c, 2),
+                                    "volume": 6500000,
+                                    "anchor_price": round(val, 2),
+                                }
                 except Exception as ex:
                     logger.debug(f"Background option chain fetch error for {active}: {ex}")
 
@@ -478,6 +543,33 @@ class VirtualTradingEngine:
                                     self._chain_raw_cache[f"{name}_"] = d
                                     self._chain_cache_time[name] = now
                                     self._chain_cache_time[f"{name}_"] = now
+                                lp = d.get("livePrice", {}) if d else {}
+                                if lp and lp.get("value"):
+                                    idx_sym = {
+                                        "NIFTY": "NSE:NIFTY50-INDEX",
+                                        "BANKNIFTY": "NSE:NIFTYBANK-INDEX",
+                                        "SENSEX": "BSE:SENSEX-INDEX",
+                                        "FINNIFTY": "NSE:FINNIFTY-INDEX",
+                                        "MIDCPNIFTY": "NSE:MIDCPNIFTY-INDEX"
+                                    }.get(name)
+                                    if idx_sym:
+                                        val = float(lp.get("value"))
+                                        prev_c = float(lp.get("close") or val)
+                                        chg = float(lp.get("dayChange") or round(val - prev_c, 2))
+                                        chg_pct = float(lp.get("dayChangePerc") or (round((chg / prev_c) * 100.0, 2) if prev_c else 0.0))
+                                        self.quotes_cache[idx_sym] = {
+                                            "symbol": idx_sym,
+                                            "short_name": name,
+                                            "ltp": round(val, 2),
+                                            "change": round(chg, 2),
+                                            "chg_percent": round(chg_pct, 2),
+                                            "open": round(float(lp.get("open") or prev_c), 2),
+                                            "high": round(float(lp.get("high") or val), 2),
+                                            "low": round(float(lp.get("low") or val), 2),
+                                            "prev_close": round(prev_c, 2),
+                                            "volume": 6500000,
+                                            "anchor_price": round(val, 2),
+                                        }
                         except Exception:
                             pass
                         time.sleep(0.5)
@@ -639,21 +731,37 @@ class VirtualTradingEngine:
                 closes = quote.get("close", [])
                 volumes = quote.get("volume", [])
 
-                candles = []
+                step_sec = {"1": 60, "5": 300, "15": 900, "60": 3600, "1D": 86400}.get(resolution, 300)
+                candle_dict = {}
                 for i in range(len(timestamps)):
                     if opens[i] is not None and closes[i] is not None:
-                        candles.append({
-                            "time": timestamps[i],
-                            "open": round(opens[i] + basis, 2),
-                            "high": round(highs[i] + basis, 2),
-                            "low": round(lows[i] + basis, 2),
-                            "close": round(closes[i] + basis, 2),
-                            "volume": volumes[i] or 0,
-                        })
-                if candles:
-                    latest = candles[-1]
-                    cached = self.quotes_cache.get(symbol)
+                        # Normalize time to exact bar boundary
+                        bt = (int(timestamps[i]) // step_sec) * step_sec
+                        o_val = round(opens[i] + basis, 2)
+                        h_val = round(highs[i] + basis, 2)
+                        l_val = round(lows[i] + basis, 2)
+                        c_val = round(closes[i] + basis, 2)
+                        v_val = volumes[i] or 0
+                        if bt not in candle_dict:
+                            candle_dict[bt] = {
+                                "time": bt,
+                                "open": o_val,
+                                "high": h_val,
+                                "low": l_val,
+                                "close": c_val,
+                                "volume": v_val,
+                            }
+                        else:
+                            c = candle_dict[bt]
+                            c["high"] = max(c["high"], h_val)
+                            c["low"] = min(c["low"], l_val)
+                            c["close"] = c_val
+                            c["volume"] += v_val
 
+                candles = [candle_dict[k] for k in sorted(candle_dict.keys())]
+
+                if candles:
+                    cached = self.quotes_cache.get(symbol)
                     # Bridge any delay up to the current minute during active trading hours
                     try:
                         now_utc = datetime.datetime.now(datetime.timezone.utc)
@@ -662,32 +770,37 @@ class VirtualTradingEngine:
                         market_open = ist_time.replace(hour=9, minute=15, second=0, microsecond=0)
                         market_close = ist_time.replace(hour=15, minute=30, second=0, microsecond=0)
 
-                        cur_ltp = (cached.get("ltp") if cached else None) or latest["close"]
+                        cur_ltp = (cached.get("ltp") if cached else None) or candles[-1]["close"]
                         now_ts = int(now_utc.timestamp())
-                        last_ts = latest["time"]
-                        step_sec = {"1": 60, "5": 300, "15": 900, "60": 3600, "1D": 86400}.get(resolution, 300)
+                        now_bar = (now_ts // step_sec) * step_sec
+                        last_bar = candles[-1]["time"]
 
                         if is_weekday and market_open <= ist_time <= market_close and resolution in ["1", "5", "15"]:
-                            if (now_ts - last_ts) >= step_sec:
-                                prev_close = latest["close"]
-                                bars_to_create = min(24, (now_ts - last_ts) // step_sec)
+                            if now_bar > last_bar:
+                                prev_close = candles[-1]["close"]
+                                bars_to_create = min(24, (now_bar - last_bar) // step_sec)
                                 for step_idx in range(1, bars_to_create + 1):
-                                    bar_time = last_ts + (step_idx * step_sec)
+                                    bar_time = last_bar + (step_idx * step_sec)
                                     ratio = step_idx / bars_to_create
                                     bar_close = round(prev_close + (cur_ltp - prev_close) * ratio, 2)
                                     bar_open = prev_close
                                     vol_spread = 2.0 if "NIFTY" in symbol or "SENSEX" in symbol else 0.5
-                                    bar_high = round(max(bar_open, bar_close) + random.uniform(0.2, vol_spread), 2)
-                                    bar_low = round(min(bar_open, bar_close) - random.uniform(0.2, vol_spread), 2)
+                                    bar_high = round(max(bar_open, bar_close) + random.uniform(0.1, vol_spread), 2)
+                                    bar_low = round(min(bar_open, bar_close) - random.uniform(0.1, vol_spread), 2)
                                     candles.append({
                                         "time": bar_time,
                                         "open": bar_open,
                                         "high": bar_high,
                                         "low": bar_low,
                                         "close": bar_close,
-                                        "volume": latest.get("volume", 1000)
+                                        "volume": 1200
                                     })
                                     prev_close = bar_close
+                            else:
+                                # Synchronize latest candle close directly with live tick
+                                candles[-1]["close"] = cur_ltp
+                                candles[-1]["high"] = max(candles[-1]["high"], cur_ltp)
+                                candles[-1]["low"] = min(candles[-1]["low"], cur_ltp)
                     except Exception as bridge_err:
                         logger.debug(f"Candle bridge error: {bridge_err}")
 
