@@ -680,101 +680,6 @@
           </div>
         </div>
 
-        <!-- ORDER PAD OVERLAY (Opens ABOVE Option Chain when Strike is selected) -->
-        <div id="dock-orderpad-overlay" class="hidden absolute inset-0 z-30 bg-cardBg/98 backdrop-blur-md flex flex-col p-4 overflow-y-auto border-l border-borderSubtle shadow-2xl transition-all">
-          <div id="order-panel" class="flex flex-col flex-1">
-            <div class="flex items-center justify-between pb-2.5 border-b border-borderSubtle flex-shrink-0">
-              <div class="flex items-center gap-2">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Order Pad</span>
-                <span class="text-[11px] font-mono text-brand font-bold bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg" id="order-symbol-tag">NIFTY 50</span>
-                <span class="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-lg hidden" id="order-expiry-tag"></span>
-              </div>
-              <button onclick="closeOrderPad()" class="p-1 rounded-lg text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-borderSubtle cursor-pointer transition-colors flex items-center gap-1 text-[11px] px-2.5 font-bold" title="Close Order Pad & Return to Option Chain">
-                <i data-lucide="x" class="w-3.5 h-3.5"></i>
-                <span>Close</span>
-              </button>
-            </div>
-
-            <!-- BUY / SELL SWITCH -->
-            <div class="grid grid-cols-2 gap-2 mt-3.5 bg-darkBg p-1.5 rounded-xl border border-borderSubtle flex-shrink-0">
-              <button onclick="setOrderSide(1)" id="btn-side-buy" class="py-2 text-xs font-bold rounded-lg bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1.5 cursor-pointer shadow-glowBrand">
-                <i data-lucide="arrow-up-right" class="w-4 h-4"></i> BUY
-              </button>
-              <button onclick="setOrderSide(-1)" id="btn-side-sell" class="py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1.5 cursor-pointer">
-                <i data-lucide="arrow-down-right" class="w-4 h-4"></i> SELL
-              </button>
-            </div>
-
-            <!-- PRODUCT TYPE -->
-            <div class="mt-3 flex-shrink-0">
-              <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase font-semibold">
-                <label>Product</label>
-                <span class="text-[9px] text-emerald-400 font-mono">5x Intra Leverage</span>
-              </div>
-              <div class="grid grid-cols-3 gap-1 mt-1">
-                <button onclick="setProduct('INTRADAY')" class="prod-btn py-1.5 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-prod="INTRADAY">MIS (Intra)</button>
-                <button onclick="setProduct('CNC')" class="prod-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="CNC">CNC (Deliv)</button>
-                <button onclick="setProduct('MARGIN')" class="prod-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="MARGIN">NRML</button>
-              </div>
-            </div>
-
-            <!-- ORDER TYPE -->
-            <div class="mt-2.5 flex-shrink-0">
-              <label class="text-[10px] text-slate-400 uppercase font-semibold">Order Type</label>
-              <div class="grid grid-cols-3 gap-1 mt-1">
-                <button onclick="setOrderType(2)" class="type-btn py-1.5 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-type="2">Market</button>
-                <button onclick="setOrderType(1)" class="type-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="1">Limit</button>
-                <button onclick="setOrderType(3)" class="type-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="3">SL</button>
-              </div>
-            </div>
-
-            <!-- QUANTITY & PRICE -->
-            <div class="mt-2.5 space-y-2.5 flex-shrink-0">
-              <div>
-                <div class="flex justify-between items-center text-[10px] text-slate-400">
-                  <label class="uppercase font-semibold">Quantity</label>
-                  <span id="lot-info-tag" class="text-[9px] text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded font-mono font-bold">1 Lot = 30 Qty</span>
-                </div>
-
-                <!-- Dynamic Lot Multiplier Buttons -->
-                <div class="grid grid-cols-5 gap-1 mt-1" id="lot-quick-buttons">
-                  <button type="button" onclick="setLots(1)" id="btn-lot-1" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">1L (30)</button>
-                  <button type="button" onclick="setLots(2)" id="btn-lot-2" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">2L (60)</button>
-                  <button type="button" onclick="setLots(3)" id="btn-lot-3" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">3L (90)</button>
-                  <button type="button" onclick="setLots(5)" id="btn-lot-5" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">5L (150)</button>
-                  <button type="button" onclick="setLots(10)" id="btn-lot-10" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">10L (300)</button>
-                </div>
-
-                <!-- Quantity Input with Increment/Decrement Steppers -->
-                <div class="flex items-center gap-1.5 mt-1.5">
-                  <button type="button" onclick="stepLots(-1)" title="Decrease 1 Lot" class="w-9 h-9 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">-</button>
-                  <input type="number" id="order-qty" value="30" min="1" oninput="onQtyChange()" 
-                         class="flex-1 h-9 bg-darkBg border border-borderSubtle rounded-xl px-2 text-xs text-white font-mono text-center font-bold focus:outline-none focus:border-brand">
-                  <button type="button" onclick="stepLots(1)" title="Increase 1 Lot" class="w-9 h-9 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">+</button>
-                </div>
-                <div id="lot-warning" class="text-[10px] text-amber-400 mt-0.5 hidden font-mono">⚠️ Quantity is not a multiple of lot size</div>
-              </div>
-
-              <div id="price-input-container" class="opacity-50 pointer-events-none transition-opacity">
-                <label class="text-[10px] text-slate-400 uppercase font-semibold">Limit Price</label>
-                <input type="number" id="order-price" value="0.0" step="0.05" oninput="updateMarginEstimate()"
-                       class="w-full mt-0.5 bg-darkBg border border-borderSubtle rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-brand">
-              </div>
-            </div>
-
-            <!-- MARGIN CALCULATION -->
-            <div class="mt-auto pt-3 border-t border-borderSubtle pb-safe flex-shrink-0">
-              <div class="flex justify-between items-center text-xs mb-2 text-slate-400">
-                <span class="text-[11px]">Required Margin:</span>
-                <span class="font-mono text-white font-bold" id="req-margin">₹ 0.00</span>
-              </div>
-              <button onclick="executeOrder()" id="btn-submit-order" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-glowBrand active:scale-95">
-                <i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (30 Qty)
-              </button>
-            </div>
-          </div>
-        </div>
-
         <!-- RIGHT TAB 3: POSITIONS QUICK PANE -->
         <div id="rd-pane-positions" class="rd-pane hidden flex-1 flex flex-col overflow-y-auto p-3">
           <div class="flex items-center justify-between pb-2 border-b border-borderSubtle">
@@ -791,9 +696,6 @@
         </div>
 
       </aside>
-
-      <!-- Mobile Order Modal Backdrop -->
-      <div id="order-modal-backdrop" onclick="closeOrderPad()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity"></div>
     </div>
 
     <!-- WORKSTATION 2: OPTION CHAIN STUDIO (Full-Width Pro Option Chain) -->
@@ -1148,6 +1050,107 @@
 
   </div>
 
+  <!-- GLOBAL ORDER MODAL BACKDROP -->
+  <div id="order-modal-backdrop" onclick="closeOrderPad()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+
+  <!-- UNIVERSAL PRO ORDER PAD DRAWER (Accessible from Watchlist, Option Chain Studio, Portfolio & Chart on Mobile and Desktop) -->
+  <div id="dock-orderpad-overlay" class="hidden fixed inset-x-0 bottom-0 lg:bottom-0 lg:top-12 lg:right-0 lg:left-auto lg:w-96 z-50 bg-cardBg rounded-t-3xl lg:rounded-none max-h-[92vh] lg:max-h-[calc(100vh-3rem)] p-4 flex flex-col overflow-y-auto border-t lg:border-t-0 lg:border-l border-borderSubtle shadow-[0_-10px_40px_rgba(0,0,0,0.35)] lg:shadow-2xl transition-all">
+    <!-- Mobile Drag Bar -->
+    <div class="w-12 h-1.5 bg-slate-500/30 rounded-full mx-auto mb-2.5 flex-shrink-0 lg:hidden"></div>
+
+    <div id="order-panel" class="flex flex-col flex-1">
+      <div class="flex items-center justify-between pb-2.5 border-b border-borderSubtle flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Order Pad</span>
+          <span class="text-[11px] font-mono text-brand font-bold bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg" id="order-symbol-tag">NIFTY 50</span>
+          <span class="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-lg hidden" id="order-expiry-tag"></span>
+        </div>
+        <button onclick="closeOrderPad()" class="p-1 rounded-lg text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-borderSubtle cursor-pointer transition-colors flex items-center gap-1 text-[11px] px-2.5 font-bold" title="Close Order Pad">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          <span>Close</span>
+        </button>
+      </div>
+
+      <!-- BUY / SELL SWITCH -->
+      <div class="grid grid-cols-2 gap-2 mt-3.5 bg-darkBg p-1.5 rounded-xl border border-borderSubtle flex-shrink-0">
+        <button onclick="setOrderSide(1)" id="btn-side-buy" class="py-2 text-xs font-bold rounded-lg bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1.5 cursor-pointer shadow-glowBrand">
+          <i data-lucide="arrow-up-right" class="w-4 h-4"></i> BUY
+        </button>
+        <button onclick="setOrderSide(-1)" id="btn-side-sell" class="py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1.5 cursor-pointer">
+          <i data-lucide="arrow-down-right" class="w-4 h-4"></i> SELL
+        </button>
+      </div>
+
+      <!-- PRODUCT TYPE -->
+      <div class="mt-3 flex-shrink-0">
+        <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase font-semibold">
+          <label>Product</label>
+          <span class="text-[9px] text-emerald-400 font-mono">5x Intra Leverage</span>
+        </div>
+        <div class="grid grid-cols-3 gap-1 mt-1">
+          <button onclick="setProduct('INTRADAY')" class="prod-btn py-1.5 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-prod="INTRADAY">MIS (Intra)</button>
+          <button onclick="setProduct('CNC')" class="prod-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="CNC">CNC (Deliv)</button>
+          <button onclick="setProduct('MARGIN')" class="prod-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="MARGIN">NRML</button>
+        </div>
+      </div>
+
+      <!-- ORDER TYPE -->
+      <div class="mt-2.5 flex-shrink-0">
+        <label class="text-[10px] text-slate-400 uppercase font-semibold">Order Type</label>
+        <div class="grid grid-cols-3 gap-1 mt-1">
+          <button onclick="setOrderType(2)" class="type-btn py-1.5 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-type="2">Market</button>
+          <button onclick="setOrderType(1)" class="type-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="1">Limit</button>
+          <button onclick="setOrderType(3)" class="type-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="3">SL</button>
+        </div>
+      </div>
+
+      <!-- QUANTITY & PRICE -->
+      <div class="mt-2.5 space-y-2.5 flex-shrink-0">
+        <div>
+          <div class="flex justify-between items-center text-[10px] text-slate-400">
+            <label class="uppercase font-semibold">Quantity</label>
+            <span id="lot-info-tag" class="text-[9px] text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded font-mono font-bold">1 Lot = 30 Qty</span>
+          </div>
+
+          <!-- Dynamic Lot Multiplier Buttons -->
+          <div class="grid grid-cols-5 gap-1 mt-1" id="lot-quick-buttons">
+            <button type="button" onclick="setLots(1)" id="btn-lot-1" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">1L (30)</button>
+            <button type="button" onclick="setLots(2)" id="btn-lot-2" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">2L (60)</button>
+            <button type="button" onclick="setLots(3)" id="btn-lot-3" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">3L (90)</button>
+            <button type="button" onclick="setLots(5)" id="btn-lot-5" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">5L (150)</button>
+            <button type="button" onclick="setLots(10)" id="btn-lot-10" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">10L (300)</button>
+          </div>
+
+          <!-- Quantity Input with Increment/Decrement Steppers -->
+          <div class="flex items-center gap-1.5 mt-1.5">
+            <button type="button" onclick="stepLots(-1)" title="Decrease 1 Lot" class="w-9 h-9 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">-</button>
+            <input type="number" id="order-qty" value="30" min="1" oninput="onQtyChange()" 
+                   class="flex-1 h-9 bg-darkBg border border-borderSubtle rounded-xl px-2 text-xs text-white font-mono text-center font-bold focus:outline-none focus:border-brand">
+            <button type="button" onclick="stepLots(1)" title="Increase 1 Lot" class="w-9 h-9 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">+</button>
+          </div>
+          <div id="lot-warning" class="text-[10px] text-amber-400 mt-0.5 hidden font-mono">⚠️ Quantity is not a multiple of lot size</div>
+        </div>
+
+        <div id="price-input-container" class="opacity-50 pointer-events-none transition-opacity">
+          <label class="text-[10px] text-slate-400 uppercase font-semibold">Limit Price</label>
+          <input type="number" id="order-price" value="0.0" step="0.05" oninput="updateMarginEstimate()"
+                 class="w-full mt-0.5 bg-darkBg border border-borderSubtle rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-brand">
+        </div>
+      </div>
+
+      <!-- MARGIN CALCULATION -->
+      <div class="mt-auto pt-3 border-t border-borderSubtle pb-safe flex-shrink-0">
+        <div class="flex justify-between items-center text-xs mb-2 text-slate-400">
+          <span class="text-[11px]">Required Margin:</span>
+          <span class="font-mono text-white font-bold" id="req-margin">₹ 0.00</span>
+        </div>
+        <button onclick="executeOrder()" id="btn-submit-order" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-glowBrand active:scale-95">
+          <i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (30 Qty)
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MOBILE BOTTOM NAVIGATION BAR -->
   <nav id="mob-bottom-nav" class="lg:hidden fixed bottom-0 inset-x-0 bg-panelBg/95 backdrop-blur-md border-t border-borderSubtle flex items-center justify-around h-14 z-30 pb-safe shadow-2xl">
     <button onclick="switchMobileTab('watchlist')" id="mob-tab-watchlist" class="flex flex-col items-center justify-center flex-1 h-full mob-tab-active text-brand cursor-pointer transition-all">
@@ -1301,8 +1304,13 @@
 
     function formatExpiryBadge(exp) {
       if (!exp) return '<span class="text-slate-500 font-mono text-[11px]">-</span>';
+      let cleanExp = String(exp).trim();
+      // Gandhi Jayanti 2 Oct market holiday adjustment -> exchange expires on 1 Oct
+      if (cleanExp === '2026-10-02' || cleanExp === '02 Oct 2026') {
+        cleanExp = '2026-10-01';
+      }
       try {
-        const parts = String(exp).split('-');
+        const parts = cleanExp.split('-');
         if (parts.length === 3) {
           const yr = parts[0];
           const moIdx = parseInt(parts[1], 10) - 1;
@@ -1313,7 +1321,7 @@
           }
         }
       } catch (e) {}
-      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 font-mono">${exp}</span>`;
+      return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 font-mono">${cleanExp}</span>`;
     }
 
     function getActiveUsername() {
@@ -1974,51 +1982,25 @@
 
     function openOrderPad() {
       const overlay = document.getElementById('dock-orderpad-overlay');
-      const rightDock = document.getElementById('right-trading-dock');
       const backdrop = document.getElementById('order-modal-backdrop');
 
-      if (window.innerWidth >= 1024) {
-        if (currentWorkstation !== 'chart' && currentWorkstation !== 'split') {
-          switchWorkstation('chart');
+      if (overlay) {
+        overlay.classList.remove('hidden');
+        const isMobile = window.innerWidth < 1024;
+        if (window.anime) {
+          try {
+            anime({
+              targets: overlay,
+              opacity: [0, 1],
+              translateY: isMobile ? [120, 0] : [0, 0],
+              translateX: isMobile ? [0, 0] : [120, 0],
+              duration: 250,
+              easing: 'easeOutCubic'
+            });
+          } catch (e) {}
         }
-        if (rightDock && rightDock.classList.contains('hidden')) {
-          toggleRightDock();
-        }
-        // Ensure Option Chain tab is active underneath
-        if (currentRightDockTab !== 'optionchain') {
-          switchRightDockTab('optionchain');
-        }
-        if (overlay) {
-          overlay.classList.remove('hidden');
-          if (window.anime) {
-            try {
-              anime({
-                targets: overlay,
-                opacity: [0, 1],
-                translateY: [35, 0],
-                duration: 220,
-                easing: 'easeOutQuad'
-              });
-            } catch (e) {}
-          }
-        }
-      } else {
-        if (overlay) {
-          overlay.classList.remove('hidden');
-          if (window.anime) {
-            try {
-              anime({
-                targets: overlay,
-                opacity: [0, 1],
-                translateY: [40, 0],
-                duration: 250,
-                easing: 'easeOutCubic'
-              });
-            } catch (e) {}
-          }
-        }
-        if (backdrop) backdrop.classList.remove('hidden');
       }
+      if (backdrop) backdrop.classList.remove('hidden');
       updateMarginEstimate();
       try { lucide.createIcons(); } catch (e) {}
     }
@@ -2027,12 +2009,14 @@
       const overlay = document.getElementById('dock-orderpad-overlay');
       const backdrop = document.getElementById('order-modal-backdrop');
       if (overlay) {
+        const isMobile = window.innerWidth < 1024;
         if (window.anime) {
           try {
             anime({
               targets: overlay,
               opacity: [1, 0],
-              translateY: [0, 25],
+              translateY: isMobile ? [0, 120] : [0, 0],
+              translateX: isMobile ? [0, 0] : [0, 120],
               duration: 180,
               easing: 'easeInQuad',
               complete: function() {
@@ -3219,6 +3203,36 @@
       renderSearchResultsList(lastSearchResults);
     }
 
+    function moveWatchlistItem(sym, direction) {
+      let list = getActiveWatchlist();
+      const idx = list.indexOf(sym);
+      if (idx === -1) return;
+      const targetIdx = idx + direction;
+      if (targetIdx < 0 || targetIdx >= list.length) return;
+
+      const temp = list[idx];
+      list[idx] = list[targetIdx];
+      list[targetIdx] = temp;
+      saveActiveWatchlist(list);
+
+      const container = document.getElementById('watchlist-container');
+      if (container) {
+        const rowId1 = 'watch-item-' + sym.replace(/[:.-]/g, '_');
+        const rowId2 = 'watch-item-' + list[idx].replace(/[:.-]/g, '_');
+        const el1 = document.getElementById(rowId1);
+        const el2 = document.getElementById(rowId2);
+        if (el1 && el2) {
+          if (direction === -1) {
+            container.insertBefore(el1, el2);
+          } else {
+            container.insertBefore(el2, el1);
+          }
+        }
+      }
+      const displayName = sym.split(':')[1]?.replace('-EQ','')?.replace('-INDEX','')?.replace('-FUT',' FUT') || sym;
+      showToast(`Moved ${displayName} ${direction === -1 ? 'Up' : 'Down'}`, 'info');
+    }
+
     // Close dropdown on click outside
     document.addEventListener('click', function(e) {
       const searchWrapper = document.getElementById('watch-search-wrapper');
@@ -3237,7 +3251,10 @@
         if (!activeList || activeList.length === 0) return;
         const res = await fetch(`/api/quotes?symbols=${activeList.join(',')}`);
         const result = await res.json();
-        const quotes = result.data || [];
+        const quotesMap = {};
+        (result.data || []).forEach(q => { quotesMap[q.symbol] = q; });
+        // Maintain exact user-defined activeList sort order
+        const quotes = activeList.map(sym => quotesMap[sym]).filter(Boolean);
         const container = document.getElementById('watchlist-container');
 
         // Remove elements from DOM that were deleted from activeList
@@ -3271,22 +3288,47 @@
               ? '<span class="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.2 rounded font-bold font-mono">FUT</span>'
               : '<span class="text-[8px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1 py-0.2 rounded font-bold font-mono">EQ</span>');
 
-          // Action buttons: Spot Index is strictly unbuyable (shows SPOT badge only)
+          // Up / Down Re-shuffle Controls (for all items on desktop & mobile)
+          const reorderButtons = `
+            <div class="flex flex-col gap-0.5 mr-0.5 text-slate-400 flex-shrink-0 select-none">
+              <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', -1)" title="Move Up" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▲</button>
+              <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', 1)" title="Move Down" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▼</button>
+            </div>
+          `;
+
+          // Action buttons: Reorder, Buy/Sell, and Remove (available for ALL items, both desktop & mobile)
           const actionButtons = isIndex ? `
-            <span class="px-2 py-0.5 rounded bg-darkBg border border-borderSubtle text-slate-400 font-mono text-[9px] font-semibold tracking-wider">SPOT</span>
-          ` : `
-            <!-- Desktop Quick Action Buttons (revealed smoothly on hover) -->
-            <div class="hidden lg:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="px-2 py-0.5 rounded bg-brand text-slate-950 font-bold text-[11px] hover:bg-emerald-400 active:scale-95 transition-all shadow-sm" title="Buy ${q.short_name}">BUY</button>
-              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="px-2 py-0.5 rounded bg-danger text-white font-bold text-[11px] hover:bg-rose-600 active:scale-95 transition-all shadow-sm" title="Sell ${q.short_name}">SELL</button>
-              <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="p-1 text-slate-500 hover:text-rose-400 cursor-pointer transition-colors" title="Remove from Watchlist">
-                <i data-lucide="x" class="w-3 h-3"></i>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              ${reorderButtons}
+              <span class="px-2 py-0.5 rounded bg-darkBg border border-borderSubtle text-slate-400 font-mono text-[9px] font-semibold tracking-wider">SPOT</span>
+              <!-- Desktop Remove Button -->
+              <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="hidden lg:flex p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors" title="Remove from Watchlist">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+              <!-- Mobile Remove Button -->
+              <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="flex lg:hidden w-6 h-6 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 items-center justify-center cursor-pointer transition-colors active:scale-90" title="Remove ${q.short_name}">
+                <i data-lucide="trash-2" class="w-3 h-3"></i>
               </button>
             </div>
-            <!-- Mobile Persistent Action Buttons -->
-            <div class="flex lg:hidden items-center gap-1 ml-1">
-              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="w-6 h-6 rounded-lg bg-brand/20 text-brand active:bg-brand active:text-slate-950 font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Buy ${q.short_name}">B</button>
-              <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="w-6 h-6 rounded-lg bg-danger/20 text-danger active:bg-danger active:text-white font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Sell ${q.short_name}">S</button>
+          ` : `
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              ${reorderButtons}
+              <!-- Desktop Quick Action Buttons (revealed smoothly on hover) -->
+              <div class="hidden lg:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="px-2 py-0.5 rounded bg-brand text-slate-950 font-bold text-[11px] hover:bg-emerald-400 active:scale-95 transition-all shadow-sm" title="Buy ${q.short_name}">BUY</button>
+                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="px-2 py-0.5 rounded bg-danger text-white font-bold text-[11px] hover:bg-rose-600 active:scale-95 transition-all shadow-sm" title="Sell ${q.short_name}">SELL</button>
+                <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors" title="Remove from Watchlist">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+              <!-- Mobile Persistent Action Buttons -->
+              <div class="flex lg:hidden items-center gap-1 ml-1">
+                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="w-6 h-6 rounded-lg bg-brand/20 text-brand active:bg-brand active:text-slate-950 font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Buy ${q.short_name}">B</button>
+                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="w-6 h-6 rounded-lg bg-danger/20 text-danger active:bg-danger active:text-white font-bold text-xs flex items-center justify-center transition-all active:scale-90" title="Sell ${q.short_name}">S</button>
+                <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 flex items-center justify-center cursor-pointer transition-colors active:scale-90" title="Remove ${q.short_name}">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                </button>
+              </div>
             </div>
           `;
 
@@ -3309,7 +3351,9 @@
                   <div class="watch-price text-xs font-bold ${colorClass}">₹ ${q.ltp.toFixed(2)}</div>
                   <div class="watch-chg text-[10px] font-semibold ${colorClass}">${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%</div>
                 </div>
-                ${actionButtons}
+                <div class="watch-action-wrapper flex items-center">
+                  ${actionButtons}
+                </div>
               </div>
             `;
             container.appendChild(item);
@@ -3332,6 +3376,11 @@
               chgEl.innerText = `${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%`;
               chgEl.className = `watch-chg text-[10px] ${colorClass}`;
             }
+            const actWrap = item.querySelector('.watch-action-wrapper');
+            if (actWrap) {
+              actWrap.innerHTML = actionButtons;
+            }
+            container.appendChild(item);
           }
 
           // Header Live Index Tickers: NIFTY 50, BANK NIFTY, SENSEX, FINNIFTY
@@ -3415,6 +3464,7 @@
             }
           }
         });
+        try { lucide.createIcons(); } catch (e) {}
 
         applyWatchlistFilter();
       } catch (err) {
@@ -3657,6 +3707,11 @@
           const res = await fetch('/api/positions', { headers: getAuthHeaders() });
           const d = await res.json();
           positions = d.positions || [];
+          positions.forEach(p => {
+            if (p.expiry === '2026-10-02' || p.expiry === '02 Oct 2026') {
+              p.expiry = '2026-10-01';
+            }
+          });
         } catch (e) {}
 
         const activeUser = getActiveUsername();
@@ -3671,6 +3726,11 @@
             try {
               const savedPos = JSON.parse(savedPosRaw);
               if (Array.isArray(savedPos) && savedPos.length > 0) {
+                savedPos.forEach(p => {
+                  if (p.expiry === '2026-10-02' || p.expiry === '02 Oct 2026') {
+                    p.expiry = '2026-10-01';
+                  }
+                });
                 // Auto-restore backup positions to server SQLite DB
                 const syncRes = await fetch('/api/positions/sync', {
                   method: 'POST',

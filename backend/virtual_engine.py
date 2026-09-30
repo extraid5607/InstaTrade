@@ -92,7 +92,112 @@ SYMBOL_MAP = {
     "NSE:PAYTM-EQ": ("PAYTM.NS", "PAYTM", 850.0),
     "NSE:IRCTC-EQ": ("IRCTC.NS", "IRCTC", 880.0),
     "NSE:POLYCAB-EQ": ("POLYCAB.NS", "POLYCAB", 6700.0),
+
+    # 4. Expanded High-Liquidity Indian Equities (NIFTY 100 / F&O Superstars)
+    "NSE:PFC-EQ": ("PFC.NS", "PFC", 480.0),
+    "NSE:RECLTD-EQ": ("RECLTD.NS", "REC LTD", 530.0),
+    "NSE:GAIL-EQ": ("GAIL.NS", "GAIL", 215.0),
+    "NSE:SAIL-EQ": ("SAIL.NS", "SAIL", 132.0),
+    "NSE:NHPC-EQ": ("NHPC.NS", "NHPC", 92.0),
+    "NSE:SJVN-EQ": ("SJVN.NS", "SJVN", 115.0),
+    "NSE:PETRONET-EQ": ("PETRONET.NS", "PETRONET LNG", 345.0),
+    "NSE:OIL-EQ": ("OIL.NS", "OIL INDIA", 580.0),
+    "NSE:IEX-EQ": ("IEX.NS", "IEX", 195.0),
+    "NSE:RVNL-EQ": ("RVNL.NS", "RVNL", 495.0),
+    "NSE:IRCON-EQ": ("IRCON.NS", "IRCON", 240.0),
+    "NSE:CANBK-EQ": ("CANBK.NS", "CANARA BANK", 102.0),
+    "NSE:PNB-EQ": ("PNB.NS", "PNB", 105.0),
+    "NSE:BANKBARODA-EQ": ("BANKBARODA.NS", "BANK OF BARODA", 242.0),
+    "NSE:FEDERALBNK-EQ": ("FEDERALBNK.NS", "FEDERAL BANK", 195.0),
+    "NSE:IDFCFIRSTB-EQ": ("IDFCFIRSTB.NS", "IDFC FIRST BANK", 72.0),
+    "NSE:BANDHANBNK-EQ": ("BANDHANBNK.NS", "BANDHAN BANK", 192.0),
+    "NSE:AUBANK-EQ": ("AUBANK.NS", "AU SMALL FINANCE", 635.0),
+    "NSE:HDFCLIFE-EQ": ("HDFCLIFE.NS", "HDFC LIFE", 715.0),
+    "NSE:SBILIFE-EQ": ("SBILIFE.NS", "SBI LIFE", 1750.0),
+    "NSE:ICICIPRULI-EQ": ("ICICIPRULI.NS", "ICICI PRU LIFE", 740.0),
+    "NSE:MUTHOOTFIN-EQ": ("MUTHOOTFIN.NS", "MUTHOOT FINANCE", 1980.0),
+    "NSE:CHOLAFIN-EQ": ("CHOLAFIN.NS", "CHOLAMANDALAM", 1520.0),
+    "NSE:LICHSGFIN-EQ": ("LICHSGFIN.NS", "LIC HOUSING", 630.0),
+    "NSE:MANAPPURAM-EQ": ("MANAPPURAM.NS", "MANAPPURAM", 175.0),
+    "NSE:POONAWALLA-EQ": ("POONAWALLA.NS", "POONAWALLA FIN", 370.0),
+    "NSE:MOTHERSON-EQ": ("MOTHERSON.NS", "SAMVARDHANA MOTHERSON", 190.0),
+    "NSE:TVSMOTOR-EQ": ("TVSMOTOR.NS", "TVS MOTOR", 2850.0),
+    "NSE:ASHOKLEY-EQ": ("ASHOKLEY.NS", "ASHOK LEYLAND", 225.0),
+    "NSE:BALKRISIND-EQ": ("BALKRISIND.NS", "BALKRISHNA IND", 2950.0),
+    "NSE:MRF-EQ": ("MRF.NS", "MRF", 132000.0),
+    "NSE:EXIDEIND-EQ": ("EXIDEIND.NS", "EXIDE IND", 485.0),
+    "NSE:BOSCHLTD-EQ": ("BOSCHLTD.NS", "BOSCH", 34500.0),
+    "NSE:LTIM-EQ": ("LTIM.NS", "LTIMINDTREE", 5900.0),
+    "NSE:PERSISTENT-EQ": ("PERSISTENT.NS", "PERSISTENT SYSTEMS", 5250.0),
+    "NSE:COFORGE-EQ": ("COFORGE.NS", "COFORGE", 7350.0),
+    "NSE:LTTS-EQ": ("LTTS.NS", "L&T TECH", 5450.0),
+    "NSE:MPHASIS-EQ": ("MPHASIS.NS", "MPHASIS", 3050.0),
+    "NSE:KPITTECH-EQ": ("KPITTECH.NS", "KPIT TECH", 1680.0),
+    "NSE:OFSS-EQ": ("OFSS.NS", "ORACLE FIN", 11200.0),
+    "NSE:DIXON-EQ": ("DIXON.NS", "DIXON TECH", 13800.0),
+    "NSE:AUROPHARMA-EQ": ("AUROPHARMA.NS", "AUROBINDO PHARMA", 1460.0),
+    "NSE:LUPIN-EQ": ("LUPIN.NS", "LUPIN", 2180.0),
+    "NSE:BIOCON-EQ": ("BIOCON.NS", "BIOCON", 360.0),
+    "NSE:TORNTPHARM-EQ": ("TORNTPHARM.NS", "TORRENT PHARMA", 3350.0),
+    "NSE:ALKEM-EQ": ("ALKEM.NS", "ALKEM LABS", 5750.0),
+    "NSE:GLENMARK-EQ": ("GLENMARK.NS", "GLENMARK", 1650.0),
+    "NSE:ZYDUSLIFE-EQ": ("ZYDUSLIFE.NS", "ZYDUS LIFESCIENCES", 1080.0),
+    "NSE:MAXHEALTH-EQ": ("MAXHEALTH.NS", "MAX HEALTHCARE", 960.0),
+    "NSE:MANKIND-EQ": ("MANKIND.NS", "MANKIND PHARMA", 2550.0),
+    "NSE:DABUR-EQ": ("DABUR.NS", "DABUR", 540.0),
+    "NSE:GODREJCP-EQ": ("GODREJCP.NS", "GODREJ CONSUMER", 1280.0),
+    "NSE:MARICO-EQ": ("MARICO.NS", "MARICO", 640.0),
+    "NSE:BRITANNIA-EQ": ("BRITANNIA.NS", "BRITANNIA", 5850.0),
+    "NSE:COLPAL-EQ": ("COLPAL.NS", "COLGATE PALMOLIVE", 3550.0),
+    "NSE:TATACONSUM-EQ": ("TATACONSUM.NS", "TATA CONSUMER", 1160.0),
+    "NSE:DMART-EQ": ("DMART.NS", "AVENUE SUPERMARTS (DMART)", 4350.0),
+    "NSE:VBL-EQ": ("VBL.NS", "VARUN BEVERAGES", 590.0),
+    "NSE:RADICO-EQ": ("RADICO.NS", "RADICO KHAITAN", 2100.0),
+    "NSE:OBEROIRLTY-EQ": ("OBEROIRLTY.NS", "OBEROI REALTY", 1880.0),
+    "NSE:PRESTIGE-EQ": ("PRESTIGE.NS", "PRESTIGE ESTATES", 1750.0),
+    "NSE:PHOENIXLTD-EQ": ("PHOENIXLTD.NS", "PHOENIX MILLS", 1650.0),
+    "NSE:GODREJPROP-EQ": ("GODREJPROP.NS", "GODREJ PROPERTIES", 2950.0),
+    "NSE:GMRINFRA-EQ": ("GMRINFRA.NS", "GMR AIRPORTS", 92.0),
+    "NSE:MAZDOCK-EQ": ("MAZDOCK.NS", "MAZAGON DOCK", 4350.0),
+    "NSE:COCHINSHIP-EQ": ("COCHINSHIP.NS", "COCHIN SHIPYARD", 1720.0),
+    "NSE:BDL-EQ": ("BDL.NS", "BHARAT DYNAMICS", 1120.0),
+    "NSE:NMDC-EQ": ("NMDC.NS", "NMDC", 225.0),
+    "NSE:HINDZINC-EQ": ("HINDZINC.NS", "HINDUSTAN ZINC", 495.0),
+    "NSE:JINDALSTEL-EQ": ("JINDALSTEL.NS", "JINDAL STEEL", 980.0),
+    "NSE:NATIONALUM-EQ": ("NATIONALUM.NS", "NALCO", 210.0),
+    "NSE:PIIND-EQ": ("PIIND.NS", "PI INDUSTRIES", 4350.0),
+    "NSE:SRF-EQ": ("SRF.NS", "SRF", 2450.0),
+    "NSE:DEEPAKNTR-EQ": ("DEEPAKNTR.NS", "DEEPAK NITRITE", 2780.0),
+    "NSE:TATACHEM-EQ": ("TATACHEM.NS", "TATA CHEMICALS", 1080.0),
+    "NSE:NYKAA-EQ": ("NYKAA.NS", "NYKAA", 205.0),
+    "NSE:DELHIVERY-EQ": ("DELHIVERY.NS", "DELHIVERY", 380.0),
+    "NSE:POLICYBZR-EQ": ("POLICYBZR.NS", "PB FINTECH", 1680.0),
 }
+
+
+# Fixed Indian National Stock Market Trading Holidays (Month, Day)
+# When an expiry falls on a holiday or weekend, exchange shifts it to previous trading day
+MARKET_HOLIDAYS_FIXED = {
+    (1, 26),   # Republic Day
+    (5, 1),    # Maharashtra Day
+    (8, 15),   # Independence Day
+    (10, 2),   # Mahatma Gandhi Jayanti (Markets strictly closed)
+    (12, 25),  # Christmas
+}
+
+
+def adjust_for_market_holiday(target_date: datetime.date) -> datetime.date:
+    """If target expiry falls on a weekend or fixed market holiday, shift to previous trading day."""
+    cur = target_date
+    while True:
+        if cur.weekday() >= 5:  # Saturday or Sunday
+            cur -= datetime.timedelta(days=1)
+            continue
+        if (cur.month, cur.day) in MARKET_HOLIDAYS_FIXED:
+            cur -= datetime.timedelta(days=1)
+            continue
+        break
+    return cur
 
 
 def norm_cdf(x: float) -> float:
@@ -158,7 +263,7 @@ def get_default_expiry_for_symbol(symbol: str) -> str:
         "FINNIFTY": 1,    # Tuesday
         "BANKNIFTY": 2,   # Wednesday
         "NIFTY": 3,       # Thursday
-        "SENSEX": 4,      # Friday
+        "SENSEX": 4,      # Friday (shifts to Thursday if Friday is a holiday like Gandhi Jayanti)
     }
     target_weekday = 3  # default Thursday
     for k, v in weekday_map.items():
@@ -168,6 +273,8 @@ def get_default_expiry_for_symbol(symbol: str) -> str:
 
     days_ahead = (target_weekday - ref_date.weekday()) % 7
     exp_date = ref_date + datetime.timedelta(days=days_ahead)
+    # Adjust for holidays (e.g. October 2 Gandhi Jayanti -> shifts Friday to Thursday October 1)
+    exp_date = adjust_for_market_holiday(exp_date)
     return exp_date.strftime("%Y-%m-%d")
 
 
@@ -1551,8 +1658,14 @@ class VirtualTradingEngine:
             p = dict(pos)
             sym = p["symbol"]
 
-            # Ensure expiry string is present
-            if not p.get("expiry"):
+            # Auto-sanitize any position stored with 2026-10-02 (Gandhi Jayanti holiday) to 2026-10-01
+            if p.get("expiry") in ["2026-10-02", "02 Oct 2026"]:
+                p["expiry"] = "2026-10-01"
+                try:
+                    db.save_position(username, p)
+                except Exception:
+                    pass
+            elif not p.get("expiry"):
                 if sym.endswith("CE") or sym.endswith("PE") or "-FUT" in sym:
                     p["expiry"] = get_default_expiry_for_symbol(sym)
                 else:
