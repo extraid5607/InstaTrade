@@ -215,6 +215,23 @@
       color: #475569 !important;
       border-color: #cbd5e1 !important;
     }
+    [data-theme="light"] #pos-exit-modal {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #e2e8f0 !important;
+    }
+    [data-theme="light"] #exit-type-market.bg-slate-800,
+    [data-theme="light"] #exit-type-limit.bg-slate-800 {
+      background-color: #1e293b !important;
+      color: #ffffff !important;
+    }
+    [data-theme="light"] .mob-zk-pos-row:active {
+      background-color: #f1f5f9 !important;
+    }
+    [data-theme="light"] #mob-zerodha-header-container {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+    }
 
     /* Status & Badge Pills */
     [data-theme="light"] .bg-emerald-500\/10,
@@ -759,11 +776,78 @@
       </div>
     </div>
 
-    <!-- WORKSTATION 3: POSITIONS & P&L COMMAND CENTER -->
-    <div id="ws-positions-desk" class="workstation-view hidden flex-1 flex flex-col overflow-y-auto bg-darkBg p-3 md:p-6 space-y-4 md:space-y-5 w-full h-full touch-scroll pb-28 md:pb-6">
+    <!-- WORKSTATION 3: POSITIONS & P&L COMMAND CENTER (Zerodha Kite Mobile View + Desktop Bento Command Center) -->
+    <div id="ws-positions-desk" class="workstation-view hidden flex-1 flex flex-col overflow-y-auto bg-darkBg p-0 md:p-6 space-y-0 md:space-y-5 w-full h-full touch-scroll pb-28 md:pb-6">
       
-      <!-- Top Bento Header & Live Actions -->
-      <div class="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-borderSubtle">
+      <!-- MOBILE ZERODHA KITE STYLE TOP CONTROLS (< md) -->
+      <div id="mob-zerodha-header-container" class="block md:hidden bg-cardBg border-b border-borderSubtle flex-shrink-0">
+        <!-- Top Indices Strip: NIFTY & SENSEX -->
+        <div class="px-4 py-2 border-b border-borderSubtle/60 flex items-center justify-between">
+          <div class="flex items-center gap-6">
+            <!-- NIFTY -->
+            <div onclick="selectSymbol('NSE:NIFTY50-INDEX')" class="cursor-pointer">
+              <div class="text-[10px] font-bold text-slate-400 tracking-wider">NIFTY</div>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span id="mob-zk-nifty-ltp" class="font-bold text-xs text-white">25,425.00</span>
+                <span id="mob-zk-nifty-chg" class="text-[10px] font-semibold text-emerald-400">+0.45%</span>
+              </div>
+            </div>
+            <!-- SENSEX -->
+            <div onclick="selectSymbol('BSE:SENSEX-INDEX')" class="cursor-pointer">
+              <div class="text-[10px] font-bold text-slate-400 tracking-wider">SENSEX</div>
+              <div class="flex items-center gap-1.5 font-mono">
+                <span id="mob-zk-sensex-ltp" class="font-bold text-xs text-white">83,180.00</span>
+                <span id="mob-zk-sensex-chg" class="text-[10px] font-semibold text-emerald-400">+0.32%</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-slate-400 p-1">
+            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+          </div>
+        </div>
+
+        <!-- Zerodha Dual Tabs: INVESTMENTS vs POSITIONS -->
+        <div class="flex items-center border-b border-borderSubtle bg-darkBg/30">
+          <button onclick="switchPositionsSubTab('orders')" id="mob-zk-tab-investments" class="flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+            INVESTMENTS <span id="mob-zk-inv-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">0</span>
+          </button>
+          <button onclick="switchPositionsSubTab('positions')" id="mob-zk-tab-positions" class="flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+            POSITIONS <span id="mob-zk-pos-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-brand text-slate-950 font-mono font-bold">0</span>
+          </button>
+        </div>
+
+        <!-- Profit/Loss Summary Bar -->
+        <div class="px-4 py-2.5 flex items-center justify-between border-b border-borderSubtle/60 bg-darkBg/20">
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400 font-medium">Profit/Loss</span>
+            <span id="mob-zk-total-pnl" class="text-sm font-bold font-mono text-emerald-400">+₹ 0.00</span>
+          </div>
+          <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400"></i>
+        </div>
+
+        <!-- Search & Filter Controls -->
+        <div class="px-4 py-2 flex items-center gap-2">
+          <div class="flex-1 relative flex items-center">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3"></i>
+            <input type="text" id="mob-pos-search" oninput="filterMobilePositions(this.value)" placeholder="Search in positions" class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand transition-all">
+          </div>
+          <button onclick="toggleMobilePositionSort()" class="p-2 rounded-xl bg-darkBg border border-borderSubtle text-slate-400 hover:text-white transition-all flex items-center justify-center cursor-pointer" title="Sort Positions">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Today's Positions Toggle Row -->
+        <div class="px-4 py-2 flex items-center justify-between border-b border-borderSubtle/40">
+          <span class="text-xs text-slate-400 font-medium">Today's positions</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="mob-zk-today-toggle" onchange="toggleTodayPositions(this.checked)" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- DESKTOP TOP BENTO HEADER & ACTIONS (>= md) -->
+      <div class="hidden md:flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-borderSubtle">
         <div>
           <h1 class="text-lg md:text-xl font-black text-white flex items-center gap-2">
             <i data-lucide="briefcase" class="w-5 h-5 text-brand"></i>
@@ -781,8 +865,8 @@
         </div>
       </div>
 
-      <!-- 4 BENTO KPI SUMMARY METRIC CARDS (Animated via Anime.js) -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <!-- DESKTOP 4 BENTO KPI SUMMARY METRIC CARDS (>= md) -->
+      <div class="hidden md:grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <!-- Bento 1: Total Real-Time P&L (Glow Card) -->
         <div class="bento-stat-card bg-gradient-to-br from-[#0c1815] to-cardBg border border-emerald-500/30 rounded-2xl p-4 shadow-xl relative overflow-hidden">
           <div class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
@@ -824,9 +908,10 @@
         </div>
       </div>
 
-      <!-- TABS: POSITIONS TABLE vs ORDER BOOK -->
-      <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 shadow-sm space-y-4">
-        <div class="flex items-center justify-between border-b border-borderSubtle/70 pb-3 flex-wrap gap-2">
+      <!-- MAIN CONTAINER: POSITIONS TABLE vs ORDER BOOK -->
+      <div class="bg-cardBg md:border md:border-borderSubtle md:rounded-2xl p-0 md:p-4 shadow-none md:shadow-sm space-y-0 md:space-y-4">
+        <!-- Desktop Header & Subtabs (>= md) -->
+        <div class="hidden md:flex items-center justify-between border-b border-borderSubtle/70 pb-3 flex-wrap gap-2">
           <div class="flex items-center gap-2 bg-darkBg p-1 rounded-xl border border-borderSubtle">
             <button onclick="switchPositionsSubTab('positions')" id="cmd-tab-positions" class="px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm">
               Open Positions (<span id="cmd-subtab-pos-count">0</span>)
@@ -841,7 +926,7 @@
           </div>
         </div>
 
-        <!-- DOCK CONTENT CONTAINER (Where loadDockContent renders positions and orders tables) -->
+        <!-- DOCK CONTENT CONTAINER (Where loadDockContent renders positions and orders) -->
         <div id="dock-content" class="min-h-48 overflow-x-auto touch-scroll">
           <!-- Injected via loadDockContent() -->
         </div>
@@ -1151,6 +1236,89 @@
     </div>
   </div>
 
+  <!-- DEDICATED POSITION EXIT / SQUARE-OFF POPUP MODAL (Zerodha Kite Style) -->
+  <div id="pos-exit-modal-backdrop" onclick="closePosExitModal()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden transition-opacity"></div>
+  <div id="pos-exit-modal" class="hidden fixed inset-x-0 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 z-50 w-full sm:max-w-md bg-cardBg border border-borderSubtle rounded-t-3xl sm:rounded-2xl shadow-2xl p-5 flex flex-col space-y-4 max-h-[92vh] overflow-y-auto">
+    <!-- Drag handle for mobile -->
+    <div class="w-10 h-1 bg-slate-500/30 rounded-full mx-auto -mt-1 sm:hidden"></div>
+
+    <!-- Modal Header -->
+    <div class="flex items-start justify-between border-b border-borderSubtle pb-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold uppercase tracking-wider text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded">Exit Position</span>
+          <span id="exit-modal-product-tag" class="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-darkBg border border-borderSubtle px-2 py-0.5 rounded">NRML</span>
+        </div>
+        <h3 id="exit-modal-symbol" class="text-base font-bold text-white mt-1.5 font-mono">SENSEX 73900 CALL</h3>
+        <p id="exit-modal-subtitle" class="text-xs text-slate-400">BSE • Expiry: 01 OCT 2026</p>
+      </div>
+      <button onclick="closePosExitModal()" class="p-1.5 rounded-lg bg-darkBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle transition-colors cursor-pointer" title="Close Exit Window">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Position Overview Card -->
+    <div class="grid grid-cols-2 gap-2 bg-darkBg/80 p-3 rounded-xl border border-borderSubtle font-mono text-xs">
+      <div>
+        <div class="text-[10px] text-slate-400 uppercase font-semibold">Open Position</div>
+        <div id="exit-modal-open-qty" class="text-sm font-bold text-white mt-0.5">60 QTY</div>
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-400 uppercase font-semibold">Current LTP</div>
+        <div id="exit-modal-ltp" class="text-sm font-bold text-white mt-0.5">₹ 18.85</div>
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-400 uppercase font-semibold">Buy/Sell Avg</div>
+        <div id="exit-modal-avg" class="text-sm font-semibold text-slate-300 mt-0.5">₹ 19.70</div>
+      </div>
+      <div>
+        <div class="text-[10px] text-slate-400 uppercase font-semibold">Unrealized P&L</div>
+        <div id="exit-modal-pnl" class="text-sm font-bold text-emerald-400 mt-0.5">+₹ 51.00</div>
+      </div>
+    </div>
+
+    <!-- Exit Order Parameters -->
+    <div class="space-y-3">
+      <!-- Order Type Switcher -->
+      <div>
+        <label class="text-[10px] text-slate-400 uppercase font-semibold">Order Type</label>
+        <div class="grid grid-cols-2 gap-2 mt-1">
+          <button type="button" onclick="setExitOrderType('market')" id="exit-type-market" class="py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all shadow-sm">Market</button>
+          <button type="button" onclick="setExitOrderType('limit')" id="exit-type-limit" class="py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all">Limit</button>
+        </div>
+      </div>
+
+      <!-- Quantity Stepper -->
+      <div>
+        <div class="flex items-center justify-between text-[10px] text-slate-400 uppercase font-semibold">
+          <span>Exit Quantity</span>
+          <span id="exit-modal-lot-tag" class="text-brand font-mono font-bold">Full Square-Off</span>
+        </div>
+        <div class="flex items-center gap-2 mt-1">
+          <button type="button" onclick="stepExitQty(-1)" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-white font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer active:scale-95 transition-all">-</button>
+          <input type="number" id="exit-modal-qty" value="60" min="1" oninput="onExitQtyChange()" class="flex-1 h-10 bg-darkBg border border-borderSubtle rounded-xl px-3 text-center text-sm font-mono font-bold text-white focus:outline-none focus:border-brand">
+          <button type="button" onclick="stepExitQty(1)" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-white font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer active:scale-95 transition-all">+</button>
+        </div>
+      </div>
+
+      <!-- Limit Price (Visible when limit is selected) -->
+      <div id="exit-price-container" class="opacity-40 pointer-events-none transition-opacity">
+        <label class="text-[10px] text-slate-400 uppercase font-semibold">Limit Price</label>
+        <input type="number" id="exit-modal-price" value="0.0" step="0.05" class="w-full mt-1 bg-darkBg border border-borderSubtle rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-brand">
+      </div>
+    </div>
+
+    <!-- Confirm / Cancel Action Buttons -->
+    <div class="pt-2 border-t border-borderSubtle space-y-2">
+      <button onclick="confirmPosExit()" id="btn-confirm-exit" class="w-full py-3.5 rounded-xl bg-danger hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-glowDanger active:scale-95 transition-all">
+        <i data-lucide="check-circle" class="w-4 h-4"></i> Square Off / Exit Position
+      </button>
+      <button onclick="closePosExitModal()" class="w-full py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer text-center">
+        Cancel
+      </button>
+    </div>
+  </div>
+
   <!-- MOBILE BOTTOM NAVIGATION BAR -->
   <nav id="mob-bottom-nav" class="lg:hidden fixed bottom-0 inset-x-0 bg-panelBg/95 backdrop-blur-md border-t border-borderSubtle flex items-center justify-around h-14 z-30 pb-safe shadow-2xl">
     <button onclick="switchMobileTab('watchlist')" id="mob-tab-watchlist" class="flex flex-col items-center justify-center flex-1 h-full mob-tab-active text-brand cursor-pointer transition-all">
@@ -1322,6 +1490,71 @@
         }
       } catch (e) {}
       return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700 font-mono">${cleanExp}</span>`;
+    }
+
+    function parsePosSymbolDetails(sym, expiry) {
+      let exchange = 'BSE';
+      let cleanSym = (sym || '').trim();
+      if (cleanSym.startsWith('NSE:')) {
+        exchange = 'NSE';
+        cleanSym = cleanSym.replace(/^NSE:/, '');
+      } else if (cleanSym.startsWith('BSE:')) {
+        exchange = 'BSE';
+        cleanSym = cleanSym.replace(/^BSE:/, '');
+      }
+
+      let underlying = cleanSym;
+      let strike = '';
+      let optType = '';
+      let isOption = false;
+
+      const upper = cleanSym.toUpperCase();
+      if (upper.includes('SENSEX')) {
+        underlying = 'SENSEX';
+      } else if (upper.includes('BANKNIFTY')) {
+        underlying = 'BANKNIFTY';
+      } else if (upper.includes('FINNIFTY')) {
+        underlying = 'FINNIFTY';
+      } else if (upper.includes('MIDCPNIFTY')) {
+        underlying = 'MIDCPNIFTY';
+      } else if (upper.includes('NIFTY')) {
+        underlying = 'NIFTY';
+      } else {
+        underlying = cleanSym.replace(/-EQ$/i, '').replace(/_EQ$/i, '');
+      }
+
+      if (upper.endsWith('CE') || upper.includes(' CALL') || upper.includes(' CE')) {
+        optType = 'CALL';
+        isOption = true;
+      } else if (upper.endsWith('PE') || upper.includes(' PUT') || upper.includes(' PE')) {
+        optType = 'PUT';
+        isOption = true;
+      }
+
+      if (isOption) {
+        const match = upper.match(/(\d{4,6})\s*(CE|PE|CALL|PUT)?$/);
+        if (match) {
+          strike = match[1];
+        }
+      }
+
+      let expiryStr = '01 OCT';
+      if (expiry) {
+        let cleanExp = String(expiry).trim();
+        if (cleanExp === '2026-10-02' || cleanExp === '02 Oct 2026') cleanExp = '2026-10-01';
+        const parts = cleanExp.split('-');
+        if (parts.length === 3) {
+          const day = parts[2].padStart(2, '0');
+          const moIdx = parseInt(parts[1], 10) - 1;
+          const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+          if (months[moIdx]) expiryStr = `${day} ${months[moIdx]}`;
+        } else {
+          const match = cleanExp.match(/^(\d{1,2})\s*([A-Za-z]{3})/);
+          if (match) expiryStr = `${match[1].padStart(2, '0')} ${match[2].toUpperCase()}`;
+        }
+      }
+
+      return { exchange, underlying, strike, optType, isOption, expiryStr };
     }
 
     function getActiveUsername() {
@@ -1727,14 +1960,20 @@
     function switchPositionsSubTab(subTab) {
       const posBtn = document.getElementById('cmd-tab-positions');
       const ordBtn = document.getElementById('cmd-tab-orders');
+      const mobPosTab = document.getElementById('mob-zk-tab-positions');
+      const mobInvTab = document.getElementById('mob-zk-tab-investments');
 
       if (subTab === 'positions') {
         if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
         if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        if (mobPosTab) mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+        if (mobInvTab) mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
         switchDockTab('positions');
       } else {
         if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
         if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        if (mobInvTab) mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+        if (mobPosTab) mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
         switchDockTab('orders');
       }
     }
@@ -1816,6 +2055,7 @@
         return;
       }
 
+      window.latestPositions = positions;
       let html = '';
       positions.forEach(p => {
         const pnl = Number(p.pnl || 0);
@@ -1834,7 +2074,7 @@
             </div>
             <div class="flex flex-col items-end gap-1">
               <span class="font-bold text-xs ${pnlColor}">${pnl >= 0 ? '+' : ''}₹${pnl.toFixed(2)}</span>
-              <button onclick="exitPosition('${p.symbol}')" class="px-2 py-0.5 rounded bg-danger/10 hover:bg-danger hover:text-white text-danger border border-danger/20 text-[10px] font-bold cursor-pointer transition-all active:scale-90">Exit</button>
+              <button onclick="openPosExitModal('${p.symbol}')" class="px-2 py-0.5 rounded bg-danger/10 hover:bg-danger hover:text-white text-danger border border-danger/20 text-[10px] font-bold cursor-pointer transition-all active:scale-90">Exit</button>
             </div>
           </div>
         `;
@@ -3407,6 +3647,25 @@
               chgEl.innerText = `${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%`;
               chgEl.className = `text-[10px] ${colorClass} font-semibold`;
             }
+
+            // Sync Mobile Zerodha Header Indices
+            if (q.symbol === 'NSE:NIFTY50-INDEX') {
+              const mobNiftyLtp = document.getElementById('mob-zk-nifty-ltp');
+              const mobNiftyChg = document.getElementById('mob-zk-nifty-chg');
+              if (mobNiftyLtp) mobNiftyLtp.innerText = Number(q.ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              if (mobNiftyChg) {
+                mobNiftyChg.innerText = `${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%`;
+                mobNiftyChg.className = `text-[10px] font-semibold ${colorClass}`;
+              }
+            } else if (q.symbol === 'BSE:SENSEX-INDEX') {
+              const mobSensexLtp = document.getElementById('mob-zk-sensex-ltp');
+              const mobSensexChg = document.getElementById('mob-zk-sensex-chg');
+              if (mobSensexLtp) mobSensexLtp.innerText = Number(q.ltp).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+              if (mobSensexChg) {
+                mobSensexChg.innerText = `${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%`;
+                mobSensexChg.className = `text-[10px] font-semibold ${colorClass}`;
+              }
+            }
           }
 
           // Active Selected Symbol
@@ -3750,9 +4009,14 @@
           }
         }
 
+        window.latestPositions = positions;
+
         // Sync tab counter
         const tabPosBtn = document.getElementById('tab-positions');
         if (tabPosBtn) tabPosBtn.innerText = `Positions (${positions.length})`;
+
+        const mobPosCount = document.getElementById('mob-zk-pos-count');
+        if (mobPosCount) mobPosCount.innerText = positions.length;
 
         // Mobile notification badge
         const mobBadge = document.getElementById('mob-pos-badge');
@@ -3766,6 +4030,11 @@
           if (dockMtm) {
             dockMtm.innerText = '+₹ 0.00';
             dockMtm.className = 'font-bold text-emerald-400';
+          }
+          const mobZkTotalPnl = document.getElementById('mob-zk-total-pnl');
+          if (mobZkTotalPnl) {
+            mobZkTotalPnl.innerText = '+0.00';
+            mobZkTotalPnl.className = 'text-sm font-bold font-mono text-emerald-400';
           }
           container.innerHTML = `
             <div class="py-12 px-4 text-center">
@@ -3782,34 +4051,47 @@
 
         // Fast In-Place Update (if already rendered and count hasn't changed)
         const existingPosTable = document.getElementById('pos-table-body');
+        const existingMobList = document.getElementById('pos-mob-zerodha-list');
         if (existingPosTable && existingPosTable.children.length === positions.length) {
           let runningTotalPnl = 0;
           positions.forEach(p => {
             const rowKey = p.symbol.replace(/[: -]/g, '_');
             const ltpEl = document.getElementById(`pos-ltp-${rowKey}`);
             const pnlEl = document.getElementById(`pos-pnl-${rowKey}`);
-            const mobLtpEl = document.getElementById(`pos-mob-ltp-${rowKey}`);
-            const mobPnlEl = document.getElementById(`pos-mob-pnl-${rowKey}`);
+            const mobLtpEl = document.getElementById(`mob-pos-ltp-${rowKey}`);
+            const mobPnlEl = document.getElementById(`mob-pos-pnl-${rowKey}`);
             const pnl = Number(p.pnl || 0);
             runningTotalPnl += pnl;
-            const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+            const isClosed = (p.net_qty === 0);
+            const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger');
 
             if (ltpEl) ltpEl.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
             if (pnlEl) {
               pnlEl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
               pnlEl.className = `${pnlColor} font-bold`;
             }
-            if (mobLtpEl) mobLtpEl.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
+            if (mobLtpEl) mobLtpEl.innerText = Number(p.ltp || 0).toFixed(2);
             if (mobPnlEl) {
-              mobPnlEl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
-              mobPnlEl.className = `text-xs font-mono font-bold ${pnlColor}`;
+              mobPnlEl.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}`;
+              mobPnlEl.className = `font-bold font-mono text-sm ${pnlColor}`;
+            }
+
+            // Sync with live Exit Modal if currently opened for this position
+            if (window.currentExitSymbol === p.symbol) {
+              const modalLtp = document.getElementById('exit-modal-ltp');
+              const modalPnl = document.getElementById('exit-modal-pnl');
+              if (modalLtp) modalLtp.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
+              if (modalPnl) {
+                modalPnl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
+                modalPnl.className = `text-sm font-bold font-mono mt-0.5 ${pnlColor}`;
+              }
             }
           });
 
-          const mobTotalPnlEl = document.getElementById('pos-mob-total-pnl');
-          if (mobTotalPnlEl) {
-            mobTotalPnlEl.innerText = `${runningTotalPnl >= 0 ? '+' : ''}₹ ${runningTotalPnl.toFixed(2)}`;
-            mobTotalPnlEl.className = `text-base font-mono font-bold ${runningTotalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+          const mobZkTotalPnl = document.getElementById('mob-zk-total-pnl');
+          if (mobZkTotalPnl) {
+            mobZkTotalPnl.innerText = `${runningTotalPnl >= 0 ? '+' : ''}${runningTotalPnl.toFixed(2)}`;
+            mobZkTotalPnl.className = `text-sm font-bold font-mono ${runningTotalPnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger'}`;
           }
           const dockMtm = document.getElementById('dock-total-mtm-val');
           if (dockMtm) {
@@ -3825,58 +4107,66 @@
           dockMtm.innerText = `${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toFixed(2)}`;
           dockMtm.className = `font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
         }
+        const mobZkTotalPnl = document.getElementById('mob-zk-total-pnl');
+        if (mobZkTotalPnl) {
+          mobZkTotalPnl.innerText = `${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}`;
+          mobZkTotalPnl.className = `text-sm font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger'}`;
+        }
 
         let html = `
-          <!-- MOBILE POSITION CARDS VIEW (< 768px) -->
-          <div class="block md:hidden space-y-3" id="pos-mob-cards-container">
+          <!-- MOBILE ZERODHA KITE POSITION LIST (< 768px) -->
+          <div class="block md:hidden divide-y divide-borderSubtle/60" id="pos-mob-zerodha-list">
             ${positions.map(p => {
               const rowKey = p.symbol.replace(/[: -]/g, '_');
+              const info = parsePosSymbolDetails(p.symbol, p.expiry);
               const pnl = Number(p.pnl || 0);
-              const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+              const pnlFormatted = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}`;
+              const isClosed = (p.net_qty === 0);
+              const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger');
               const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
+              const qtyText = isClosed ? '0 SHARES' : `${p.net_qty > 0 ? '+' : ''}${p.net_qty} SHARES`;
+              const product = p.product || 'NRML';
+
+              let badgeHtml = '';
+              if (info.isOption) {
+                if (isClosed) {
+                  badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400">${info.strike} ${info.optType}</span>`;
+                } else if (info.optType === 'CALL') {
+                  badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25">${info.strike} CALL</span>`;
+                } else {
+                  badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-orange-500/15 text-orange-400 border border-orange-500/25">${info.strike} PUT</span>`;
+                }
+              }
+
+              const expBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800/80 text-slate-400">${info.expiryStr}</span>`;
+
               return `
-                <div id="pos-mob-card-${rowKey}" class="bg-cardBg border border-borderSubtle rounded-2xl p-3.5 shadow-sm space-y-3">
-                  <!-- Header: Symbol, Side, Expiry, PnL -->
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="space-y-1">
-                      <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="font-bold text-sm text-white">${p.symbol}</span>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span>
-                      </div>
-                      <div class="flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <span class="text-slate-500 font-semibold">Expiry:</span>
-                        ${formatExpiryBadge(p.expiry)}
-                      </div>
+                <div id="mob-pos-row-${rowKey}" onclick="openPosExitModal('${p.symbol}')" class="mob-zk-pos-row px-4 py-3 active:bg-slate-800/30 transition-colors cursor-pointer select-none ${isClosed ? 'opacity-60' : ''}" data-symbol="${p.symbol.toLowerCase()}" data-closed="${isClosed ? '1' : '0'}">
+                  <!-- Line 1: Quantity with shield & Product -->
+                  <div class="flex items-center justify-between text-xs text-slate-400">
+                    <div class="flex items-center gap-1.5 font-mono">
+                      <span class="${isClosed ? 'text-slate-500' : 'text-slate-300 font-medium'}">${qtyText}</span>
+                      <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded text-[9px] border border-slate-600 text-slate-400 font-bold" title="NRML Margin">₹</span>
+                    </div>
+                    <span class="text-[11px] font-semibold tracking-wider ${isClosed ? 'text-slate-500' : 'text-slate-400'}">${product}</span>
+                  </div>
+
+                  <!-- Line 2: Symbol, Strike Badge, Expiry & PnL -->
+                  <div class="flex items-center justify-between my-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="font-bold text-sm ${isClosed ? 'text-slate-400' : 'text-white'}">${info.underlying}</span>
+                      ${badgeHtml}
+                      ${expBadge}
                     </div>
                     <div class="text-right">
-                      <div id="pos-mob-pnl-${rowKey}" class="text-base font-mono font-black ${pnlColor}">
-                        ${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}
-                      </div>
-                      <div class="text-[9px] text-slate-400 font-mono tracking-wider">LIVE MTM</div>
+                      <span id="mob-pos-pnl-${rowKey}" class="font-bold font-mono text-sm ${pnlColor}">${pnlFormatted}</span>
                     </div>
                   </div>
 
-                  <!-- Metrics Strip -->
-                  <div class="grid grid-cols-3 gap-2 bg-darkBg/60 p-2.5 rounded-xl border border-borderSubtle/60 text-center font-mono">
-                    <div>
-                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Net Qty</div>
-                      <div class="text-xs font-bold text-white mt-0.5">${p.net_qty}</div>
-                    </div>
-                    <div>
-                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Avg Price</div>
-                      <div class="text-xs font-semibold text-slate-300 mt-0.5">₹${Number(avgPrice).toFixed(2)}</div>
-                    </div>
-                    <div>
-                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Current LTP</div>
-                      <div id="pos-mob-ltp-${rowKey}" class="text-xs font-bold text-white mt-0.5">₹${Number(p.ltp || 0).toFixed(2)}</div>
-                    </div>
-                  </div>
-
-                  <!-- Action Button -->
-                  <div class="pt-0.5">
-                    <button onclick="exitPosition('${p.symbol}')" class="w-full py-2.5 rounded-xl bg-danger/15 hover:bg-danger text-danger hover:text-white border border-danger/30 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all shadow-sm">
-                      <i data-lucide="x-circle" class="w-4 h-4"></i> Square Off / Exit Position
-                    </button>
+                  <!-- Line 3: Exchange, Buy/Sell Avg & LTP -->
+                  <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
+                    <span>${info.exchange} • AVG ${Number(avgPrice).toFixed(2)}</span>
+                    <span>LTP <span id="mob-pos-ltp-${rowKey}" class="${isClosed ? 'text-slate-400' : 'text-slate-200'}">${Number(p.ltp || 0).toFixed(2)}</span></span>
                   </div>
                 </div>
               `;
@@ -3902,10 +4192,11 @@
                 ${positions.map(p => {
                   const rowKey = p.symbol.replace(/[: -]/g, '_');
                   const pnl = Number(p.pnl || 0);
-                  const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-danger';
+                  const isClosed = (p.net_qty === 0);
+                  const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-400' : 'text-danger');
                   const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
                   return `
-                    <tr id="pos-row-${rowKey}" class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
+                    <tr id="pos-row-${rowKey}" class="border-b border-borderSubtle/40 hover:bg-slate-800/30 ${isClosed ? 'opacity-50' : ''}">
                       <td class="py-2.5 pl-2 text-white font-bold">${p.symbol}</td>
                       <td>${formatExpiryBadge(p.expiry)}</td>
                       <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span></td>
@@ -3914,7 +4205,7 @@
                       <td id="pos-ltp-${rowKey}" class="font-bold text-white">₹ ${Number(p.ltp || 0).toFixed(2)}</td>
                       <td id="pos-pnl-${rowKey}" class="${pnlColor} font-bold">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</td>
                       <td class="text-right pr-3">
-                        <button onclick="exitPosition('${p.symbol}')" class="px-3 py-1 text-xs font-bold rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white border border-danger/30 cursor-pointer active:scale-95 transition-all">Exit</button>
+                        <button onclick="openPosExitModal('${p.symbol}')" class="px-3 py-1 text-xs font-bold rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white border border-danger/30 cursor-pointer active:scale-95 transition-all">Exit</button>
                       </td>
                     </tr>
                   `;
@@ -4494,6 +4785,243 @@
       } else {
         openAuthModal('login');
       }
+    }
+
+    // ------------------ POSITIONS EXIT MODAL & MOBILE FILTER CONTROLS ------------------
+    window.currentExitSymbol = null;
+    window.currentExitPosition = null;
+    let currentExitOrderType = 'market';
+    let mobPosSortAsc = false;
+
+    function openPosExitModal(symbol) {
+      const pos = (window.latestPositions || []).find(p => p.symbol === symbol);
+      if (!pos) {
+        exitPosition(symbol);
+        return;
+      }
+
+      if (pos.net_qty === 0) {
+        showToast('Position is already closed / squared off', 'info');
+        return;
+      }
+
+      window.currentExitSymbol = symbol;
+      window.currentExitPosition = pos;
+
+      const info = parsePosSymbolDetails(pos.symbol, pos.expiry);
+      const avgPrice = (pos.buy_avg && pos.buy_avg > 0) ? pos.buy_avg : (pos.sell_avg || 0);
+      const pnlVal = Number(pos.pnl || 0);
+      const pnlColorClass = pnlVal >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger';
+      const openQty = Math.abs(pos.net_qty);
+
+      // Populate Modal Fields
+      const symEl = document.getElementById('exit-modal-symbol');
+      const subEl = document.getElementById('exit-modal-subtitle');
+      const prodEl = document.getElementById('exit-modal-product-tag');
+      const qtyEl = document.getElementById('exit-modal-open-qty');
+      const ltpEl = document.getElementById('exit-modal-ltp');
+      const avgEl = document.getElementById('exit-modal-avg');
+      const pnlEl = document.getElementById('exit-modal-pnl');
+      const inputQty = document.getElementById('exit-modal-qty');
+      const inputPrice = document.getElementById('exit-modal-price');
+
+      if (symEl) {
+        symEl.innerText = `${info.underlying} ${info.isOption ? info.strike + ' ' + info.optType : ''}`;
+      }
+      if (subEl) {
+        subEl.innerText = `${info.exchange} • ${info.isOption ? 'Expiry: ' + info.expiryStr : 'Equity'}`;
+      }
+      if (prodEl) {
+        prodEl.innerText = pos.product || 'NRML';
+      }
+      if (qtyEl) {
+        qtyEl.innerText = `${pos.net_qty} SHARES`;
+      }
+      if (ltpEl) {
+        ltpEl.innerText = `₹ ${Number(pos.ltp || 0).toFixed(2)}`;
+      }
+      if (avgEl) {
+        avgEl.innerText = `₹ ${Number(avgPrice).toFixed(2)}`;
+      }
+      if (pnlEl) {
+        pnlEl.innerText = `${pnlVal >= 0 ? '+' : ''}₹ ${pnlVal.toFixed(2)}`;
+        pnlEl.className = `text-sm font-bold font-mono mt-0.5 ${pnlColorClass}`;
+      }
+      if (inputQty) {
+        inputQty.value = openQty;
+        inputQty.max = openQty;
+      }
+      if (inputPrice) {
+        inputPrice.value = Number(pos.ltp || 0).toFixed(2);
+      }
+
+      setExitOrderType('market');
+      onExitQtyChange();
+
+      const modal = document.getElementById('pos-exit-modal');
+      const backdrop = document.getElementById('pos-exit-modal-backdrop');
+
+      if (backdrop) backdrop.classList.remove('hidden');
+      if (modal) {
+        modal.classList.remove('hidden');
+        if (window.anime) {
+          try {
+            anime({
+              targets: modal,
+              opacity: [0, 1],
+              translateY: [40, 0],
+              duration: 250,
+              easing: 'easeOutCubic'
+            });
+          } catch (e) {}
+        }
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function closePosExitModal() {
+      const modal = document.getElementById('pos-exit-modal');
+      const backdrop = document.getElementById('pos-exit-modal-backdrop');
+      if (backdrop) backdrop.classList.add('hidden');
+      if (modal) {
+        if (window.anime) {
+          try {
+            anime({
+              targets: modal,
+              opacity: [1, 0],
+              translateY: [0, 40],
+              duration: 200,
+              easing: 'easeInCubic',
+              complete: () => {
+                modal.classList.add('hidden');
+              }
+            });
+          } catch (e) {
+            modal.classList.add('hidden');
+          }
+        } else {
+          modal.classList.add('hidden');
+        }
+      }
+      window.currentExitSymbol = null;
+      window.currentExitPosition = null;
+    }
+
+    function setExitOrderType(type) {
+      currentExitOrderType = type;
+      const mBtn = document.getElementById('exit-type-market');
+      const lBtn = document.getElementById('exit-type-limit');
+      const priceCont = document.getElementById('exit-price-container');
+
+      if (type === 'market') {
+        if (mBtn) mBtn.className = 'py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all shadow-sm';
+        if (lBtn) lBtn.className = 'py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all';
+        if (priceCont) priceCont.className = 'opacity-40 pointer-events-none transition-opacity';
+      } else {
+        if (lBtn) lBtn.className = 'py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all shadow-sm';
+        if (mBtn) mBtn.className = 'py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all';
+        if (priceCont) priceCont.className = 'opacity-100 pointer-events-auto transition-opacity';
+      }
+    }
+
+    function stepExitQty(delta) {
+      const input = document.getElementById('exit-modal-qty');
+      if (!input) return;
+      let val = parseInt(input.value, 10) || 1;
+      let step = 1;
+      if (window.currentExitPosition) {
+        const sym = window.currentExitPosition.symbol.toUpperCase();
+        if (sym.includes('BANKNIFTY')) step = 30;
+        else if (sym.includes('FINNIFTY')) step = 60;
+        else if (sym.includes('SENSEX')) step = 20;
+        else if (sym.includes('MIDCPNIFTY')) step = 120;
+        else if (sym.includes('NIFTY')) step = 65;
+      }
+      val += (delta * step);
+      if (val < 1) val = 1;
+      if (window.currentExitPosition && val > Math.abs(window.currentExitPosition.net_qty)) {
+        val = Math.abs(window.currentExitPosition.net_qty);
+      }
+      input.value = val;
+      onExitQtyChange();
+    }
+
+    function onExitQtyChange() {
+      const input = document.getElementById('exit-modal-qty');
+      const tag = document.getElementById('exit-modal-lot-tag');
+      if (!input || !tag || !window.currentExitPosition) return;
+      const maxQty = Math.abs(window.currentExitPosition.net_qty);
+      const val = parseInt(input.value, 10) || 0;
+      if (val >= maxQty) {
+        tag.innerText = 'Full Square-Off';
+        tag.className = 'text-brand font-mono font-bold';
+      } else {
+        tag.innerText = `Partial (${val}/${maxQty})`;
+        tag.className = 'text-amber-400 font-mono font-bold';
+      }
+    }
+
+    async function confirmPosExit() {
+      if (!window.currentExitSymbol) return;
+      const btn = document.getElementById('btn-confirm-exit');
+      const originalHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Squaring Off...`;
+        try { lucide.createIcons(); } catch (e) {}
+      }
+
+      const symToExit = window.currentExitSymbol;
+      closePosExitModal();
+      await exitPosition(symToExit);
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    }
+
+    // Filter Mobile Zerodha Positions by Text Query
+    function filterMobilePositions(query) {
+      const q = (query || '').toLowerCase().trim();
+      const rows = document.querySelectorAll('.mob-zk-pos-row');
+      rows.forEach(r => {
+        const sym = r.getAttribute('data-symbol') || '';
+        const text = r.innerText.toLowerCase();
+        if (!q || sym.includes(q) || text.includes(q)) {
+          r.style.display = '';
+        } else {
+          r.style.display = 'none';
+        }
+      });
+    }
+
+    // Toggle Today's Positions Filter (Open vs Closed)
+    function toggleTodayPositions(onlyOpen) {
+      const rows = document.querySelectorAll('.mob-zk-pos-row');
+      rows.forEach(r => {
+        const isClosed = r.getAttribute('data-closed') === '1';
+        if (onlyOpen && isClosed) {
+          r.style.display = 'none';
+        } else {
+          r.style.display = '';
+        }
+      });
+    }
+
+    // Sort Mobile Positions
+    function toggleMobilePositionSort() {
+      mobPosSortAsc = !mobPosSortAsc;
+      const list = document.getElementById('pos-mob-zerodha-list');
+      if (!list) return;
+      const rows = Array.from(list.querySelectorAll('.mob-zk-pos-row'));
+      rows.sort((a, b) => {
+        const pnlA = parseFloat(a.querySelector('[id^="mob-pos-pnl-"]')?.innerText.replace(/[₹,+ ]/g, '') || 0);
+        const pnlB = parseFloat(b.querySelector('[id^="mob-pos-pnl-"]')?.innerText.replace(/[₹,+ ]/g, '') || 0);
+        return mobPosSortAsc ? pnlA - pnlB : pnlB - pnlA;
+      });
+      rows.forEach(r => list.appendChild(r));
+      showToast(mobPosSortAsc ? 'Positions sorted by P&L (Ascending)' : 'Positions sorted by P&L (Descending)', 'info');
     }
 
     // ------------------ POSITIONS & FUNDS CONTROLS ------------------
