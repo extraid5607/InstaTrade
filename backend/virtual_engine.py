@@ -653,6 +653,45 @@ class VirtualTradingEngine:
                 if candles:
                     latest = candles[-1]
                     cached = self.quotes_cache.get(symbol)
+
+                    # Bridge any delay up to the current minute during active trading hours
+                    try:
+                        now_utc = datetime.datetime.now(datetime.timezone.utc)
+                        ist_time = now_utc + datetime.timedelta(hours=5, minutes=30)
+                        is_weekday = ist_time.weekday() < 5
+                        market_open = ist_time.replace(hour=9, minute=15, second=0, microsecond=0)
+                        market_close = ist_time.replace(hour=15, minute=30, second=0, microsecond=0)
+
+                        cur_ltp = (cached.get("ltp") if cached else None) or latest["close"]
+                        now_ts = int(now_utc.timestamp())
+                        last_ts = latest["time"]
+                        step_sec = {"1": 60, "5": 300, "15": 900, "60": 3600, "1D": 86400}.get(resolution, 300)
+
+                        if is_weekday and market_open <= ist_time <= market_close and resolution in ["1", "5", "15"]:
+                            if (now_ts - last_ts) >= step_sec:
+                                prev_close = latest["close"]
+                                bars_to_create = min(24, (now_ts - last_ts) // step_sec)
+                                for step_idx in range(1, bars_to_create + 1):
+                                    bar_time = last_ts + (step_idx * step_sec)
+                                    ratio = step_idx / bars_to_create
+                                    bar_close = round(prev_close + (cur_ltp - prev_close) * ratio, 2)
+                                    bar_open = prev_close
+                                    vol_spread = 2.0 if "NIFTY" in symbol or "SENSEX" in symbol else 0.5
+                                    bar_high = round(max(bar_open, bar_close) + random.uniform(0.2, vol_spread), 2)
+                                    bar_low = round(min(bar_open, bar_close) - random.uniform(0.2, vol_spread), 2)
+                                    candles.append({
+                                        "time": bar_time,
+                                        "open": bar_open,
+                                        "high": bar_high,
+                                        "low": bar_low,
+                                        "close": bar_close,
+                                        "volume": latest.get("volume", 1000)
+                                    })
+                                    prev_close = bar_close
+                    except Exception as bridge_err:
+                        logger.debug(f"Candle bridge error: {bridge_err}")
+
+                    latest = candles[-1]
                     if cached:
                         cached["ltp"] = latest["close"]
                         cached["anchor_price"] = latest["close"]

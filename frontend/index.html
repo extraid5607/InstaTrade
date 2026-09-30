@@ -1209,7 +1209,7 @@
   </div>
 
   <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="fixed bottom-5 right-5 bg-cardBg border border-borderSubtle px-4 py-3 rounded-lg shadow-xl text-xs flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+  <div id="toast" class="fixed top-16 right-4 sm:right-6 bg-cardBg/95 backdrop-blur-md border border-borderSubtle px-4 py-3 rounded-xl shadow-2xl text-xs flex items-center gap-3 transform -translate-y-10 opacity-0 pointer-events-none transition-all duration-300 z-[9999]">
     <i data-lucide="info" class="w-4 h-4 text-brand" id="toast-icon"></i>
     <span id="toast-msg">Notification</span>
   </div>
@@ -1536,28 +1536,44 @@
 
           html += `
             <tr class="${atmStyle} hover:bg-slate-800/40 transition-colors">
-              <!-- CALL BUTTON -->
-              <td class="py-1 px-1 text-center">
-                <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
-                        class="w-full py-1 px-1.5 rounded-lg bg-emerald-500/10 hover:bg-brand hover:text-slate-950 text-emerald-400 font-bold text-[11px] border border-emerald-500/20 cursor-pointer active:scale-95 transition-all shadow-sm" 
-                        title="Click to trade ${ce.display_name}">
-                  ₹${Number(ce.ltp || 0).toFixed(1)}
-                </button>
+              <!-- CALL (LTP + B + S) -->
+              <td class="py-1 px-1">
+                <div class="flex items-center justify-end gap-1">
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="flex-1 py-1 px-1.5 text-right rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-[11px] border border-emerald-500/20 cursor-pointer active:scale-95 transition-all truncate" 
+                          title="Select ${ce.display_name}">
+                    ₹${Number(ce.ltp || 0).toFixed(1)}
+                  </button>
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-brand/20 hover:bg-brand text-brand hover:text-slate-950 font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90" 
+                          title="BUY ${ce.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, -1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90" 
+                          title="SELL ${ce.display_name}">S</button>
+                </div>
               </td>
 
               <!-- STRIKE -->
-              <td class="py-1 px-1 text-center font-bold ${isAtm ? 'text-amber-300 font-black' : 'text-slate-200'}">
+              <td class="py-1 px-1 text-center font-bold whitespace-nowrap ${isAtm ? 'text-amber-300 font-black' : 'text-slate-200'}">
                 <span>${s.strike}</span>
-                ${isAtm ? '<span class="text-[8px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black ml-1">ATM</span>' : ''}
+                ${isAtm ? '<span class="text-[8px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black ml-0.5">ATM</span>' : ''}
               </td>
 
-              <!-- PUT BUTTON -->
-              <td class="py-1 px-1 text-center">
-                <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
-                        class="w-full py-1 px-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 font-bold text-[11px] border border-rose-500/20 cursor-pointer active:scale-95 transition-all shadow-sm" 
-                        title="Click to trade ${pe.display_name}">
-                  ₹${Number(pe.ltp || 0).toFixed(1)}
-                </button>
+              <!-- PUT (B + S + LTP) -->
+              <td class="py-1 px-1">
+                <div class="flex items-center justify-start gap-1">
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-brand/20 hover:bg-brand text-brand hover:text-slate-950 font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90" 
+                          title="BUY ${pe.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, -1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90" 
+                          title="SELL ${pe.display_name}">S</button>
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="flex-1 py-1 px-1.5 text-left rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-[11px] border border-rose-500/20 cursor-pointer active:scale-95 transition-all truncate" 
+                          title="Select ${pe.display_name}">
+                    ₹${Number(pe.ltp || 0).toFixed(1)}
+                  </button>
+                </div>
               </td>
             </tr>
           `;
@@ -1752,7 +1768,31 @@
           height: splitArea.clientHeight,
           layout: { background: { color: '#070a12' }, textColor: '#94a3b8' },
           grid: { vertLines: { color: '#141d30' }, horzLines: { color: '#141d30' } },
-          timeScale: { borderColor: '#1e293b', timeVisible: true }
+          timeScale: {
+            borderColor: '#1e293b',
+            timeVisible: true,
+            secondsVisible: false,
+            tickMarkFormatter: (time, tickMarkType) => {
+              if (typeof time === 'number') {
+                const date = new Date(time * 1000);
+                if (tickMarkType === 0) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+                if (tickMarkType === 1) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
+                if (tickMarkType === 2) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
+                return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+              }
+              return null;
+            }
+          },
+          localization: {
+            timeFormatter: (time) => {
+              if (typeof time === 'number') {
+                const date = new Date(time * 1000);
+                return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }) + ' IST';
+              }
+              return '';
+            },
+            dateFormat: 'dd MMM yyyy'
+          }
         });
         splitCandleSeries = splitChart.addCandlestickSeries({
           upColor: '#10b981', downColor: '#f43f5e',
@@ -2761,7 +2801,28 @@
         },
         timeScale: {
           timeVisible: true,
+          secondsVisible: false,
+          tickMarkFormatter: (time, tickMarkType) => {
+            if (typeof time === 'number') {
+              const date = new Date(time * 1000);
+              if (tickMarkType === 0) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+              if (tickMarkType === 1) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
+              if (tickMarkType === 2) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
+              return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
+            }
+            return null;
+          },
           borderColor: isLight ? '#e2e8f0' : '#1f2937',
+        },
+        localization: {
+          timeFormatter: (time) => {
+            if (typeof time === 'number') {
+              const date = new Date(time * 1000);
+              return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }) + ' IST';
+            }
+            return '';
+          },
+          dateFormat: 'dd MMM yyyy'
         },
         rightPriceScale: {
           borderColor: isLight ? '#e2e8f0' : '#1f2937',
@@ -3237,7 +3298,7 @@
                   if (curPrice < lastCandle.low) lastCandle.low = curPrice;
                   candleSeries.update(lastCandle);
                   if (splitCandleSeries) splitCandleSeries.update(lastCandle);
-                } else if ((nowSec - lastTime) >= barSec && (nowSec - lastTime) < barSec * 5) {
+                } else if ((nowSec - lastTime) >= barSec) {
                   // Next bar period has arrived in live session: start fresh bar
                   const nextBarTime = Math.floor(nowSec / barSec) * barSec;
                   if (nextBarTime > lastCandle.time) {
@@ -4313,6 +4374,7 @@
     }
 
     // ------------------ TOAST NOTIFICATION ------------------
+    let toastTimeout = null;
     function showToast(msg, type = 'info') {
       const t = document.getElementById('toast');
       const text = document.getElementById('toast-msg');
@@ -4327,9 +4389,10 @@
         icon.className = 'w-4 h-4 text-blue-400';
       }
 
-      t.classList.remove('translate-y-20', 'opacity-0');
-      setTimeout(() => {
-        t.classList.add('translate-y-20', 'opacity-0');
+      t.classList.remove('-translate-y-10', 'opacity-0', 'pointer-events-none');
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        t.classList.add('-translate-y-10', 'opacity-0', 'pointer-events-none');
       }, 3500);
     }
   </script>
