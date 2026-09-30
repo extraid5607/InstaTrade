@@ -76,14 +76,23 @@
       --scrollbar-thumb: #cbd5e1;
     }
 
-    /* Light Theme Color Consistency Overrides */
+    /* Comprehensive Light Theme Color Palette & High-Contrast Overrides */
+    [data-theme="light"] {
+      color-scheme: light;
+    }
+    [data-theme="light"] body {
+      background-color: #f8fafc !important;
+      color: #0f172a !important;
+    }
     [data-theme="light"] .text-white {
       color: #0f172a !important;
     }
     [data-theme="light"] .text-slate-100,
-    [data-theme="light"] .text-slate-200,
-    [data-theme="light"] .text-slate-300 {
+    [data-theme="light"] .text-slate-200 {
       color: #1e293b !important;
+    }
+    [data-theme="light"] .text-slate-300 {
+      color: #334155 !important;
     }
     [data-theme="light"] .text-slate-400 {
       color: #64748b !important;
@@ -92,36 +101,35 @@
       color: #64748b !important;
     }
 
-    /* Surfaces in Light Theme */
-    [data-theme="light"] .bg-darkBg {
+    /* Surfaces & Backgrounds in Light Theme */
+    [data-theme="light"] [class*="bg-darkBg"] {
       background-color: #f1f5f9 !important;
     }
-    [data-theme="light"] .bg-panelBg {
+    [data-theme="light"] [class*="bg-panelBg"] {
       background-color: #ffffff !important;
     }
-    [data-theme="light"] .bg-cardBg {
+    [data-theme="light"] [class*="bg-cardBg"] {
       background-color: #ffffff !important;
     }
-    [data-theme="light"] .bg-slate-950,
-    [data-theme="light"] .bg-slate-900 {
+    [data-theme="light"] [class*="bg-slate-950"],
+    [data-theme="light"] [class*="bg-slate-900"] {
       background-color: #f8fafc !important;
       color: #0f172a !important;
     }
     [data-theme="light"] .bg-slate-800 {
       background-color: #e2e8f0 !important;
       color: #0f172a !important;
+      border-color: #cbd5e1 !important;
     }
-    [data-theme="light"] .hover\:bg-slate-800:hover,
-    [data-theme="light"] .hover\:bg-slate-700:hover,
-    [data-theme="light"] .hover\:bg-slate-800\/40:hover,
-    [data-theme="light"] .hover\:bg-slate-800\/30:hover {
+    [data-theme="light"] [class*="hover:bg-slate-800"]:hover,
+    [data-theme="light"] [class*="hover:bg-slate-700"]:hover {
       background-color: #e2e8f0 !important;
     }
-    [data-theme="light"] .border-borderSubtle {
+    [data-theme="light"] [class*="border-borderSubtle"] {
       border-color: #e2e8f0 !important;
     }
-    [data-theme="light"] .border-slate-800,
-    [data-theme="light"] .border-slate-700 {
+    [data-theme="light"] [class*="border-slate-800"],
+    [data-theme="light"] [class*="border-slate-700"] {
       border-color: #cbd5e1 !important;
     }
 
@@ -129,30 +137,109 @@
     [data-theme="light"] .bento-stat-card {
       background: #ffffff !important;
       border-color: #e2e8f0 !important;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05) !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
     }
 
-    /* Option Chain Tables in Light Theme */
+    /* Tables & Option Chain in Light Theme */
     [data-theme="light"] th {
       color: #475569 !important;
-      background-color: #f8fafc !important;
+      background-color: #f1f5f9 !important;
     }
     [data-theme="light"] td {
       color: #0f172a !important;
     }
+    [data-theme="light"] tr[class*="bg-amber-"],
+    [data-theme="light"] .atm-row {
+      background-color: #fef3c7 !important;
+      border-color: #f59e0b !important;
+    }
+    [data-theme="light"] tr[class*="bg-amber-"] td,
+    [data-theme="light"] tr[class*="bg-amber-"] span,
+    [data-theme="light"] [class*="text-amber-300"],
+    [data-theme="light"] [class*="text-amber-400"] {
+      color: #92400e !important;
+    }
+    [data-theme="light"] span[class*="bg-amber-"] {
+      background-color: #f59e0b !important;
+      color: #ffffff !important;
+    }
+    [data-theme="light"] [class*="bg-emerald-950"] {
+      background-color: rgba(16, 185, 129, 0.08) !important;
+    }
+    [data-theme="light"] [class*="bg-rose-950"] {
+      background-color: rgba(244, 63, 94, 0.08) !important;
+    }
+
+    /* Forms, Inputs & Selects */
+    [data-theme="light"] input,
+    [data-theme="light"] select,
+    [data-theme="light"] textarea {
+      background-color: #ffffff !important;
+      color: #0f172a !important;
+      border-color: #cbd5e1 !important;
+    }
+    [data-theme="light"] input:focus,
+    [data-theme="light"] select:focus {
+      border-color: #10b981 !important;
+      outline: none !important;
+    }
 
     /* Solid Action Buttons with High-Contrast Text */
-    [data-theme="light"] button.bg-brand {
+    [data-theme="light"] button.bg-brand,
+    [data-theme="light"] .bg-brand {
       background-color: #10b981 !important;
       color: #022c22 !important;
     }
-    [data-theme="light"] button.bg-danger {
+    [data-theme="light"] button.bg-danger,
+    [data-theme="light"] button.bg-rose-500,
+    [data-theme="light"] .bg-danger,
+    [data-theme="light"] .bg-rose-600,
+    [data-theme="light"] .bg-rose-500 {
       background-color: #f43f5e !important;
       color: #ffffff !important;
     }
-    [data-theme="light"] button.bg-rose-500 {
-      background-color: #f43f5e !important;
+
+    /* Order Pad Controls in Light Theme */
+    [data-theme="light"] #dock-orderpad-overlay {
+      background-color: rgba(255, 255, 255, 0.98) !important;
+    }
+    [data-theme="light"] .prod-btn.bg-slate-800,
+    [data-theme="light"] .type-btn.bg-slate-800 {
+      background-color: #1e293b !important;
       color: #ffffff !important;
+      border-color: #0f172a !important;
+    }
+    [data-theme="light"] .prod-btn:not(.bg-slate-800),
+    [data-theme="light"] .type-btn:not(.bg-slate-800) {
+      background-color: #f8fafc !important;
+      color: #475569 !important;
+      border-color: #cbd5e1 !important;
+    }
+
+    /* Status & Badge Pills */
+    [data-theme="light"] .bg-emerald-500\/10,
+    [data-theme="light"] .bg-emerald-500\/20,
+    [data-theme="light"] .bg-brand\/10,
+    [data-theme="light"] .bg-brand\/20 {
+      background-color: rgba(16, 185, 129, 0.15) !important;
+      color: #047857 !important;
+    }
+    [data-theme="light"] .bg-rose-500\/10,
+    [data-theme="light"] .bg-rose-500\/20,
+    [data-theme="light"] .bg-red-500\/10,
+    [data-theme="light"] .bg-red-500\/20 {
+      background-color: rgba(244, 63, 94, 0.15) !important;
+      color: #be123c !important;
+    }
+    [data-theme="light"] .text-emerald-400 {
+      color: #047857 !important;
+    }
+    [data-theme="light"] .text-rose-400,
+    [data-theme="light"] .text-danger {
+      color: #e11d48 !important;
+    }
+    [data-theme="light"] .text-brand {
+      color: #047857 !important;
     }
 
     body {
@@ -243,30 +330,6 @@
       animation: flashRed 0.45s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Light Theme clean overrides */
-    [data-theme="light"] .text-white { color: #0f172a !important; }
-    [data-theme="light"] .text-slate-200 { color: #1e293b !important; }
-    [data-theme="light"] .text-slate-300 { color: #334155 !important; }
-    [data-theme="light"] .text-slate-400 { color: #64748b !important; }
-    [data-theme="light"] .text-slate-500 { color: #94a3b8 !important; }
-
-    [data-theme="light"] .bg-slate-800 { background-color: #f1f5f9 !important; color: #1e293b !important; border-color: #cbd5e1 !important; }
-    [data-theme="light"] .bg-slate-800\/40 { background-color: rgba(241, 245, 249, 0.7) !important; }
-    [data-theme="light"] .bg-slate-800\/60 { background-color: rgba(241, 245, 249, 0.95) !important; }
-    [data-theme="light"] .bg-slate-800\/30 { background-color: rgba(241, 245, 249, 0.5) !important; }
-    [data-theme="light"] .bg-slate-900 { background-color: #e2e8f0 !important; color: #0f172a !important; }
-
-    [data-theme="light"] input,
-    [data-theme="light"] select {
-      background-color: #ffffff !important;
-      color: #0f172a !important;
-      border-color: #cbd5e1 !important;
-    }
-
-    [data-theme="light"] .border-borderSubtle { border-color: #e2e8f0 !important; }
-    [data-theme="light"] .border-borderSubtle\/40 { border-color: rgba(226, 232, 240, 0.6) !important; }
-    [data-theme="light"] .border-borderSubtle\/50 { border-color: rgba(226, 232, 240, 0.7) !important; }
-    [data-theme="light"] .border-borderSubtle\/60 { border-color: rgba(226, 232, 240, 0.8) !important; }
   </style>
   <script>
     // Immediate theme init to prevent flash
@@ -590,21 +653,21 @@
           <!-- Dock Option Chain Controls -->
           <div class="p-2.5 border-b border-borderSubtle bg-darkBg/90 flex flex-col gap-2 flex-shrink-0">
             <div class="flex items-center justify-between gap-1.5">
-              <select id="dock-chain-underlying" onchange="changeDockChainUnderlying(this.value)" class="bg-slate-900 border border-borderSubtle text-white text-[11px] px-2 py-1 rounded-lg font-bold cursor-pointer focus:outline-none focus:border-brand">
+              <select id="dock-chain-underlying" onchange="changeDockChainUnderlying(this.value)" class="bg-cardBg border border-borderSubtle text-slate-200 text-[11px] px-2 py-1 rounded-lg font-bold cursor-pointer focus:outline-none focus:border-brand">
                 <option value="BANKNIFTY" selected>BANK NIFTY (30)</option>
                 <option value="NIFTY">NIFTY 50 (65)</option>
                 <option value="SENSEX">SENSEX (20)</option>
                 <option value="FINNIFTY">FINNIFTY (60)</option>
                 <option value="MIDCPNIFTY">MIDCP (120)</option>
               </select>
-              <select id="dock-chain-expiry" onchange="changeDockChainExpiry(this.value)" class="bg-slate-900 border border-borderSubtle text-white text-[10px] px-2 py-1 rounded-lg font-mono cursor-pointer focus:outline-none max-w-[125px]">
+              <select id="dock-chain-expiry" onchange="changeDockChainExpiry(this.value)" class="bg-cardBg border border-borderSubtle text-slate-200 text-[10px] px-2 py-1 rounded-lg font-mono cursor-pointer focus:outline-none max-w-[125px]">
                 <option value="">Current Expiry</option>
               </select>
-              <button onclick="loadDockOptionChain(true)" class="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Refresh Option Chain">
+              <button onclick="loadDockOptionChain(true)" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Refresh Option Chain">
                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
               </button>
             </div>
-            <div class="flex items-center justify-between text-[10px] font-mono bg-slate-900/80 px-2.5 py-1 rounded-lg border border-borderSubtle">
+            <div class="flex items-center justify-between text-[10px] font-mono bg-cardBg px-2.5 py-1 rounded-lg border border-borderSubtle">
               <div>Spot: <span class="text-white font-bold" id="dock-chain-spot">--</span></div>
               <div class="text-amber-400 font-bold" id="dock-chain-atm">ATM: --</div>
               <div id="dock-chain-pcr-pill" class="text-emerald-400 font-bold">PCR: 1.12</div>
@@ -618,7 +681,7 @@
         </div>
 
         <!-- ORDER PAD OVERLAY (Opens ABOVE Option Chain when Strike is selected) -->
-        <div id="dock-orderpad-overlay" class="hidden absolute inset-0 z-30 bg-[#0c1017]/98 backdrop-blur-md flex flex-col p-4 overflow-y-auto border-l border-borderSubtle shadow-2xl transition-all">
+        <div id="dock-orderpad-overlay" class="hidden absolute inset-0 z-30 bg-cardBg/98 backdrop-blur-md flex flex-col p-4 overflow-y-auto border-l border-borderSubtle shadow-2xl transition-all">
           <div id="order-panel" class="flex flex-col flex-1">
             <div class="flex items-center justify-between pb-2.5 border-b border-borderSubtle flex-shrink-0">
               <div class="flex items-center gap-2">
@@ -775,11 +838,10 @@
         </div>
 
         <div class="flex items-center gap-2 ml-auto">
-          <!-- Live Data Feed Indicator & Fyers Settings Button -->
-          <div class="flex items-center gap-1.5 bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle text-[10px] font-mono cursor-pointer hover:border-brand/40 transition-colors shadow-sm" onclick="openFyersModal()" title="View Feed Status / Connect Fyers Broker API">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span id="chain-source-badge" class="font-bold text-emerald-400">NSE Live</span>
-            <span class="text-[9px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded hover:text-white border border-slate-700">Fyers API</span>
+          <!-- Live Data Feed Indicator -->
+          <div class="flex items-center gap-1.5 bg-darkBg px-3 py-1.5 rounded-xl border border-borderSubtle text-[10px] font-mono shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="chain-source-badge" class="font-bold text-emerald-400">NSE Live Feed</span>
           </div>
 
           <!-- Refresh Button -->
@@ -1111,67 +1173,7 @@
     </button>
   </nav>
 
-  <!-- FYERS BROKER CONFIGURATION MODAL -->
-  <div id="fyers-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-panelBg border border-borderSubtle w-full max-w-lg rounded-2xl p-5 md:p-6 shadow-2xl relative">
-      <!-- Close button -->
-      <button onclick="closeFyersModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white cursor-pointer p-1">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
 
-      <!-- Modal Header -->
-      <div class="text-center pb-4 border-b border-borderSubtle">
-        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 mb-2">
-          <i data-lucide="key" class="w-6 h-6"></i>
-        </div>
-        <h2 class="text-lg font-bold text-white tracking-tight">Fyers API v3 Integration</h2>
-        <p class="text-xs text-slate-400 mt-1">Connect your Fyers account or stream real-time NSE market data</p>
-      </div>
-
-      <!-- Current Feed Status -->
-      <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle mt-4 space-y-2 text-xs font-mono">
-        <div class="flex items-center justify-between">
-          <span class="text-slate-400">Current Feed Mode:</span>
-          <span id="fyers-status-mode" class="font-bold text-emerald-400">NSE Real-Time Direct Feed</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-slate-400">Fyers App ID:</span>
-          <span class="text-slate-200" id="fyers-status-appid">DLQNCDLKPV-100</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-slate-400">Client ID:</span>
-          <span class="text-slate-200" id="fyers-status-clientid">XH01499</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-slate-400">Access Token:</span>
-          <span id="fyers-status-token" class="text-amber-400 font-semibold">Not Set / Expired</span>
-        </div>
-      </div>
-
-      <!-- Explanation note -->
-      <div class="mt-3 p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
-        <span class="text-amber-400 font-semibold">Note:</span> SEBI & Indian exchange regulations require Fyers broker access tokens to be regenerated daily. When Fyers token is not present, InstaTrade automatically streams <strong class="text-emerald-400">100% real live market option prices</strong> directly from the exchange.
-      </div>
-
-      <!-- Token Input Form -->
-      <div class="mt-4 space-y-3">
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Enter Fyers Access Token (or Auth Code):</label>
-          <textarea id="fyers-token-input" rows="2" placeholder="Paste your Fyers access token or auth code here..." class="w-full bg-darkBg border border-borderSubtle rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand font-mono"></textarea>
-        </div>
-
-        <div class="flex gap-2">
-          <button onclick="saveFyersToken()" class="flex-1 py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all active:scale-95">
-            <i data-lucide="check" class="w-4 h-4"></i> Save & Connect Token
-          </button>
-          <a id="btn-fyers-oauth" href="https://api-t1.fyers.in/api/v3/generate-authcode?client_id=DLQNCDLKPV-100&redirect_uri=https://127.0.0.1:5000/fyers/callback&response_type=code&state=insta_trade" target="_blank" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 border border-borderSubtle transition-all cursor-pointer">
-            <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Daily Login
-          </a>
-        </div>
-        <div id="fyers-token-msg" class="text-xs text-center hidden font-medium"></div>
-      </div>
-    </div>
-  </div>
 
   <!-- TRADER AUTHENTICATION MODAL (SIGN IN / REGISTER) -->
   <div id="auth-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -2087,6 +2089,7 @@
         showToast(`Spot index cannot be bought/sold directly. Auto-switched to ${futSym.split(':')[1]}!`, 'info');
         selectSymbol(futSym);
       }
+      currentOrderSymbol = currentSymbol;
       setOrderSide(side);
       openOrderPad();
     }
@@ -2519,7 +2522,7 @@
               </td>
 
               <!-- STRIKE -->
-              <td class="py-2 px-3 text-center font-bold bg-slate-900 text-white ${isAtm ? 'bg-amber-950/40 text-amber-300 border-x border-amber-500/30 font-black' : ''}">
+              <td class="py-2 px-3 text-center font-bold bg-darkBg text-slate-200 ${isAtm ? 'bg-amber-500/15 text-amber-400 border-x border-amber-500/30 font-black' : ''}">
                 <div class="flex items-center justify-center gap-1">
                   <span class="font-mono ${isAtm ? 'text-amber-300 font-extrabold text-[12px]' : ''}">${s.strike}</span>
                   ${isAtm ? '<span class="text-[8px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-extrabold uppercase tracking-wider">ATM</span>' : ''}
@@ -2558,8 +2561,10 @@
       }
     }
 
+    let currentOrderSymbol = '';
+
     function selectOptionForTrade(symbol, price, side, lotSize, expiry) {
-      currentSymbol = symbol;
+      currentOrderSymbol = symbol;
       currentLotSize = lotSize;
       currentOrderExpiry = expiry || currentOptionExpiry || '';
 
@@ -2979,6 +2984,7 @@
     // ------------------ SYMBOL SELECTION ------------------
     function selectSymbol(sym) {
       currentSymbol = sym;
+      currentOrderSymbol = sym;
       const title = document.getElementById('active-symbol-title');
       if (title) title.innerText = sym;
       const cleanName = sym.split(':').pop() || sym;
@@ -3549,7 +3555,8 @@
         openAuthModal('login');
         return;
       }
-      if (currentSymbol.includes('INDEX')) {
+      const orderSym = currentOrderSymbol || currentSymbol;
+      if (orderSym.includes('INDEX')) {
         showToast('Spot indices cannot be traded directly in Indian markets. Please trade Index Futures (e.g. NIFTY-FUT) or Options.', 'error');
         return;
       }
@@ -3571,7 +3578,7 @@
       }
 
       const payload = {
-        symbol: currentSymbol,
+        symbol: orderSym,
         qty: qty,
         side: currentSide,
         order_type: currentOrderType,
@@ -3658,8 +3665,29 @@
 
         if (positions.length > 0) {
           try { localStorage.setItem(cacheKeyPos, JSON.stringify(positions)); } catch (e) {}
-        } else {
-          try { localStorage.removeItem(cacheKeyPos); } catch (e) {}
+        } else if (!window._userExplicitlyClosedAll) {
+          const savedPosRaw = localStorage.getItem(cacheKeyPos);
+          if (savedPosRaw) {
+            try {
+              const savedPos = JSON.parse(savedPosRaw);
+              if (Array.isArray(savedPos) && savedPos.length > 0) {
+                // Auto-restore backup positions to server SQLite DB
+                const syncRes = await fetch('/api/positions/sync', {
+                  method: 'POST',
+                  headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                  body: JSON.stringify({ positions: savedPos, orders: [] })
+                });
+                const syncData = await syncRes.json();
+                if (syncData && syncData.positions && syncData.positions.length > 0) {
+                  positions = syncData.positions;
+                } else {
+                  positions = savedPos;
+                }
+              }
+            } catch (err) {
+              console.warn('Position auto-restore error:', err);
+            }
+          }
         }
 
         // Sync tab counter

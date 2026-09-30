@@ -692,6 +692,19 @@ class VirtualTradingEngine:
         return results
 
     def get_history(self, symbol: str, resolution: str = "5") -> List[Dict[str, Any]]:
+        # Safeguard: Option symbols do not have direct historical bars; resolve to underlying index
+        if symbol.endswith("CE") or symbol.endswith("PE"):
+            if "BANKNIFTY" in symbol:
+                symbol = "NSE:NIFTYBANK-INDEX"
+            elif "SENSEX" in symbol:
+                symbol = "BSE:SENSEX-INDEX"
+            elif "FINNIFTY" in symbol:
+                symbol = "NSE:FINNIFTY-INDEX"
+            elif "MIDCP" in symbol:
+                symbol = "NSE:MIDCPNIFTY-INDEX"
+            else:
+                symbol = "NSE:NIFTY50-INDEX"
+
         yahoo_sym, _, default_base = SYMBOL_MAP.get(symbol, (None, "", 100.0))
         if not yahoo_sym:
             clean = symbol.split(":")[-1].replace("-EQ", "").replace("-INDEX", "")
