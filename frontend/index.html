@@ -441,7 +441,7 @@
       </div>
 
       <!-- RIGHT: UNIFIED PRO TRADING DOCK (Watchlist, Order Pad, Quick Positions) -->
-      <aside id="right-trading-dock" class="w-full lg:w-84 xl:w-96 bg-panelBg flex flex-col flex-shrink-0 z-10 transition-all duration-200 border-l border-borderSubtle">
+      <aside id="right-trading-dock" class="relative w-full lg:w-84 xl:w-96 bg-panelBg flex flex-col flex-shrink-0 z-10 transition-all duration-200 border-l border-borderSubtle">
         
         <!-- Dock Tab Selector -->
         <div class="h-12 border-b border-borderSubtle bg-darkBg/60 flex items-center px-2 flex-shrink-0">
@@ -451,9 +451,9 @@
               <span>Watchlist</span>
               <span class="text-[9px] text-slate-400 font-mono bg-slate-900 border border-borderSubtle px-1.5 rounded-full" id="watch-count-pill">7</span>
             </button>
-            <button onclick="switchRightDockTab('orderpad')" id="rd-tab-orderpad" class="rd-tab flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px]">
-              <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
-              <span>Order Pad</span>
+            <button onclick="switchRightDockTab('optionchain')" id="rd-tab-optionchain" class="rd-tab flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px]">
+              <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
+              <span>Option Chain</span>
             </button>
             <button onclick="switchRightDockTab('positions')" id="rd-tab-positions" class="rd-tab flex-1 py-1.5 rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px] relative">
               <i data-lucide="briefcase" class="w-3.5 h-3.5 text-emerald-400"></i>
@@ -506,63 +506,96 @@
           </div>
         </div>
 
-        <!-- RIGHT TAB 2: ORDER PAD PANE -->
-        <div id="rd-pane-orderpad" class="rd-pane hidden flex-1 flex flex-col overflow-y-auto p-4">
+        <!-- RIGHT TAB 2: COMPACT OPTION CHAIN PANE -->
+        <div id="rd-pane-optionchain" class="rd-pane hidden flex-1 flex flex-col overflow-hidden relative">
+          <!-- Dock Option Chain Controls -->
+          <div class="p-2.5 border-b border-borderSubtle bg-darkBg/90 flex flex-col gap-2 flex-shrink-0">
+            <div class="flex items-center justify-between gap-1.5">
+              <select id="dock-chain-underlying" onchange="changeDockChainUnderlying(this.value)" class="bg-slate-900 border border-borderSubtle text-white text-[11px] px-2 py-1 rounded-lg font-bold cursor-pointer focus:outline-none focus:border-brand">
+                <option value="BANKNIFTY" selected>BANK NIFTY (30)</option>
+                <option value="NIFTY">NIFTY 50 (65)</option>
+                <option value="SENSEX">SENSEX (20)</option>
+                <option value="FINNIFTY">FINNIFTY (60)</option>
+                <option value="MIDCPNIFTY">MIDCP (120)</option>
+              </select>
+              <select id="dock-chain-expiry" onchange="changeDockChainExpiry(this.value)" class="bg-slate-900 border border-borderSubtle text-white text-[10px] px-2 py-1 rounded-lg font-mono cursor-pointer focus:outline-none max-w-[125px]">
+                <option value="">Current Expiry</option>
+              </select>
+              <button onclick="loadDockOptionChain(true)" class="p-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Refresh Option Chain">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <div class="flex items-center justify-between text-[10px] font-mono bg-slate-900/80 px-2.5 py-1 rounded-lg border border-borderSubtle">
+              <div>Spot: <span class="text-white font-bold" id="dock-chain-spot">--</span></div>
+              <div class="text-amber-400 font-bold" id="dock-chain-atm">ATM: --</div>
+              <div id="dock-chain-pcr-pill" class="text-emerald-400 font-bold">PCR: 1.12</div>
+            </div>
+          </div>
+
+          <!-- Compact Option Chain Table -->
+          <div id="dock-optionchain-view" class="flex-1 overflow-y-auto p-1.5 touch-scroll">
+            <div class="p-6 text-center text-xs text-slate-500">Loading option strikes...</div>
+          </div>
+        </div>
+
+        <!-- ORDER PAD OVERLAY (Opens ABOVE Option Chain when Strike is selected) -->
+        <div id="dock-orderpad-overlay" class="hidden absolute inset-0 z-30 bg-[#0c1017]/98 backdrop-blur-md flex flex-col p-4 overflow-y-auto border-l border-borderSubtle shadow-2xl transition-all">
           <div id="order-panel" class="flex flex-col flex-1">
-            <div class="flex items-center justify-between pb-3 border-b border-borderSubtle">
+            <div class="flex items-center justify-between pb-2.5 border-b border-borderSubtle flex-shrink-0">
               <div class="flex items-center gap-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Order Placement</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Order Pad</span>
                 <span class="text-[11px] font-mono text-brand font-bold bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg" id="order-symbol-tag">NIFTY 50</span>
-                <span class="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg hidden" id="order-expiry-tag"></span>
+                <span class="text-[10px] font-mono text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-lg hidden" id="order-expiry-tag"></span>
               </div>
-              <button onclick="closeOrderPad()" class="lg:hidden p-1.5 rounded-xl text-slate-400 hover:text-white bg-darkBg hover:bg-slate-800 border border-borderSubtle cursor-pointer transition-colors" title="Close Order Panel">
-                <i data-lucide="x" class="w-4 h-4"></i>
+              <button onclick="closeOrderPad()" class="p-1 rounded-lg text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-borderSubtle cursor-pointer transition-colors flex items-center gap-1 text-[11px] px-2.5 font-bold" title="Close Order Pad & Return to Option Chain">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                <span>Close</span>
               </button>
             </div>
 
             <!-- BUY / SELL SWITCH -->
-            <div class="grid grid-cols-2 gap-2 mt-4 bg-darkBg p-1.5 rounded-xl border border-borderSubtle">
-              <button onclick="setOrderSide(1)" id="btn-side-buy" class="py-2.5 text-xs font-bold rounded-lg bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1.5 cursor-pointer shadow-glowBrand">
+            <div class="grid grid-cols-2 gap-2 mt-3.5 bg-darkBg p-1.5 rounded-xl border border-borderSubtle flex-shrink-0">
+              <button onclick="setOrderSide(1)" id="btn-side-buy" class="py-2 text-xs font-bold rounded-lg bg-brand text-slate-950 pill-btn flex items-center justify-center gap-1.5 cursor-pointer shadow-glowBrand">
                 <i data-lucide="arrow-up-right" class="w-4 h-4"></i> BUY
               </button>
-              <button onclick="setOrderSide(-1)" id="btn-side-sell" class="py-2.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1.5 cursor-pointer">
+              <button onclick="setOrderSide(-1)" id="btn-side-sell" class="py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white pill-btn flex items-center justify-center gap-1.5 cursor-pointer">
                 <i data-lucide="arrow-down-right" class="w-4 h-4"></i> SELL
               </button>
             </div>
 
             <!-- PRODUCT TYPE -->
-            <div class="mt-4">
-              <div class="flex justify-between items-center text-[11px] text-slate-400 uppercase font-semibold">
+            <div class="mt-3 flex-shrink-0">
+              <div class="flex justify-between items-center text-[10px] text-slate-400 uppercase font-semibold">
                 <label>Product</label>
-                <span class="text-[10px] text-emerald-400 font-mono">5x Intra Leverage</span>
+                <span class="text-[9px] text-emerald-400 font-mono">5x Intra Leverage</span>
               </div>
-              <div class="grid grid-cols-3 gap-1.5 mt-1.5">
-                <button onclick="setProduct('INTRADAY')" class="prod-btn py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-prod="INTRADAY">MIS (Intra)</button>
-                <button onclick="setProduct('CNC')" class="prod-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="CNC">CNC (Deliv)</button>
-                <button onclick="setProduct('MARGIN')" class="prod-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="MARGIN">NRML</button>
+              <div class="grid grid-cols-3 gap-1 mt-1">
+                <button onclick="setProduct('INTRADAY')" class="prod-btn py-1.5 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-prod="INTRADAY">MIS (Intra)</button>
+                <button onclick="setProduct('CNC')" class="prod-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="CNC">CNC (Deliv)</button>
+                <button onclick="setProduct('MARGIN')" class="prod-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-prod="MARGIN">NRML</button>
               </div>
             </div>
 
             <!-- ORDER TYPE -->
-            <div class="mt-3.5">
-              <label class="text-[11px] text-slate-400 uppercase font-semibold">Order Type</label>
-              <div class="grid grid-cols-3 gap-1.5 mt-1.5">
-                <button onclick="setOrderType(2)" class="type-btn py-2 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-type="2">Market</button>
-                <button onclick="setOrderType(1)" class="type-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="1">Limit</button>
-                <button onclick="setOrderType(3)" class="type-btn py-2 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="3">SL</button>
+            <div class="mt-2.5 flex-shrink-0">
+              <label class="text-[10px] text-slate-400 uppercase font-semibold">Order Type</label>
+              <div class="grid grid-cols-3 gap-1 mt-1">
+                <button onclick="setOrderType(2)" class="type-btn py-1.5 text-xs rounded-xl bg-slate-800 text-white font-bold border border-borderSubtle cursor-pointer transition-all" data-type="2">Market</button>
+                <button onclick="setOrderType(1)" class="type-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="1">Limit</button>
+                <button onclick="setOrderType(3)" class="type-btn py-1.5 text-xs rounded-xl text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all" data-type="3">SL</button>
               </div>
             </div>
 
             <!-- QUANTITY & PRICE -->
-            <div class="mt-3.5 space-y-3">
+            <div class="mt-2.5 space-y-2.5 flex-shrink-0">
               <div>
-                <div class="flex justify-between items-center text-[11px] text-slate-400">
+                <div class="flex justify-between items-center text-[10px] text-slate-400">
                   <label class="uppercase font-semibold">Quantity</label>
-                  <span id="lot-info-tag" class="text-[10px] text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-lg font-mono font-bold">1 Lot = 30 Qty</span>
+                  <span id="lot-info-tag" class="text-[9px] text-brand bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded font-mono font-bold">1 Lot = 30 Qty</span>
                 </div>
 
                 <!-- Dynamic Lot Multiplier Buttons -->
-                <div class="grid grid-cols-5 gap-1 mt-1.5" id="lot-quick-buttons">
+                <div class="grid grid-cols-5 gap-1 mt-1" id="lot-quick-buttons">
                   <button type="button" onclick="setLots(1)" id="btn-lot-1" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">1L (30)</button>
                   <button type="button" onclick="setLots(2)" id="btn-lot-2" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">2L (60)</button>
                   <button type="button" onclick="setLots(3)" id="btn-lot-3" class="py-1 text-[10px] font-bold rounded-lg bg-darkBg hover:bg-slate-800 text-white border border-borderSubtle cursor-pointer">3L (90)</button>
@@ -571,29 +604,29 @@
                 </div>
 
                 <!-- Quantity Input with Increment/Decrement Steppers -->
-                <div class="flex items-center gap-1.5 mt-2">
-                  <button type="button" onclick="stepLots(-1)" title="Decrease 1 Lot" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">-</button>
+                <div class="flex items-center gap-1.5 mt-1.5">
+                  <button type="button" onclick="stepLots(-1)" title="Decrease 1 Lot" class="w-9 h-9 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">-</button>
                   <input type="number" id="order-qty" value="30" min="1" oninput="onQtyChange()" 
-                         class="flex-1 h-10 bg-darkBg border border-borderSubtle rounded-xl px-3 text-sm text-white font-mono text-center font-bold focus:outline-none focus:border-brand">
-                  <button type="button" onclick="stepLots(1)" title="Increase 1 Lot" class="w-10 h-10 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-lg border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">+</button>
+                         class="flex-1 h-9 bg-darkBg border border-borderSubtle rounded-xl px-2 text-xs text-white font-mono text-center font-bold focus:outline-none focus:border-brand">
+                  <button type="button" onclick="stepLots(1)" title="Increase 1 Lot" class="w-9 h-9 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 font-bold text-base border border-borderSubtle flex items-center justify-center cursor-pointer transition-colors active:scale-95">+</button>
                 </div>
-                <div id="lot-warning" class="text-[10px] text-amber-400 mt-1 hidden font-mono">⚠️ Quantity is not a multiple of lot size</div>
+                <div id="lot-warning" class="text-[10px] text-amber-400 mt-0.5 hidden font-mono">⚠️ Quantity is not a multiple of lot size</div>
               </div>
 
               <div id="price-input-container" class="opacity-50 pointer-events-none transition-opacity">
-                <label class="text-[11px] text-slate-400 uppercase font-semibold">Limit Price</label>
+                <label class="text-[10px] text-slate-400 uppercase font-semibold">Limit Price</label>
                 <input type="number" id="order-price" value="0.0" step="0.05" oninput="updateMarginEstimate()"
-                       class="w-full mt-1 bg-darkBg border border-borderSubtle rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-brand">
+                       class="w-full mt-0.5 bg-darkBg border border-borderSubtle rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-brand">
               </div>
             </div>
 
             <!-- MARGIN CALCULATION -->
-            <div class="mt-auto pt-4 border-t border-borderSubtle pb-safe">
-              <div class="flex justify-between items-center text-xs mb-3 text-slate-400">
-                <span>Required Margin:</span>
+            <div class="mt-auto pt-3 border-t border-borderSubtle pb-safe flex-shrink-0">
+              <div class="flex justify-between items-center text-xs mb-2 text-slate-400">
+                <span class="text-[11px]">Required Margin:</span>
                 <span class="font-mono text-white font-bold" id="req-margin">₹ 0.00</span>
               </div>
-              <button onclick="executeOrder()" id="btn-submit-order" class="w-full py-3 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-sm pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-glowBrand active:scale-95">
+              <button onclick="executeOrder()" id="btn-submit-order" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-glowBrand active:scale-95">
                 <i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (30 Qty)
               </button>
             </div>
@@ -1409,7 +1442,7 @@
       currentRightDockTab = tab;
 
       // Update tab buttons
-      ['watchlist', 'orderpad', 'positions'].forEach(t => {
+      ['watchlist', 'optionchain', 'positions'].forEach(t => {
         const btn = document.getElementById(`rd-tab-${t}`);
         const pane = document.getElementById(`rd-pane-${t}`);
         if (btn) {
@@ -1427,21 +1460,138 @@
 
       if (tab === 'positions') {
         renderRightDockPositions();
-      } else if (tab === 'orderpad') {
-        if (window.anime) {
-          try {
-            anime({
-              targets: '#order-panel',
-              scale: [0.98, 1],
-              opacity: [0.8, 1],
-              duration: 200,
-              easing: 'easeOutQuad'
-            });
-          } catch (e) {}
-        }
+      } else if (tab === 'optionchain') {
+        loadDockOptionChain(false);
       }
 
       try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ DOCK COMPACT OPTION CHAIN ------------------
+    let isFetchingDockChain = false;
+    let isDockChainLoaded = false;
+
+    async function loadDockOptionChain(forceFullRender = false) {
+      if (isFetchingDockChain) return;
+      isFetchingDockChain = true;
+      const container = document.getElementById('dock-optionchain-view');
+      if (!container) {
+        isFetchingDockChain = false;
+        return;
+      }
+
+      try {
+        const url = `/api/optionchain?underlying=${encodeURIComponent(currentOptionUnderlying)}&expiry=${encodeURIComponent(currentOptionExpiry)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || !data.strikes || !data.strikes.length) {
+          container.innerHTML = '<div class="p-6 text-center text-xs text-slate-500">Option Chain unavailable</div>';
+          return;
+        }
+
+        // Update mini header metrics in dock
+        const spotEl = document.getElementById('dock-chain-spot');
+        if (spotEl) spotEl.innerText = Number(data.spot_price || 0).toFixed(1);
+        const atmEl = document.getElementById('dock-chain-atm');
+        if (atmEl) atmEl.innerText = `ATM: ${data.atm_strike || '--'}`;
+        const pcrEl = document.getElementById('dock-chain-pcr-pill');
+        if (pcrEl && data.pcr !== undefined) {
+          pcrEl.innerText = `PCR: ${data.pcr.toFixed(2)}`;
+          pcrEl.className = data.pcr >= 1.0 ? 'text-emerald-400 font-bold' : 'text-danger font-bold';
+        }
+
+        // Fill expiry dropdown
+        const expSelect = document.getElementById('dock-chain-expiry');
+        if (expSelect && data.expiries && (!expSelect.options.length || expSelect.options.length <= 1)) {
+          expSelect.innerHTML = '';
+          data.expiries.forEach((exp, idx) => {
+            const opt = document.createElement('option');
+            opt.value = exp;
+            opt.innerText = exp;
+            if (exp === data.selected_expiry || idx === 0) opt.selected = true;
+            expSelect.appendChild(opt);
+          });
+        }
+
+        const activeChainExpiry = data.selected_expiry || currentOptionExpiry || '';
+
+        let html = `
+          <table class="w-full text-xs font-mono border-collapse select-text">
+            <thead>
+              <tr class="text-[10px] text-slate-400 border-b border-borderSubtle bg-darkBg font-bold">
+                <th class="py-1 px-1.5 text-center text-emerald-400">CALL (CE)</th>
+                <th class="py-1 px-2 text-center text-slate-300">STRIKE</th>
+                <th class="py-1 px-1.5 text-center text-danger">PUT (PE)</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        data.strikes.forEach(s => {
+          const isAtm = s.is_atm;
+          const ce = s.ce || {};
+          const pe = s.pe || {};
+          const atmStyle = isAtm ? 'bg-amber-500/15 border-y border-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.2)]' : 'border-b border-borderSubtle/40';
+
+          html += `
+            <tr class="${atmStyle} hover:bg-slate-800/40 transition-colors">
+              <!-- CALL BUTTON -->
+              <td class="py-1 px-1 text-center">
+                <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                        class="w-full py-1 px-1.5 rounded-lg bg-emerald-500/10 hover:bg-brand hover:text-slate-950 text-emerald-400 font-bold text-[11px] border border-emerald-500/20 cursor-pointer active:scale-95 transition-all shadow-sm" 
+                        title="Click to trade ${ce.display_name}">
+                  ₹${Number(ce.ltp || 0).toFixed(1)}
+                </button>
+              </td>
+
+              <!-- STRIKE -->
+              <td class="py-1 px-1 text-center font-bold ${isAtm ? 'text-amber-300 font-black' : 'text-slate-200'}">
+                <span>${s.strike}</span>
+                ${isAtm ? '<span class="text-[8px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black ml-1">ATM</span>' : ''}
+              </td>
+
+              <!-- PUT BUTTON -->
+              <td class="py-1 px-1 text-center">
+                <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                        class="w-full py-1 px-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 font-bold text-[11px] border border-rose-500/20 cursor-pointer active:scale-95 transition-all shadow-sm" 
+                        title="Click to trade ${pe.display_name}">
+                  ₹${Number(pe.ltp || 0).toFixed(1)}
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        isDockChainLoaded = true;
+      } catch (e) {
+        console.error('Dock option chain load error:', e);
+      } finally {
+        isFetchingDockChain = false;
+      }
+    }
+
+    function changeDockChainUnderlying(val) {
+      currentOptionUnderlying = val;
+      currentOptionExpiry = '';
+      if (val === 'BANKNIFTY') currentLotSize = 30;
+      else if (val === 'NIFTY') currentLotSize = 65;
+      else if (val === 'SENSEX') currentLotSize = 20;
+      else if (val === 'FINNIFTY') currentLotSize = 60;
+      else if (val === 'MIDCPNIFTY') currentLotSize = 120;
+
+      updateLotControls();
+      const qInput = document.getElementById('order-qty');
+      if (qInput) qInput.value = currentLotSize;
+      onQtyChange();
+      loadDockOptionChain(true);
+    }
+
+    function changeDockChainExpiry(exp) {
+      currentOptionExpiry = exp;
+      loadDockOptionChain(true);
     }
 
     // Toggle Right Dock Collapse / Expand
@@ -1702,32 +1852,78 @@
     }
 
     function openOrderPad() {
+      const overlay = document.getElementById('dock-orderpad-overlay');
+      const rightDock = document.getElementById('right-trading-dock');
+      const backdrop = document.getElementById('order-modal-backdrop');
+
       if (window.innerWidth >= 1024) {
         if (currentWorkstation !== 'chart' && currentWorkstation !== 'split') {
           switchWorkstation('chart');
         }
-        const rightDock = document.getElementById('right-trading-dock');
         if (rightDock && rightDock.classList.contains('hidden')) {
           toggleRightDock();
         }
-        switchRightDockTab('orderpad');
+        // Ensure Option Chain tab is active underneath
+        if (currentRightDockTab !== 'optionchain') {
+          switchRightDockTab('optionchain');
+        }
+        if (overlay) {
+          overlay.classList.remove('hidden');
+          if (window.anime) {
+            try {
+              anime({
+                targets: overlay,
+                opacity: [0, 1],
+                translateY: [35, 0],
+                duration: 220,
+                easing: 'easeOutQuad'
+              });
+            } catch (e) {}
+          }
+        }
       } else {
-        const panel = document.getElementById('order-panel');
-        const backdrop = document.getElementById('order-modal-backdrop');
-        if (panel) {
-          panel.classList.remove('translate-y-full');
-          panel.classList.add('translate-y-0');
+        if (overlay) {
+          overlay.classList.remove('hidden');
+          if (window.anime) {
+            try {
+              anime({
+                targets: overlay,
+                opacity: [0, 1],
+                translateY: [40, 0],
+                duration: 250,
+                easing: 'easeOutCubic'
+              });
+            } catch (e) {}
+          }
         }
         if (backdrop) backdrop.classList.remove('hidden');
       }
+      updateMarginEstimate();
+      try { lucide.createIcons(); } catch (e) {}
     }
 
     function closeOrderPad() {
-      const panel = document.getElementById('order-panel');
+      const overlay = document.getElementById('dock-orderpad-overlay');
       const backdrop = document.getElementById('order-modal-backdrop');
-      if (panel && window.innerWidth < 1024) {
-        panel.classList.add('translate-y-full');
-        panel.classList.remove('translate-y-0');
+      if (overlay) {
+        if (window.anime) {
+          try {
+            anime({
+              targets: overlay,
+              opacity: [1, 0],
+              translateY: [0, 25],
+              duration: 180,
+              easing: 'easeInQuad',
+              complete: function() {
+                overlay.classList.add('hidden');
+              }
+            });
+          } catch (e) {
+            overlay.classList.add('hidden');
+          }
+        } else {
+          overlay.classList.add('hidden');
+        }
       }
       if (backdrop) backdrop.classList.add('hidden');
     }
@@ -2429,7 +2625,8 @@
 
       // 2. Real-time option chain streaming poll (every 2000ms) when Option Chain or Split view is active
       setInterval(async () => {
-        if (currentWorkstation === 'optionchain' || currentWorkstation === 'split') {
+        if (currentWorkstation === 'optionchain' || currentWorkstation === 'split' || currentRightDockTab === 'optionchain') {
+          try { await loadDockOptionChain(false); } catch (e) {}
           try { await loadOptionChain(false); } catch (e) {}
         }
       }, 2000);
@@ -3039,27 +3236,32 @@
                   if (curPrice > lastCandle.high) lastCandle.high = curPrice;
                   if (curPrice < lastCandle.low) lastCandle.low = curPrice;
                   candleSeries.update(lastCandle);
-                } else if ((nowSec - lastTime) >= barSec && (nowSec - lastTime) < barSec * 3) {
+                  if (splitCandleSeries) splitCandleSeries.update(lastCandle);
+                } else if ((nowSec - lastTime) >= barSec && (nowSec - lastTime) < barSec * 5) {
                   // Next bar period has arrived in live session: start fresh bar
-                  const nextBarTime = lastTime + barSec;
-                  lastCandle = {
-                    time: nextBarTime,
-                    open: curPrice,
-                    high: curPrice,
-                    low: curPrice,
-                    close: curPrice
-                  };
-                  candleSeries.update(lastCandle);
-                } else {
-                  // Historical data time gap (e.g. market closed, off-hours, or historical bar)
-                  // Smoothly update the last bar only if price difference is small (<0.6%) to prevent giant vertical spikes
-                  const pctDiff = Math.abs(curPrice - lastCandle.close) / (lastCandle.close || 1);
-                  if (pctDiff < 0.006) {
+                  const nextBarTime = Math.floor(nowSec / barSec) * barSec;
+                  if (nextBarTime > lastCandle.time) {
+                    lastCandle = {
+                      time: nextBarTime,
+                      open: curPrice,
+                      high: curPrice,
+                      low: curPrice,
+                      close: curPrice
+                    };
+                  } else {
                     lastCandle.close = curPrice;
                     if (curPrice > lastCandle.high) lastCandle.high = curPrice;
                     if (curPrice < lastCandle.low) lastCandle.low = curPrice;
-                    candleSeries.update(lastCandle);
                   }
+                  candleSeries.update(lastCandle);
+                  if (splitCandleSeries) splitCandleSeries.update(lastCandle);
+                } else {
+                  // Live tick update on latest bar
+                  lastCandle.close = curPrice;
+                  if (curPrice > lastCandle.high) lastCandle.high = curPrice;
+                  if (curPrice < lastCandle.low) lastCandle.low = curPrice;
+                  candleSeries.update(lastCandle);
+                  if (splitCandleSeries) splitCandleSeries.update(lastCandle);
                 }
               }
             }
@@ -3267,10 +3469,10 @@
           showToast(`Order Placed: ${currentSide === 1 ? 'BUY' : 'SELL'} ${qty} ${currentSymbol}`, 'success');
           loadDockContent();
           refreshFunds();
-          // Auto-close order pad drawer on mobile
-          if (window.innerWidth < 1024) {
+          // Auto-close order pad overlay so Option Chain is revealed
+          setTimeout(() => {
             closeOrderPad();
-          }
+          }, 600);
         } else {
           showToast(`Order Failed: ${r.message || 'Error'}`, 'error');
         }

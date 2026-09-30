@@ -642,26 +642,26 @@ class VirtualTradingEngine:
                 candles = []
                 for i in range(len(timestamps)):
                     if opens[i] is not None and closes[i] is not None:
-                            candles.append({
-                                "time": timestamps[i],
-                                "open": round(opens[i] + basis, 2),
-                                "high": round(highs[i] + basis, 2),
-                                "low": round(lows[i] + basis, 2),
-                                "close": round(closes[i] + basis, 2),
-                                "volume": volumes[i] or 0,
-                            })
-                    if candles:
-                        latest = candles[-1]
-                        cached = self.quotes_cache.get(symbol)
-                        if cached:
-                            cached["ltp"] = latest["close"]
-                            cached["anchor_price"] = latest["close"]
-                            cached["high"] = max(cached.get("high", latest["high"]), latest["high"])
-                            cached["low"] = min(cached.get("low", latest["low"]), latest["low"])
-                            prev_c = cached.get("prev_close", latest["close"])
-                            cached["change"] = round(latest["close"] - prev_c, 2)
-                            cached["chg_percent"] = round((cached["change"] / prev_c) * 100.0, 2) if prev_c else 0.0
-                        return candles
+                        candles.append({
+                            "time": timestamps[i],
+                            "open": round(opens[i] + basis, 2),
+                            "high": round(highs[i] + basis, 2),
+                            "low": round(lows[i] + basis, 2),
+                            "close": round(closes[i] + basis, 2),
+                            "volume": volumes[i] or 0,
+                        })
+                if candles:
+                    latest = candles[-1]
+                    cached = self.quotes_cache.get(symbol)
+                    if cached:
+                        cached["ltp"] = latest["close"]
+                        cached["anchor_price"] = latest["close"]
+                        cached["high"] = max(cached.get("high", latest["high"]), latest["high"])
+                        cached["low"] = min(cached.get("low", latest["low"]), latest["low"])
+                        prev_c = cached.get("prev_close", latest["close"])
+                        cached["change"] = round(latest["close"] - prev_c, 2)
+                        cached["chg_percent"] = round((cached["change"] / prev_c) * 100.0, 2) if prev_c else 0.0
+                    return candles
         except Exception as e:
             logger.error(f"Error fetching real history for {symbol}: {e}")
 
