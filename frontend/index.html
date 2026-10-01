@@ -652,8 +652,8 @@
       <!-- RIGHT: UNIFIED PRO TRADING DOCK (Watchlist, Order Pad, Quick Positions) -->
       <aside id="right-trading-dock" class="relative w-full lg:w-84 xl:w-96 bg-panelBg flex flex-col flex-shrink-0 z-10 transition-all duration-200 border-l border-borderSubtle">
         
-        <!-- Dock Tab Selector -->
-        <div class="h-12 border-b border-borderSubtle bg-darkBg/60 flex items-center px-2 flex-shrink-0">
+        <!-- Dock Tab Selector (Desktop only) -->
+        <div class="hidden lg:flex h-12 border-b border-borderSubtle bg-darkBg/60 items-center px-2 flex-shrink-0">
           <div class="flex items-center gap-1 bg-darkBg p-1 rounded-xl border border-borderSubtle w-full text-xs font-semibold">
             <button onclick="switchRightDockTab('watchlist')" id="rd-tab-watchlist" class="rd-tab flex-1 py-1.5 rounded-lg bg-slate-800 text-white font-bold cursor-pointer transition-all text-center flex items-center justify-center gap-1.5 text-[11px] shadow-sm">
               <i data-lucide="list" class="w-3.5 h-3.5 text-brand"></i>
