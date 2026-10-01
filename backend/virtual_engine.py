@@ -11,7 +11,7 @@ import logging
 import threading
 import random
 import concurrent.futures
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import re
 import httpx
 from backend.storage import db
@@ -233,6 +233,109 @@ STEP_MAP = {
     "MIDCPNIFTY": 25,
     "SENSEX": 100,
 }
+
+
+def parse_symbol_underlying_and_type(symbol: str) -> Tuple[str, str, bool, bool]:
+    """
+    Parses a symbol to identify:
+    - underlying ('NIFTY', 'BANKNIFTY', 'SENSEX', 'FINNIFTY', 'MIDCPNIFTY', or equity)
+    - option type ('CALL', 'PUT', or '')
+    - is_option (bool)
+    - is_future (bool)
+    """
+    sym = (symbol or "").upper().strip()
+    is_future = "-FUT" in sym
+    is_option = False
+    opt_type = ""
+    
+    if sym.endswith("CE") or " CE" in sym or " CALL" in sym:
+        is_option = True
+        opt_type = "CALL"
+    elif sym.endswith("PE") or " PE" in sym or " PUT" in sym:
+        is_option = True
+        opt_type = "PUT"
+        
+    underlying = "NIFTY"
+    if "SENSEX" in sym:
+        underlying = "SENSEX"
+    elif "BANKNIFTY" in sym:
+        underlying = "BANKNIFTY"
+    elif "FINNIFTY" in sym:
+        underlying = "FINNIFTY"
+    elif "MIDCPNIFTY" in sym:
+        underlying = "MIDCPNIFTY"
+    elif "NIFTY" in sym:
+        underlying = "NIFTY"
+    else:
+        underlying = sym.replace("NSE:", "").replace("BSE:", "").replace("-EQ", "").replace("-FUT", "")
+        
+    return underlying, opt_type, is_option, is_future
+
+
+def get_symbol_lot_size(symbol: str) -> int:
+    underlying, _, _, _ = parse_symbol_underlying_and_type(symbol)
+    return LOT_SIZE_MAP.get(underlying, 50)
+
+
+def calculate_portfolio_margin_for_positions(positions: List[Dict[str, Any]]) -> float:
+    """
+    Accurate Index Option Selling Margin & Portfolio Margin Engine:
+    - 1 lot Call Sell = Rs. 1,50,000 (1.5 Lakhs)
+    - 1 lot Put Sell = Rs. 1,50,000 (1.5 Lakhs)
+    - 1 lot Call Sell + 1 lot Put Sell on same index = Rs. 2,00,000 (2.0 Lakhs pair margin)
+    - Option Long (Buy) = buy_avg * net_qty (Pure Premium)
+    - Futures = entry_price * |net_qty| * 0.12 (12% contract margin)
+    - Equity = entry_price * |net_qty| / leverage
+    """
+    total_margin = 0.0
+    short_options_by_underlying: Dict[str, Dict[str, float]] = {}
+    
+    for pos in positions:
+        net_qty = pos.get("net_qty", 0)
+        if net_qty == 0:
+            continue
+            
+        symbol = pos.get("symbol", "")
+        underlying, opt_type, is_option, is_future = parse_symbol_underlying_and_type(symbol)
+        lot_size = get_symbol_lot_size(symbol)
+        
+        if is_option:
+            if net_qty < 0:  # Option Seller
+                short_lots = abs(net_qty) / max(1, lot_size)
+                if underlying not in short_options_by_underlying:
+                    short_options_by_underlying[underlying] = {"CALL": 0.0, "PUT": 0.0}
+                if opt_type in ("CALL", "PUT"):
+                    short_options_by_underlying[underlying][opt_type] += short_lots
+                else:
+                    short_options_by_underlying[underlying]["CALL"] += short_lots
+            else:  # Option Buyer
+                buy_avg = pos.get("buy_avg", 0.0)
+                total_margin += buy_avg * net_qty
+        elif is_future:
+            price = pos.get("buy_avg", 0.0) if net_qty > 0 else pos.get("sell_avg", 0.0)
+            if price <= 0:
+                price = pos.get("ltp", 100.0)
+            total_margin += (price * abs(net_qty)) * 0.12
+        else:
+            price = pos.get("buy_avg", 0.0) if net_qty > 0 else pos.get("sell_avg", 0.0)
+            leverage = 5.0 if pos.get("product") == "INTRADAY" else 1.0
+            total_margin += (price * abs(net_qty)) / leverage
+
+    # Compute short option margin with Call + Put hedge benefit per underlying:
+    # 1 lot single leg = Rs. 1,50,000 (1.5 Lakhs)
+    # 1 lot Call + 1 lot Put pair = Rs. 2,00,000 (2.0 Lakhs)
+    for und, counts in short_options_by_underlying.items():
+        ce_lots = counts.get("CALL", 0.0)
+        pe_lots = counts.get("PUT", 0.0)
+        matched_pairs = min(ce_lots, pe_lots)
+        unmatched_ce = ce_lots - matched_pairs
+        unmatched_pe = pe_lots - matched_pairs
+        unmatched_total = unmatched_ce + unmatched_pe
+        
+        margin_for_und = (matched_pairs * 200000.0) + (unmatched_total * 150000.0)
+        total_margin += margin_for_und
+        
+    return round(total_margin, 2)
 
 
 def parse_expiry_date(exp_str: Optional[str]) -> Optional[datetime.date]:
@@ -1361,35 +1464,55 @@ class VirtualTradingEngine:
 
         execution_price = limit_price if (order_type == 1 and limit_price > 0) else current_ltp
 
-        # Margin calculation:
-        is_option = symbol.endswith("CE") or symbol.endswith("PE")
-        is_future = "-FUT" in symbol
-        if is_option:
-            if side == 1:
-                # Option Buyer pays pure premium
-                required_margin = execution_price * qty
-            else:
-                # Option Seller margin (Span + Exposure)
-                required_margin = (execution_price * qty) + 75000.0
-        elif is_future:
-            # Exchange futures margin (~12% of contract value)
-            required_margin = (execution_price * qty) * 0.12
-        else:
-            leverage = 5.0 if product == "INTRADAY" else 1.0
-            required_margin = (execution_price * qty) / leverage
+        # Simulate positions to calculate required portfolio margin
+        simulated = [dict(p) for p in self.positions.values()]
+        existing_idx = next((i for i, p in enumerate(simulated) if p["symbol"] == symbol), None)
+        trade_realized = 0.0
 
-        if side == 1 and self.available_cash < required_margin:
+        if existing_idx is None:
+            simulated.append({
+                "symbol": symbol,
+                "net_qty": qty if side == 1 else -qty,
+                "buy_avg": execution_price if side == 1 else 0.0,
+                "sell_avg": execution_price if side == -1 else 0.0,
+                "product": product,
+            })
+        else:
+            p = simulated[existing_idx]
+            cur_qty = p["net_qty"]
+            new_qty = cur_qty + (qty if side == 1 else -qty)
+            if new_qty == 0:
+                if cur_qty > 0 and side == -1:
+                    trade_realized = (execution_price - p["buy_avg"]) * cur_qty
+                elif cur_qty < 0 and side == 1:
+                    trade_realized = (p["sell_avg"] - execution_price) * abs(cur_qty)
+                simulated.pop(existing_idx)
+            else:
+                p["net_qty"] = new_qty
+                p["side"] = "BUY" if new_qty > 0 else "SELL"
+                if side == 1:
+                    if cur_qty > 0:
+                        p["buy_avg"] = ((p["buy_avg"] * cur_qty) + (execution_price * qty)) / new_qty
+                    else:
+                        p["buy_avg"] = execution_price
+                else:
+                    if cur_qty < 0:
+                        p["sell_avg"] = ((p["sell_avg"] * abs(cur_qty)) + (execution_price * qty)) / abs(new_qty)
+                    else:
+                        p["sell_avg"] = execution_price
+
+        new_req_margin = calculate_portfolio_margin_for_positions(simulated)
+        total_cap = self.available_cash + self.used_margin
+
+        if new_req_margin > (total_cap + trade_realized):
+            shortfall = new_req_margin - (total_cap + trade_realized)
             return {
                 "s": "error",
-                "message": f"Insufficient Virtual Margin. Required: Rs. {required_margin:,.2f}, Available: Rs. {self.available_cash:,.2f}",
+                "message": f"Insufficient Virtual Margin. Required: Rs. {new_req_margin:,.2f}, Total Capital: Rs. {(total_cap + trade_realized):,.2f} (Shortfall: Rs. {shortfall:,.2f})",
             }
 
         order_id = f"VIRT-{int(time.time() * 1000) % 1000000}"
         now_str = datetime.datetime.now().strftime("%H:%M:%S")
-
-        # Deduct margin
-        self.available_cash -= required_margin
-        self.used_margin += required_margin
 
         # Create Order Record
         order_record = {
@@ -1419,7 +1542,7 @@ class VirtualTradingEngine:
                 "ltp": execution_price,
                 "pnl": 0.0,
                 "pnl_pct": 0.0,
-                "margin_held": required_margin,
+                "margin_held": new_req_margin,
             }
         else:
             pos = self.positions[symbol]
@@ -1427,25 +1550,21 @@ class VirtualTradingEngine:
             new_qty = current_qty + (qty if side == 1 else -qty)
 
             if new_qty == 0:
-                # Closed position
-                if current_qty > 0 and side == -1:
-                    realized = (execution_price - pos["buy_avg"]) * current_qty
-                else:
-                    realized = (pos["sell_avg"] - execution_price) * abs(current_qty)
-
-                self.realized_pnl += realized
-                self.available_cash += pos.get("margin_held", 0.0) + realized
-                self.used_margin = max(0.0, self.used_margin - pos.get("margin_held", 0.0))
+                self.realized_pnl += trade_realized
                 del self.positions[symbol]
             else:
                 pos["net_qty"] = new_qty
+                pos["side"] = "BUY" if new_qty > 0 else "SELL"
                 if side == 1:
                     total_cost = (pos["buy_avg"] * current_qty) + (execution_price * qty)
                     pos["buy_avg"] = round(total_cost / new_qty, 2)
                 else:
-                    pos["sell_avg"] = execution_price
-                pos["margin_held"] = pos.get("margin_held", 0.0) + required_margin
+                    total_sold = (pos["sell_avg"] * abs(current_qty)) + (execution_price * qty)
+                    pos["sell_avg"] = round(total_sold / abs(new_qty), 2)
 
+        final_used = calculate_portfolio_margin_for_positions(list(self.positions.values()))
+        self.used_margin = final_used
+        self.available_cash = max(0.0, (total_cap + trade_realized) - final_used)
         self._update_open_positions_mtm()
         return {
             "s": "ok",
@@ -1495,14 +1614,25 @@ class VirtualTradingEngine:
     # ========================================================
     def get_funds_for_user(self, username: str) -> Dict[str, Any]:
         f = db.get_funds(username)
-        positions = self.get_positions_for_user(username)
-        unrealized = sum(p.get("pnl", 0.0) for p in positions)
+        raw_positions = db.get_positions(username)
+        unrealized_positions = self.get_positions_for_user(username)
+        unrealized = sum(p.get("pnl", 0.0) for p in unrealized_positions)
+
+        # Dynamic portfolio margin based on open positions (1.5L single sell, 2.0L Call+Put sell pair)
+        calculated_used_margin = calculate_portfolio_margin_for_positions(raw_positions)
+        total_balance = f["available_cash"] + f["used_margin"]
+        available_cash = max(0.0, total_balance - calculated_used_margin)
+
+        # Synchronize database funds if legacy margin held differed
+        if abs(f["used_margin"] - calculated_used_margin) > 0.01:
+            db.update_funds(username, round(available_cash, 2), round(calculated_used_margin, 2), round(f["realized_pnl"], 2))
+
         return {
-            "available_cash": round(f["available_cash"], 2),
-            "used_margin": round(f["used_margin"], 2),
+            "available_cash": round(available_cash, 2),
+            "used_margin": round(calculated_used_margin, 2),
             "realized_pnl": round(f["realized_pnl"], 2),
             "unrealized_pnl": round(unrealized, 2),
-            "total_value": round(f["available_cash"] + f["used_margin"] + unrealized, 2),
+            "total_value": round(available_cash + calculated_used_margin + unrealized, 2),
         }
 
     def check_and_expire_positions(self, username: Optional[str] = None) -> int:
@@ -1757,34 +1887,63 @@ class VirtualTradingEngine:
         if (is_option or is_future) and not order_expiry:
             order_expiry = get_default_expiry_for_symbol(symbol)
 
-        if is_option:
-            if side == 1:
-                required_margin = execution_price * qty
-            else:
-                required_margin = (execution_price * qty) + 75000.0
-        elif is_future:
-            # Exchange futures margin (~12% of contract value)
-            required_margin = (execution_price * qty) * 0.12
-        else:
-            leverage = 5.0 if product == "INTRADAY" else 1.0
-            required_margin = (execution_price * qty) / leverage
-
         user_funds = db.get_funds(username)
-        avail = user_funds["available_cash"]
-        used = user_funds["used_margin"]
+        total_capital = user_funds["available_cash"] + user_funds["used_margin"]
         realized = user_funds["realized_pnl"]
 
-        if side == 1 and avail < required_margin:
+        # Simulate user's positions after executing this trade to compute portfolio margin
+        current_positions = db.get_positions(username)
+        simulated_positions = [dict(p) for p in current_positions]
+        existing_pos_idx = next((i for i, p in enumerate(simulated_positions) if p["symbol"] == symbol), None)
+        trade_realized = 0.0
+
+        if existing_pos_idx is None:
+            sim_pos = {
+                "symbol": symbol,
+                "net_qty": qty if side == 1 else -qty,
+                "buy_avg": execution_price if side == 1 else 0.0,
+                "sell_avg": execution_price if side == -1 else 0.0,
+                "product": product,
+                "expiry": order_expiry,
+            }
+            simulated_positions.append(sim_pos)
+        else:
+            p = simulated_positions[existing_pos_idx]
+            cur_qty = p["net_qty"]
+            new_qty = cur_qty + (qty if side == 1 else -qty)
+            if new_qty == 0:
+                if cur_qty > 0 and side == -1:
+                    trade_realized = (execution_price - p["buy_avg"]) * cur_qty
+                elif cur_qty < 0 and side == 1:
+                    trade_realized = (p["sell_avg"] - execution_price) * abs(cur_qty)
+                simulated_positions.pop(existing_pos_idx)
+            else:
+                p["net_qty"] = new_qty
+                p["side"] = "BUY" if new_qty > 0 else "SELL"
+                if side == 1:
+                    if cur_qty > 0:
+                        p["buy_avg"] = ((p["buy_avg"] * cur_qty) + (execution_price * qty)) / new_qty
+                    else:
+                        p["buy_avg"] = execution_price
+                else:
+                    if cur_qty < 0:
+                        p["sell_avg"] = ((p["sell_avg"] * abs(cur_qty)) + (execution_price * qty)) / abs(new_qty)
+                    else:
+                        p["sell_avg"] = execution_price
+
+        # Accurate portfolio required margin
+        new_portfolio_margin = calculate_portfolio_margin_for_positions(simulated_positions)
+
+        # Margin check against total available capital
+        if new_portfolio_margin > (total_capital + trade_realized):
+            shortfall = new_portfolio_margin - (total_capital + trade_realized)
             return {
                 "s": "error",
-                "message": f"Insufficient Virtual Margin. Required: Rs. {required_margin:,.2f}, Available: Rs. {avail:,.2f}",
+                "message": f"Insufficient Virtual Margin. Required Margin: Rs. {new_portfolio_margin:,.2f}, Total Capital: Rs. {(total_capital + trade_realized):,.2f} (Shortfall: Rs. {shortfall:,.2f})",
             }
 
         order_id = f"ORD-{int(time.time() * 1000) % 1000000}"
         now_str = datetime.datetime.now().strftime("%H:%M:%S")
-
-        avail -= required_margin
-        used += required_margin
 
         order_record = {
             "id": order_id,
@@ -1812,7 +1971,7 @@ class VirtualTradingEngine:
                 "net_qty": qty if side == 1 else -qty,
                 "buy_avg": execution_price if side == 1 else 0.0,
                 "sell_avg": execution_price if side == -1 else 0.0,
-                "margin_held": required_margin,
+                "margin_held": new_portfolio_margin,
                 "expiry": order_expiry,
                 "created_date": datetime.date.today().strftime("%Y-%m-%d"),
             }
@@ -1823,14 +1982,7 @@ class VirtualTradingEngine:
             new_qty = current_qty + (qty if side == 1 else -qty)
 
             if new_qty == 0:
-                if current_qty > 0 and side == -1:
-                    trade_realized = (execution_price - pos["buy_avg"]) * current_qty
-                else:
-                    trade_realized = (pos["sell_avg"] - execution_price) * abs(current_qty)
-
                 realized += trade_realized
-                avail += pos.get("margin_held", 0.0) + trade_realized
-                used = max(0.0, used - pos.get("margin_held", 0.0))
                 db.delete_position(username, symbol)
             else:
                 pos["net_qty"] = new_qty
@@ -1839,12 +1991,17 @@ class VirtualTradingEngine:
                     total_cost = (pos["buy_avg"] * current_qty) + (execution_price * qty)
                     pos["buy_avg"] = round(total_cost / new_qty, 2)
                 else:
-                    pos["sell_avg"] = execution_price
-                pos["margin_held"] = pos.get("margin_held", 0.0) + required_margin
+                    total_sold = (pos["sell_avg"] * abs(current_qty)) + (execution_price * qty)
+                    pos["sell_avg"] = round(total_sold / abs(new_qty), 2)
                 pos["expiry"] = order_expiry or pos.get("expiry", "")
                 db.save_position(username, pos)
 
-        db.update_funds(username, avail, used, realized)
+        # Update user funds with accurate portfolio used margin
+        final_positions = db.get_positions(username)
+        final_used_margin = calculate_portfolio_margin_for_positions(final_positions)
+        new_avail = max(0.0, (total_capital + trade_realized) - final_used_margin)
+        new_realized = round(realized, 2)
+        db.update_funds(username, round(new_avail, 2), round(final_used_margin, 2), new_realized)
 
         return {
             "s": "ok",

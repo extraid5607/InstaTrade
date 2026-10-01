@@ -2908,19 +2908,73 @@
       const reqEl = document.getElementById('req-margin');
       const submitBtn = document.getElementById('btn-submit-order');
 
+      const isOption = currentSymbol.endsWith('CE') || currentSymbol.endsWith('PE') || currentSymbol.includes(' CE') || currentSymbol.includes(' PE') || currentSymbol.includes(' CALL') || currentSymbol.includes(' PUT');
+      const isFuture = currentSymbol.includes('-FUT');
+      const lots = qty / Math.max(1, currentLotSize);
+
       let margin = 0;
+      let hedgeBadge = '';
+
       if (currentSide === 1) {
-        // Buy premium
-        margin = price * qty;
+        // Option Buyer pays pure premium
+        if (isOption) {
+          margin = price * qty;
+        } else if (isFuture) {
+          const spot = currentSpotPrice || price || 100;
+          margin = (spot * qty) * 0.12;
+        } else {
+          const leverage = (currentProduct === 'INTRADAY' ? 5 : 1);
+          margin = (price * qty) / leverage;
+        }
+
         if (submitBtn) {
           submitBtn.className = 'w-full py-3 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-sm pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-glowBrand active:scale-95';
           submitBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (${qty} Qty)`;
         }
       } else {
-        // Option sell writing margin ~ (Index Spot * 0.12) per lot + premium
-        const spot = currentSpotPrice || 55000;
-        const lots = qty / Math.max(1, currentLotSize);
-        margin = (lots * spot * 0.12) + (price * qty);
+        // Option Seller Margin: 1 lot = 1.5L, 1 lot Call + 1 lot Put pair = 2.0L
+        if (isOption) {
+          const isCall = currentSymbol.endsWith('CE') || currentSymbol.includes(' CE') || currentSymbol.includes(' CALL');
+          const isPut = currentSymbol.endsWith('PE') || currentSymbol.includes(' PE') || currentSymbol.includes(' PUT');
+          
+          let underlying = 'NIFTY';
+          if (currentSymbol.includes('SENSEX')) underlying = 'SENSEX';
+          else if (currentSymbol.includes('BANKNIFTY')) underlying = 'BANKNIFTY';
+          else if (currentSymbol.includes('FINNIFTY')) underlying = 'FINNIFTY';
+          else if (currentSymbol.includes('MIDCPNIFTY')) underlying = 'MIDCPNIFTY';
+
+          // Count existing short positions on the opposite option leg
+          const opposingType = isCall ? 'PUT' : 'CALL';
+          let opposingShortLots = 0;
+          (window.latestPositions || []).forEach(p => {
+            if (p.net_qty < 0) {
+              const symUpper = (p.symbol || '').toUpperCase();
+              const pIsCall = symUpper.endsWith('CE') || symUpper.includes(' CE') || symUpper.includes(' CALL');
+              const pIsPut = symUpper.endsWith('PE') || symUpper.includes(' PE') || symUpper.includes(' PUT');
+              const pUnderlying = symUpper.includes('SENSEX') ? 'SENSEX' : (symUpper.includes('BANKNIFTY') ? 'BANKNIFTY' : (symUpper.includes('FINNIFTY') ? 'FINNIFTY' : (symUpper.includes('MIDCPNIFTY') ? 'MIDCPNIFTY' : 'NIFTY')));
+              
+              if (pUnderlying === underlying && ((opposingType === 'PUT' && pIsPut) || (opposingType === 'CALL' && pIsCall))) {
+                opposingShortLots += Math.abs(p.net_qty) / Math.max(1, currentLotSize);
+              }
+            }
+          });
+
+          if (opposingShortLots > 0) {
+            const pairedLots = Math.min(lots, opposingShortLots);
+            const extraLots = Math.max(0, lots - pairedLots);
+            margin = (pairedLots * 50000) + (extraLots * 150000);
+            hedgeBadge = `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-sans font-bold">Hedged Pair (₹2.0L)</span>`;
+          } else {
+            margin = lots * 150000;
+          }
+        } else if (isFuture) {
+          const spot = currentSpotPrice || price || 100;
+          margin = (spot * qty) * 0.12;
+        } else {
+          const leverage = (currentProduct === 'INTRADAY' ? 5 : 1);
+          margin = (price * qty) / leverage;
+        }
+
         if (submitBtn) {
           submitBtn.className = 'w-full py-3 rounded-xl bg-danger hover:bg-rose-600 text-white font-bold text-sm pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-glowDanger active:scale-95';
           submitBtn.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE SELL (${qty} Qty)`;
@@ -2930,11 +2984,11 @@
       if (reqEl) {
         const isShort = (currentAvailableFunds > 0 && margin > currentAvailableFunds);
         if (isShort) {
-          reqEl.className = 'font-mono text-danger font-bold flex items-center gap-1';
-          reqEl.innerHTML = `<span>₹ ${margin.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span> <span class="text-[10px] bg-rose-500/20 text-danger border border-rose-500/30 px-1 py-0.2 rounded font-sans">Low Funds</span>`;
+          reqEl.className = 'font-mono text-danger font-bold flex items-center gap-1.5 flex-wrap justify-end';
+          reqEl.innerHTML = `<span>₹ ${margin.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span> <span class="text-[10px] bg-rose-500/20 text-danger border border-rose-500/30 px-1 py-0.2 rounded font-sans">Low Funds</span> ${hedgeBadge}`;
         } else {
-          reqEl.className = 'font-mono text-white font-bold';
-          reqEl.innerText = `₹ ${margin.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+          reqEl.className = 'font-mono text-white font-bold flex items-center gap-1.5 flex-wrap justify-end';
+          reqEl.innerHTML = `<span>₹ ${margin.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span> ${hedgeBadge}`;
         }
       }
       try { lucide.createIcons(); } catch (e) {}
