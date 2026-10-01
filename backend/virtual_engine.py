@@ -340,63 +340,72 @@ def calculate_portfolio_margin_for_positions(positions: List[Dict[str, Any]]) ->
 
 def calculate_live_option_price_for_symbol(symbol: str, expiry: Optional[str] = None, quotes_cache: Optional[Dict[str, Any]] = None) -> float:
     """
-    Dynamically computes real-time option LTP using Black-Scholes Greeks and live index spot quotes.
-    Ensures active option positions never get stuck and accurately reflect live index spot moves.
+    Synchronizes option premium between Option Chain, Order Pad, and Open Positions:
+    1. First checks if quotes_cache already contains the exact option price from Option Chain.
+    2. Checks all symbol alias formats (e.g. 'SENSEX 72900 CE', 'BSE:SENSEX26OCT72900CE', etc.).
+    3. If not cached, computes using the exact Black-Scholes model aligned with the Option Chain.
     """
-    sym = (symbol or "").upper().strip()
-    underlying, opt_type, is_option, _ = parse_symbol_underlying_and_type(sym)
+    sym = (symbol or "").strip()
+    sym_u = sym.upper()
+    underlying, opt_type, is_option, _ = parse_symbol_underlying_and_type(sym_u)
+    
     if not is_option:
         if quotes_cache and sym in quotes_cache and quotes_cache[sym].get("ltp"):
             return float(quotes_cache[sym]["ltp"])
         return 100.0
 
     # Extract strike price
-    match = re.search(r'(\d{4,6})\s*(CE|PE|CALL|PUT)?$', sym)
-    strike = float(match.group(1)) if match else 0.0
-    if strike <= 0:
+    match = re.search(r'(\d{4,6})\s*(CE|PE|CALL|PUT)?$', sym_u)
+    strike_int = int(match.group(1)) if match else 0
+    if strike_int <= 0:
         if quotes_cache and sym in quotes_cache and quotes_cache[sym].get("ltp"):
             return float(quotes_cache[sym]["ltp"])
         return 100.0
 
-    # Map underlying to benchmark spot index
+    std_type = "CE" if opt_type in ("CALL", "CE") else "PE"
+    alt_type = "CALL" if std_type == "CE" else "PUT"
+
+    # 1. Exact Match against Option Chain quotes_cache
+    if quotes_cache:
+        lookup_keys = [
+            sym,
+            sym_u,
+            f"{underlying} {strike_int} {std_type}",
+            f"{underlying} {strike_int} {alt_type}",
+            f"BSE:{underlying}24OCT{strike_int}{std_type}",
+            f"NSE:{underlying}24OCT{strike_int}{std_type}",
+            f"BSE:{underlying}26OCT{strike_int}{std_type}",
+            f"NSE:{underlying}26OCT{strike_int}{std_type}",
+            f"{underlying}:{strike_int}:{std_type}",
+        ]
+        for k in lookup_keys:
+            if k in quotes_cache and quotes_cache[k].get("ltp") and float(quotes_cache[k]["ltp"]) > 0:
+                return float(quotes_cache[k]["ltp"])
+
+    # 2. Black-Scholes calculation matching get_option_chain model
     if "SENSEX" in underlying:
         base_sym = "BSE:SENSEX-INDEX"
-        default_spot = 73650.0
+        default_spot = 72500.0
     elif "BANK" in underlying:
         base_sym = "NSE:NIFTYBANK-INDEX"
-        default_spot = 55605.0
+        default_spot = 54850.0
     elif "FINNIFTY" in underlying:
         base_sym = "NSE:FINNIFTY-INDEX"
-        default_spot = 24650.0
+        default_spot = 24740.0
     elif "MIDCP" in underlying:
         base_sym = "NSE:MIDCPNIFTY-INDEX"
-        default_spot = 13965.0
+        default_spot = 13640.0
     else:
         base_sym = "NSE:NIFTY50-INDEX"
-        default_spot = 23085.0
+        default_spot = 22540.0
 
     spot = default_spot
     if quotes_cache and base_sym in quotes_cache and quotes_cache[base_sym].get("ltp"):
         spot = float(quotes_cache[base_sym]["ltp"])
 
-    # Calculate time to expiry T (in years)
-    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
-    now_ist = datetime.datetime.now(IST)
-    today_ist = now_ist.date()
-
-    t_years = 2 / 365.0
-    if expiry:
-        exp_d = parse_expiry_date(expiry)
-        if exp_d:
-            days_left = max(0, (exp_d - today_ist).days)
-            if days_left == 0:
-                hours_to_close = max(0.5, 15.5 - (now_ist.hour + now_ist.minute / 60.0))
-                t_years = max(0.0005, hours_to_close / (24.0 * 365.0))
-            else:
-                t_years = max(0.005, days_left / 365.0)
-
-    ce_p, pe_p, _, _ = bs_prices(spot, strike, T=t_years, sigma=0.14)
-    calculated_ltp = ce_p if opt_type in ("CALL", "CE") else pe_p
+    t_years = 4 / 365.0
+    ce_p, pe_p, _, _ = bs_prices(spot, float(strike_int), T=t_years, sigma=0.14)
+    calculated_ltp = ce_p if std_type == "CE" else pe_p
     return max(0.05, round(calculated_ltp, 2))
 
 
@@ -1834,6 +1843,20 @@ class VirtualTradingEngine:
 
         # 2. Retrieve remaining active positions
         raw_positions = db.get_positions(username)
+
+        # Pre-populate Option Chain cache so all open position strike prices match Option Chain exactly
+        needed_underlyings = set()
+        for pos in raw_positions:
+            sym = pos.get("symbol", "")
+            und, _, is_opt, _ = parse_symbol_underlying_and_type(sym)
+            if is_opt and und:
+                needed_underlyings.add(und)
+        for und in needed_underlyings:
+            try:
+                self.get_option_chain(und)
+            except Exception:
+                pass
+
         enriched = []
         IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         today_ist = datetime.datetime.now(IST).date()
