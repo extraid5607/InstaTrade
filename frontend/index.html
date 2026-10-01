@@ -65,6 +65,12 @@
       --scrollbar-thumb: #1c2638;
     }
 
+    .pos-expiry-badge {
+      background-color: rgba(30, 41, 59, 0.6);
+      color: #94a3b8;
+      border-color: rgba(51, 65, 85, 0.5);
+    }
+
     [data-theme="light"] {
       --bg-main: #f1f5f9;
       --bg-panel: #ffffff;
@@ -264,10 +270,17 @@
       background-color: rgba(0, 0, 0, 0.4) !important;
     }
     [data-theme="light"] .bg-sky-500\/15 {
-      background-color: rgba(14, 165, 233, 0.15) !important;
+      background-color: rgba(14, 165, 233, 0.12) !important;
+      border-color: rgba(14, 165, 233, 0.3) !important;
     }
     [data-theme="light"] .bg-orange-500\/15 {
-      background-color: rgba(249, 115, 22, 0.15) !important;
+      background-color: rgba(249, 115, 22, 0.12) !important;
+      border-color: rgba(249, 115, 22, 0.3) !important;
+    }
+    [data-theme="light"] .pos-expiry-badge {
+      background-color: #f1f5f9 !important;
+      color: #475569 !important;
+      border-color: #cbd5e1 !important;
     }
 
     /* Status & Badge Pills */
@@ -4157,7 +4170,7 @@
                 }
               }
 
-              const expBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800/80 text-slate-400">${info.expiryStr}</span>`;
+              const expBadge = info.expiryStr ? `<span class="pos-expiry-badge px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border">${info.expiryStr}</span>` : '';
 
               return `
                 <div id="mob-pos-row-${rowKey}" onclick="openPosExitModal('${p.symbol}')" class="mob-zk-pos-row px-4 py-3 active:bg-slate-800/30 transition-colors cursor-pointer select-none ${isClosed ? 'opacity-60' : ''}" data-symbol="${p.symbol.toLowerCase()}" data-closed="${isClosed ? '1' : '0'}">
@@ -4175,6 +4188,7 @@
                     <div class="flex items-center gap-1.5 flex-wrap">
                       <span class="font-bold text-sm ${isClosed ? 'text-slate-400' : 'text-white'}">${info.underlying}</span>
                       ${badgeHtml}
+                      ${expBadge}
                     </div>
                     <div class="text-right">
                       <span id="mob-pos-pnl-${rowKey}" class="font-bold font-mono text-sm ${pnlColor}">${pnlFormatted}</span>
