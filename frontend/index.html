@@ -3075,13 +3075,13 @@
         }
       }, 2000);
 
-      // 3. Funds & dock MTM poll (every 3000ms)
+      // 3. Funds & dock MTM poll (every 1500ms) - continuous real-time MTM streaming
       setInterval(async () => {
         try { await refreshFunds(); } catch (e) {}
-        if (currentWorkstation === 'positions' || currentRightDockTab === 'positions') {
+        if (currentWorkstation === 'positions' || currentRightDockTab === 'positions' || currentMobileTab === 'positions' || (window.latestPositions && window.latestPositions.length > 0)) {
           try { await loadDockContent(); } catch (e) {}
         }
-      }, 3000);
+      }, 1500);
     });
 
     // ------------------ SMART BACK BUTTON & APP EXIT FLOW ------------------
@@ -4135,10 +4135,13 @@
           return;
         }
 
-        // Fast In-Place Update (if already rendered and count hasn't changed)
+        // Fast In-Place Update (if already rendered on desktop or mobile and count hasn't changed)
         const existingPosTable = document.getElementById('pos-table-body');
         const existingMobList = document.getElementById('pos-mob-zerodha-list');
-        if (existingPosTable && existingPosTable.children.length === positions.length) {
+        const isTableReady = existingPosTable && existingPosTable.children.length === positions.length;
+        const isMobReady = existingMobList && existingMobList.children.length === positions.length;
+
+        if (isTableReady || isMobReady) {
           let runningTotalPnl = 0;
           positions.forEach(p => {
             const rowKey = p.symbol.replace(/[: -]/g, '_');

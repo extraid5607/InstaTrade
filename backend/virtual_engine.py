@@ -338,6 +338,68 @@ def calculate_portfolio_margin_for_positions(positions: List[Dict[str, Any]]) ->
     return round(total_margin, 2)
 
 
+def calculate_live_option_price_for_symbol(symbol: str, expiry: Optional[str] = None, quotes_cache: Optional[Dict[str, Any]] = None) -> float:
+    """
+    Dynamically computes real-time option LTP using Black-Scholes Greeks and live index spot quotes.
+    Ensures active option positions never get stuck and accurately reflect live index spot moves.
+    """
+    sym = (symbol or "").upper().strip()
+    underlying, opt_type, is_option, _ = parse_symbol_underlying_and_type(sym)
+    if not is_option:
+        if quotes_cache and sym in quotes_cache and quotes_cache[sym].get("ltp"):
+            return float(quotes_cache[sym]["ltp"])
+        return 100.0
+
+    # Extract strike price
+    match = re.search(r'(\d{4,6})\s*(CE|PE|CALL|PUT)?$', sym)
+    strike = float(match.group(1)) if match else 0.0
+    if strike <= 0:
+        if quotes_cache and sym in quotes_cache and quotes_cache[sym].get("ltp"):
+            return float(quotes_cache[sym]["ltp"])
+        return 100.0
+
+    # Map underlying to benchmark spot index
+    if "SENSEX" in underlying:
+        base_sym = "BSE:SENSEX-INDEX"
+        default_spot = 73650.0
+    elif "BANK" in underlying:
+        base_sym = "NSE:NIFTYBANK-INDEX"
+        default_spot = 55605.0
+    elif "FINNIFTY" in underlying:
+        base_sym = "NSE:FINNIFTY-INDEX"
+        default_spot = 24650.0
+    elif "MIDCP" in underlying:
+        base_sym = "NSE:MIDCPNIFTY-INDEX"
+        default_spot = 13965.0
+    else:
+        base_sym = "NSE:NIFTY50-INDEX"
+        default_spot = 23085.0
+
+    spot = default_spot
+    if quotes_cache and base_sym in quotes_cache and quotes_cache[base_sym].get("ltp"):
+        spot = float(quotes_cache[base_sym]["ltp"])
+
+    # Calculate time to expiry T (in years)
+    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    now_ist = datetime.datetime.now(IST)
+    today_ist = now_ist.date()
+
+    t_years = 2 / 365.0
+    if expiry:
+        exp_d = parse_expiry_date(expiry)
+        if exp_d:
+            days_left = max(0, (exp_d - today_ist).days)
+            if days_left == 0:
+                hours_to_close = max(0.5, 15.5 - (now_ist.hour + now_ist.minute / 60.0))
+                t_years = max(0.0005, hours_to_close / (24.0 * 365.0))
+            else:
+                t_years = max(0.005, days_left / 365.0)
+
+    ce_p, pe_p, _, _ = bs_prices(spot, strike, T=t_years, sigma=0.14)
+    calculated_ltp = ce_p if opt_type in ("CALL", "CE") else pe_p
+    return max(0.05, round(calculated_ltp, 2))
+
+
 def parse_expiry_date(exp_str: Optional[str]) -> Optional[datetime.date]:
     if not exp_str:
         return None
@@ -1398,40 +1460,32 @@ class VirtualTradingEngine:
 
     def _update_open_positions_mtm(self):
         for sym, pos in self.positions.items():
-            ltp = pos.get("ltp", 100.0)
-            if sym in self.quotes_cache and self.quotes_cache[sym].get("ltp"):
-                ltp = self.quotes_cache[sym]["ltp"]
-            elif (sym.endswith("CE") or sym.endswith("PE")):
-                try:
-                    parts = sym.split()
-                    if len(parts) >= 3:
-                        name = parts[0]
-                        strike = float(parts[1])
-                        opt_type = parts[2]
-                        if "SENSEX" in name:
-                            base_sym = "BSE:SENSEX-INDEX"
-                            default_spot = 74000.0
-                        elif "BANK" in name:
-                            base_sym = "NSE:NIFTYBANK-INDEX"
-                            default_spot = 55600.0
-                        else:
-                            base_sym = "NSE:NIFTY50-INDEX"
-                            default_spot = 23200.0
-                        spot = self.quotes_cache.get(base_sym, {}).get("ltp", default_spot)
-                        ce_p, pe_p, _, _ = bs_prices(spot, strike)
-                        ltp = ce_p if opt_type == "CE" else pe_p
-                except Exception:
-                    pass
+            exp_str = pos.get("expiry")
+            live_ltp = calculate_live_option_price_for_symbol(sym, exp_str, self.quotes_cache)
+            self.quotes_cache[sym] = {
+                "symbol": sym,
+                "short_name": sym,
+                "ltp": live_ltp,
+                "change": 0.0,
+                "chg_percent": 0.0,
+            }
 
-            pos["ltp"] = ltp
+            pos["ltp"] = live_ltp
             qty = pos["net_qty"]
             avg = pos["buy_avg"] if qty > 0 else pos["sell_avg"]
+            if avg <= 0:
+                avg = pos.get("price", live_ltp)
+                if qty > 0:
+                    pos["buy_avg"] = avg
+                else:
+                    pos["sell_avg"] = avg
+
             if qty > 0:
-                pos["pnl"] = round((ltp - avg) * qty, 2)
-                pos["pnl_pct"] = round(((ltp - avg) / avg) * 100.0, 2) if avg else 0.0
+                pos["pnl"] = round((live_ltp - avg) * qty, 2)
+                pos["pnl_pct"] = round(((live_ltp - avg) / avg) * 100.0, 2) if avg else 0.0
             elif qty < 0:
-                pos["pnl"] = round((avg - ltp) * abs(qty), 2)
-                pos["pnl_pct"] = round(((avg - ltp) / avg) * 100.0, 2) if avg else 0.0
+                pos["pnl"] = round((avg - live_ltp) * abs(qty), 2)
+                pos["pnl_pct"] = round(((avg - live_ltp) / avg) * 100.0, 2) if avg else 0.0
 
     # ------------------ ORDER EXECUTION ------------------
     def place_order(
@@ -1802,47 +1856,33 @@ class VirtualTradingEngine:
                     p["expiry"] = ""
 
             exp_str = p.get("expiry")
-            t_years = 4 / 365.0
-            if exp_str:
-                exp_d = parse_expiry_date(exp_str)
-                if exp_d:
-                    days_left = max(0, (exp_d - today_ist).days)
-                    t_years = max(0.2, days_left) / 365.0
 
-            ltp = p.get("ltp", 100.0)
-            if sym in self.quotes_cache and self.quotes_cache[sym].get("ltp"):
-                ltp = self.quotes_cache[sym]["ltp"]
-            elif (sym.endswith("CE") or sym.endswith("PE")):
-                try:
-                    parts = sym.split()
-                    if len(parts) >= 3:
-                        name = parts[0]
-                        strike = float(parts[1])
-                        opt_type = parts[2]
-                        if "SENSEX" in name:
-                            base_sym = "BSE:SENSEX-INDEX"
-                            default_spot = 74000.0
-                        elif "BANK" in name:
-                            base_sym = "NSE:NIFTYBANK-INDEX"
-                            default_spot = 55600.0
-                        else:
-                            base_sym = "NSE:NIFTY50-INDEX"
-                            default_spot = 23200.0
-                        spot = self.quotes_cache.get(base_sym, {}).get("ltp", default_spot)
-                        ce_p, pe_p, _, _ = bs_prices(spot, strike, T=t_years)
-                        ltp = ce_p if opt_type == "CE" else pe_p
-                except Exception:
-                    pass
+            # Real-time dynamic option pricing from live spot index
+            live_ltp = calculate_live_option_price_for_symbol(sym, exp_str, self.quotes_cache)
+            self.quotes_cache[sym] = {
+                "symbol": sym,
+                "short_name": sym,
+                "ltp": live_ltp,
+                "change": 0.0,
+                "chg_percent": 0.0,
+            }
 
-            p["ltp"] = ltp
+            p["ltp"] = live_ltp
             qty = p["net_qty"]
             avg = p["buy_avg"] if qty > 0 else p["sell_avg"]
+            if avg <= 0:
+                avg = p.get("price", live_ltp)
+                if qty > 0:
+                    p["buy_avg"] = avg
+                else:
+                    p["sell_avg"] = avg
+
             if qty > 0:
-                p["pnl"] = round((ltp - avg) * qty, 2)
-                p["pnl_pct"] = round(((ltp - avg) / avg) * 100.0, 2) if avg else 0.0
+                p["pnl"] = round((live_ltp - avg) * qty, 2)
+                p["pnl_pct"] = round(((live_ltp - avg) / avg) * 100.0, 2) if avg else 0.0
             elif qty < 0:
-                p["pnl"] = round((avg - ltp) * abs(qty), 2)
-                p["pnl_pct"] = round(((avg - ltp) / avg) * 100.0, 2) if avg else 0.0
+                p["pnl"] = round((avg - live_ltp) * abs(qty), 2)
+                p["pnl_pct"] = round(((avg - live_ltp) / avg) * 100.0, 2) if avg else 0.0
             else:
                 p["pnl"] = 0.0
                 p["pnl_pct"] = 0.0
