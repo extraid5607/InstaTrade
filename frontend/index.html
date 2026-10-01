@@ -2000,24 +2000,7 @@
 
     // Toggle Sub-tabs inside Portfolio & P&L Command Center
     function switchPositionsSubTab(subTab) {
-      const posBtn = document.getElementById('cmd-tab-positions');
-      const ordBtn = document.getElementById('cmd-tab-orders');
-      const mobPosTab = document.getElementById('mob-zk-tab-positions');
-      const mobInvTab = document.getElementById('mob-zk-tab-investments');
-
-      if (subTab === 'positions') {
-        if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
-        if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
-        if (mobPosTab) mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
-        if (mobInvTab) mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
-        switchDockTab('positions');
-      } else {
-        if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
-        if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
-        if (mobInvTab) mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
-        if (mobPosTab) mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
-        switchDockTab('orders');
-      }
+      switchDockTab(subTab);
     }
 
     // Top Market Ticker Ribbon Quick Select
@@ -4039,6 +4022,25 @@
       });
       const activeBtn = document.getElementById(`tab-${tab}`);
       if (activeBtn) activeBtn.className = 'dock-tab py-2 tab-active cursor-pointer';
+
+      // Keep Command Center subtab buttons in sync
+      const posBtn = document.getElementById('cmd-tab-positions');
+      const ordBtn = document.getElementById('cmd-tab-orders');
+      const mobPosTab = document.getElementById('mob-zk-tab-positions');
+      const mobInvTab = document.getElementById('mob-zk-tab-investments');
+
+      if (tab === 'positions') {
+        if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
+        if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        if (mobPosTab) mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+        if (mobInvTab) mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+      } else if (tab === 'orders') {
+        if (ordBtn) ordBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
+        if (posBtn) posBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        if (mobInvTab) mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+        if (mobPosTab) mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+      }
+
       loadDockContent();
     }
 
@@ -4046,82 +4048,154 @@
       const container = document.getElementById('dock-content');
       if (!container) return;
 
-      if (currentDockTab === 'positions') {
-        let positions = [];
-        try {
-          const res = await fetch('/api/positions', { headers: getAuthHeaders() });
-          const d = await res.json();
-          positions = d.positions || [];
-          positions.forEach(p => {
-            if (p.expiry === '2026-10-02' || p.expiry === '02 Oct 2026') {
-              p.expiry = '2026-10-01';
+      const activeUser = getActiveUsername();
+      const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
+      const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
+
+      let positions = [];
+      let orders = [];
+
+      try {
+        const [posRes, ordRes] = await Promise.all([
+          fetch('/api/positions', { headers: getAuthHeaders() }).then(r => r.json()).catch(() => ({ positions: [] })),
+          fetch('/api/orders', { headers: getAuthHeaders() }).then(r => r.json()).catch(() => ({ orders: [] }))
+        ]);
+        positions = posRes.positions || [];
+        orders = ordRes.orders || [];
+
+        positions.forEach(p => {
+          if (p.expiry === '2026-10-02' || p.expiry === '02 Oct 2026') {
+            p.expiry = '2026-10-01';
+          }
+        });
+      } catch (e) {
+        console.warn('Dock fetch error:', e);
+      }
+
+      // Positions LocalStorage Caching & Auto-Restore
+      if (positions.length > 0) {
+        try { localStorage.setItem(cacheKeyPos, JSON.stringify(positions)); } catch (e) {}
+      } else if (!window._userExplicitlyClosedAll) {
+        const savedPosRaw = localStorage.getItem(cacheKeyPos);
+        if (savedPosRaw) {
+          try {
+            const savedPos = JSON.parse(savedPosRaw);
+            if (Array.isArray(savedPos) && savedPos.length > 0) {
+              savedPos.forEach(p => {
+                if (p.expiry === '2026-10-02' || p.expiry === '02 Oct 2026') {
+                  p.expiry = '2026-10-01';
+                }
+              });
+              const syncRes = await fetch('/api/positions/sync', {
+                method: 'POST',
+                headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ positions: savedPos, orders: orders })
+              });
+              const syncData = await syncRes.json();
+              if (syncData && syncData.positions && syncData.positions.length > 0) {
+                positions = syncData.positions;
+              } else {
+                positions = savedPos;
+              }
+              if (syncData && syncData.orders && syncData.orders.length > 0) {
+                orders = syncData.orders;
+              }
             }
-          });
-        } catch (e) {}
+          } catch (err) {
+            console.warn('Position auto-restore error:', err);
+          }
+        }
+      }
 
-        const activeUser = getActiveUsername();
-        const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
-        const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
-
-        if (positions.length > 0) {
-          try { localStorage.setItem(cacheKeyPos, JSON.stringify(positions)); } catch (e) {}
-        } else if (!window._userExplicitlyClosedAll) {
-          const savedPosRaw = localStorage.getItem(cacheKeyPos);
-          if (savedPosRaw) {
-            try {
-              const savedPos = JSON.parse(savedPosRaw);
-              if (Array.isArray(savedPos) && savedPos.length > 0) {
-                savedPos.forEach(p => {
-                  if (p.expiry === '2026-10-02' || p.expiry === '02 Oct 2026') {
-                    p.expiry = '2026-10-01';
-                  }
-                });
-                // Auto-restore backup positions to server SQLite DB
-                const syncRes = await fetch('/api/positions/sync', {
+      // Orders LocalStorage Caching & Fallback
+      if (orders.length > 0) {
+        try { localStorage.setItem(cacheKeyOrd, JSON.stringify(orders)); } catch (e) {}
+      } else {
+        const savedOrdRaw = localStorage.getItem(cacheKeyOrd);
+        if (savedOrdRaw) {
+          try {
+            const savedOrd = JSON.parse(savedOrdRaw);
+            if (Array.isArray(savedOrd) && savedOrd.length > 0) {
+              orders = savedOrd;
+              try {
+                fetch('/api/positions/sync', {
                   method: 'POST',
                   headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                  body: JSON.stringify({ positions: savedPos, orders: [] })
+                  body: JSON.stringify({ positions: positions, orders: savedOrd })
                 });
-                const syncData = await syncRes.json();
-                if (syncData && syncData.positions && syncData.positions.length > 0) {
-                  positions = syncData.positions;
-                } else {
-                  positions = savedPos;
-                }
-              }
-            } catch (err) {
-              console.warn('Position auto-restore error:', err);
+              } catch (e) {}
             }
-          }
+          } catch (e) {}
         }
+      }
 
-        window.latestPositions = positions;
+      window.latestPositions = positions;
+      window.latestOrders = orders;
 
-        // Sync tab counter
-        const tabPosBtn = document.getElementById('tab-positions');
-        if (tabPosBtn) tabPosBtn.innerText = `Positions (${positions.length})`;
+      // Update Tab and Subtab Counters
+      const tabPosBtn = document.getElementById('tab-positions');
+      if (tabPosBtn) tabPosBtn.innerText = `Positions (${positions.length})`;
 
-        const mobPosCount = document.getElementById('mob-zk-pos-count');
-        if (mobPosCount) mobPosCount.innerText = positions.length;
+      const mobPosCount = document.getElementById('mob-zk-pos-count');
+      if (mobPosCount) mobPosCount.innerText = positions.length;
 
-        // Mobile notification badge
-        const mobBadge = document.getElementById('mob-pos-badge');
-        if (mobBadge) {
-          if (positions.length > 0) mobBadge.classList.remove('hidden');
-          else mobBadge.classList.add('hidden');
-        }
+      const subPosCount = document.getElementById('cmd-subtab-pos-count');
+      if (subPosCount) subPosCount.innerText = positions.length;
 
+      const cmdPosCount = document.getElementById('cmd-pos-count');
+      if (cmdPosCount) cmdPosCount.innerText = positions.length;
+
+      const wsPosPill = document.getElementById('ws-pos-pill');
+      if (wsPosPill) {
+        wsPosPill.innerText = positions.length;
+        if (positions.length > 0) wsPosPill.classList.remove('hidden');
+        else wsPosPill.classList.add('hidden');
+      }
+
+      const mobBadge = document.getElementById('mob-pos-badge');
+      if (mobBadge) {
+        if (positions.length > 0) mobBadge.classList.remove('hidden');
+        else mobBadge.classList.add('hidden');
+      }
+
+      const tabOrdBtn = document.getElementById('tab-orders');
+      if (tabOrdBtn) tabOrdBtn.innerText = `Orders (${orders.length})`;
+
+      const mobInvCount = document.getElementById('mob-zk-inv-count');
+      if (mobInvCount) mobInvCount.innerText = orders.length;
+
+      const subOrdCount = document.getElementById('cmd-subtab-ord-count');
+      if (subOrdCount) subOrdCount.innerText = orders.length;
+
+      const cmdOrdCount = document.getElementById('cmd-orders-count');
+      if (cmdOrdCount) cmdOrdCount.innerText = `${orders.length} order${orders.length === 1 ? '' : 's'} executed`;
+
+      // Update P&L metrics
+      const totalPnl = positions.reduce((acc, p) => acc + Number(p.pnl || 0), 0);
+      const dockMtm = document.getElementById('dock-total-mtm-val');
+      if (dockMtm) {
+        dockMtm.innerText = `${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toFixed(2)}`;
+        dockMtm.className = `font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+      }
+      const mobZkTotalPnl = document.getElementById('mob-zk-total-pnl');
+      if (mobZkTotalPnl) {
+        mobZkTotalPnl.innerText = `${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}`;
+        mobZkTotalPnl.className = `text-sm font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger'}`;
+      }
+      const cmdTotalPnl = document.getElementById('cmd-total-pnl');
+      if (cmdTotalPnl) {
+        animatePnlNumber(cmdTotalPnl, totalPnl);
+      }
+      const cmdPnlStatus = document.getElementById('cmd-pnl-status');
+      if (cmdPnlStatus) {
+        cmdPnlStatus.innerText = `${positions.length} active position${positions.length === 1 ? '' : 's'}`;
+      }
+
+      renderRightDockPositions();
+
+      // =================== TAB 1: POSITIONS ===================
+      if (currentDockTab === 'positions') {
         if (!positions.length) {
-          const dockMtm = document.getElementById('dock-total-mtm-val');
-          if (dockMtm) {
-            dockMtm.innerText = '+₹ 0.00';
-            dockMtm.className = 'font-bold text-emerald-400';
-          }
-          const mobZkTotalPnl = document.getElementById('mob-zk-total-pnl');
-          if (mobZkTotalPnl) {
-            mobZkTotalPnl.innerText = '+0.00';
-            mobZkTotalPnl.className = 'text-sm font-bold font-mono text-emerald-400';
-          }
           container.innerHTML = `
             <div class="py-12 px-4 text-center">
               <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
@@ -4135,7 +4209,7 @@
           return;
         }
 
-        // Fast In-Place Update (if already rendered on desktop or mobile and count hasn't changed)
+        // Fast In-Place Update (if already rendered and count unchanged)
         const existingPosTable = document.getElementById('pos-table-body');
         const existingMobList = document.getElementById('pos-mob-zerodha-list');
         const isTableReady = existingPosTable && existingPosTable.children.length === positions.length;
@@ -4165,7 +4239,6 @@
               mobPnlEl.className = `font-bold font-mono text-sm ${pnlColor}`;
             }
 
-            // Sync with live Exit Modal if currently opened for this position
             if (window.currentExitSymbol === p.symbol) {
               const modalLtp = document.getElementById('exit-modal-ltp');
               const modalPnl = document.getElementById('exit-modal-pnl');
@@ -4177,29 +4250,15 @@
             }
           });
 
-          const mobZkTotalPnl = document.getElementById('mob-zk-total-pnl');
           if (mobZkTotalPnl) {
             mobZkTotalPnl.innerText = `${runningTotalPnl >= 0 ? '+' : ''}${runningTotalPnl.toFixed(2)}`;
             mobZkTotalPnl.className = `text-sm font-bold font-mono ${runningTotalPnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger'}`;
           }
-          const dockMtm = document.getElementById('dock-total-mtm-val');
           if (dockMtm) {
             dockMtm.innerText = `${runningTotalPnl >= 0 ? '+' : ''}₹ ${runningTotalPnl.toFixed(2)}`;
             dockMtm.className = `font-bold ${runningTotalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
           }
           return;
-        }
-
-        const totalPnl = positions.reduce((acc, p) => acc + Number(p.pnl || 0), 0);
-        const dockMtm = document.getElementById('dock-total-mtm-val');
-        if (dockMtm) {
-          dockMtm.innerText = `${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toFixed(2)}`;
-          dockMtm.className = `font-bold ${totalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
-        }
-        const mobZkTotalPnl = document.getElementById('mob-zk-total-pnl');
-        if (mobZkTotalPnl) {
-          mobZkTotalPnl.innerText = `${totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}`;
-          mobZkTotalPnl.className = `text-sm font-bold font-mono ${totalPnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger'}`;
         }
 
         let html = `
@@ -4306,58 +4365,8 @@
         container.innerHTML = html;
         try { lucide.createIcons(); } catch (e) {}
 
-        // Update 4 Bento KPI Metric Cards
-        const cmdTotalPnl = document.getElementById('cmd-total-pnl');
-        if (cmdTotalPnl) {
-          animatePnlNumber(cmdTotalPnl, totalPnl);
-        }
-        const cmdPnlStatus = document.getElementById('cmd-pnl-status');
-        if (cmdPnlStatus) {
-          cmdPnlStatus.innerText = `${positions.length} active position${positions.length === 1 ? '' : 's'}`;
-        }
-        const cmdPosCount = document.getElementById('cmd-pos-count');
-        if (cmdPosCount) cmdPosCount.innerText = positions.length;
-        const subPosCount = document.getElementById('cmd-subtab-pos-count');
-        if (subPosCount) subPosCount.innerText = positions.length;
-
-        const wsPosPill = document.getElementById('ws-pos-pill');
-        if (wsPosPill) {
-          wsPosPill.innerText = positions.length;
-          if (positions.length > 0) wsPosPill.classList.remove('hidden');
-          else wsPosPill.classList.add('hidden');
-        }
-
-        renderRightDockPositions();
-
-
+      // =================== TAB 2: ORDERS ===================
       } else if (currentDockTab === 'orders') {
-        let orders = [];
-        try {
-          const res = await fetch('/api/orders', { headers: getAuthHeaders() });
-          const d = await res.json();
-          orders = d.orders || [];
-        } catch (e) {}
-
-        const activeUser = getActiveUsername();
-        const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
-
-        if (orders.length > 0) {
-          try { localStorage.setItem(cacheKeyOrd, JSON.stringify(orders)); } catch (e) {}
-        } else {
-          try {
-            const savedOrd = localStorage.getItem(cacheKeyOrd);
-            if (savedOrd) {
-              const parsedOrd = JSON.parse(savedOrd);
-              if (Array.isArray(parsedOrd) && parsedOrd.length > 0) {
-                orders = parsedOrd;
-              }
-            }
-          } catch (e) {}
-        }
-
-        const tabOrdBtn = document.getElementById('tab-orders');
-        if (tabOrdBtn) tabOrdBtn.innerText = `Orders (${orders.length})`;
-
         if (!orders.length) {
           container.innerHTML = `
             <div class="py-12 px-4 text-center">
@@ -4373,8 +4382,56 @@
         }
 
         let html = `
-          <!-- ORDERS TABLE (Visible on all screen sizes) -->
-          <div class="w-full overflow-x-auto">
+          <!-- MOBILE ZERODHA KITE STYLE ORDER LIST (< 768px) -->
+          <div class="block md:hidden divide-y divide-borderSubtle/60" id="ord-mob-zerodha-list">
+            ${orders.map(o => {
+              const statusColor = (o.status === 'FILLED' || o.status === 'COMPLETE') ? 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : (o.status === 'CANCELLED' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-amber-400 bg-amber-500/10 border-amber-500/20');
+              const isBuy = (o.side === 'BUY' || o.type === 'BUY');
+              const sideColor = isBuy ? 'bg-brand/15 text-brand border-brand/30' : 'bg-danger/15 text-danger border-danger/30';
+              const info = parsePosSymbolDetails(o.symbol, o.expiry);
+              const price = Number(o.price || 0).toFixed(2);
+              return `
+                <div class="px-4 py-3 active:bg-slate-800/30 transition-colors select-none">
+                  <!-- Row 1: Time & Product + Status -->
+                  <div class="flex items-center justify-between text-xs text-slate-400">
+                    <div class="flex items-center gap-1.5 font-mono text-[11px]">
+                      <span>${o.time || '--:--'}</span>
+                      <span>•</span>
+                      <span class="font-semibold text-slate-300 uppercase">${o.product || 'NRML'}</span>
+                    </div>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColor}">
+                      ${o.status || 'FILLED'}
+                    </span>
+                  </div>
+
+                  <!-- Row 2: Symbol & Executed Price -->
+                  <div class="flex items-center justify-between my-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="font-bold text-sm text-white">${info.underlying || o.symbol}</span>
+                      ${info.isOption ? `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold ${info.optType === 'CALL' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25' : 'bg-orange-500/15 text-orange-400 border border-orange-500/25'}">${info.strike} ${info.optType}</span>` : ''}
+                      ${info.expiryStr ? `<span class="pos-expiry-badge px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border">${info.expiryStr}</span>` : ''}
+                    </div>
+                    <div class="text-right font-mono">
+                      <span class="text-xs text-slate-400">Price </span>
+                      <span class="font-bold text-sm text-white">₹ ${price}</span>
+                    </div>
+                  </div>
+
+                  <!-- Row 3: Side & Quantity & Order ID -->
+                  <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
+                    <div class="flex items-center gap-2">
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${sideColor}">${isBuy ? 'BUY' : 'SELL'}</span>
+                      <span class="text-slate-300 font-medium">${o.qty} / ${o.qty} Qty</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500">${o.id}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- DESKTOP ORDERS TABLE (>= 768px) -->
+          <div class="hidden md:block w-full overflow-x-auto">
             <table class="w-full text-left text-xs font-mono">
               <thead class="text-slate-400 border-b border-borderSubtle pb-1">
                 <tr>
@@ -4382,35 +4439,37 @@
                   <th>Time</th>
                   <th>Symbol</th>
                   <th>Side</th>
-                  <th>Type</th>
+                  <th>Product</th>
                   <th>Qty</th>
-                  <th>Price</th>
-                  <th>Status</th>
+                  <th>Avg Price</th>
+                  <th class="text-right pr-3">Status</th>
                 </tr>
               </thead>
               <tbody>
+                ${orders.map(o => {
+                  const statusColor = (o.status === 'FILLED' || o.status === 'COMPLETE') ? 'text-emerald-400 bg-emerald-500/10' : (o.status === 'CANCELLED' ? 'text-slate-500' : 'text-amber-400 bg-amber-500/10');
+                  const isBuy = (o.side === 'BUY' || o.type === 'BUY');
+                  return `
+                    <tr class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
+                      <td class="py-2.5 pl-2 text-slate-400 text-[11px] font-mono">${o.id}</td>
+                      <td class="text-slate-400 font-mono">${o.time || '--:--'}</td>
+                      <td class="text-white font-bold">${o.symbol}</td>
+                      <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${isBuy ? 'bg-brand/15 text-brand border border-brand/20' : 'bg-danger/15 text-danger border border-danger/20'}">${isBuy ? 'BUY' : 'SELL'}</span></td>
+                      <td><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-300 bg-slate-800">${o.product || 'NRML'}</span></td>
+                      <td class="font-bold text-white">${o.qty}</td>
+                      <td class="font-bold text-white">₹ ${Number(o.price || 0).toFixed(2)}</td>
+                      <td class="text-right pr-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusColor}">${o.status || 'FILLED'}</span></td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
         `;
-
-        orders.forEach(o => {
-          const statusColor = o.status === 'FILLED' ? 'text-emerald-400 bg-emerald-500/10' : (o.status === 'CANCELLED' ? 'text-slate-500' : 'text-amber-400 bg-amber-500/10');
-          html += `
-            <tr class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
-              <td class="py-2.5 pl-2 text-slate-400 text-[11px]">${o.id}</td>
-              <td class="text-slate-500">${o.time || '--:--'}</td>
-              <td class="text-white font-bold">${o.symbol}</td>
-              <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${o.type === 'BUY' ? 'bg-brand/10 text-brand' : 'bg-danger/10 text-danger'}">${o.type}</span></td>
-              <td>${o.product || 'MIS'}</td>
-              <td class="font-bold text-white">${o.qty}</td>
-              <td class="font-bold text-white">₹ ${Number(o.price || 0).toFixed(2)}</td>
-              <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusColor}">${o.status}</span></td>
-            </tr>
-          `;
-        });
-
-        html += `</tbody></table></div>`;
         container.innerHTML = html;
         try { lucide.createIcons(); } catch (e) {}
 
+      // =================== TAB 3: HOLDINGS ===================
       } else if (currentDockTab === 'holdings') {
         const res = await fetch('/api/holdings', { headers: getAuthHeaders() });
         const d = await res.json();

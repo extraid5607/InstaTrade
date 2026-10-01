@@ -2005,7 +2005,7 @@ class VirtualTradingEngine:
                 "message": f"Insufficient Virtual Margin. Required Margin: Rs. {new_portfolio_margin:,.2f}, Total Capital: Rs. {(total_capital + trade_realized):,.2f} (Shortfall: Rs. {shortfall:,.2f})",
             }
 
-        order_id = f"ORD-{int(time.time() * 1000) % 1000000}"
+        order_id = f"ORD-{int(time.time() * 1000)}-{random.randint(100, 999)}"
         now_str = datetime.datetime.now().strftime("%H:%M:%S")
 
         order_record = {

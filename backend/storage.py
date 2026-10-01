@@ -394,20 +394,24 @@ class DatabaseManager:
                     if not o or not o.get("id") or not o.get("symbol"):
                         continue
                     self._execute(cursor, """
-                        INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(id) DO NOTHING
+                        INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status, expiry)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            order_time = excluded.order_time,
+                            status = excluded.status,
+                            expiry = excluded.expiry
                     """, (
                         o["id"],
                         clean_user,
                         o.get("time", ""),
                         o["symbol"],
                         o.get("side", "BUY"),
-                        o.get("order_type", "MARKET"),
+                        o.get("type", o.get("order_type", "BUY")),
                         o.get("product", "INTRADAY"),
                         int(o.get("qty", 1)),
                         float(o.get("price", 0.0)),
                         o.get("status", "FILLED"),
+                        o.get("expiry", "")
                     ))
             conn.commit()
 
@@ -546,7 +550,7 @@ class DatabaseManager:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
                 SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status, expiry
-                FROM user_orders WHERE username = ? ORDER BY rowid DESC
+                FROM user_orders WHERE username = ? ORDER BY created_at DESC, id DESC
             """, (username,))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
