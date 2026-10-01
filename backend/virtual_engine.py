@@ -423,6 +423,20 @@ def parse_expiry_date(exp_str: Optional[str]) -> Optional[datetime.date]:
     return None
 
 
+def is_indian_market_open() -> bool:
+    """
+    Returns True if Indian Stock Market (NSE/BSE) is currently in open trading hours:
+    Monday through Friday, 09:15:00 to 15:30:00 IST.
+    """
+    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    now_ist = datetime.datetime.now(IST)
+    if now_ist.weekday() >= 5:  # Saturday or Sunday
+        return False
+    market_open = datetime.time(9, 15, 0)
+    market_close = datetime.time(15, 30, 0)
+    return market_open <= now_ist.time() <= market_close
+
+
 def get_default_expiry_for_symbol(symbol: str) -> str:
     IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
     now_ist = datetime.datetime.now(IST)
@@ -648,9 +662,12 @@ class VirtualTradingEngine:
             try:
                 now = time.time()
                 all_symbols = list(set(list(SYMBOL_MAP.keys()) + list(self.quotes_cache.keys())))
+                market_is_open = is_indian_market_open()
 
-                # 1. External sync for primary benchmarks periodically (every 2.5s) using persistent pool
-                if now - last_external_fetch > 2.5:
+                # 1. External sync for primary benchmarks periodically using persistent pool
+                # When market is open: fetch every 2.5s. When market is closed: sync occasionally (every 30s)
+                sync_interval = 2.5 if market_is_open else 30.0
+                if now - last_external_fetch > sync_interval:
                     last_external_fetch = now
                     try:
                         results = list(self.feed_pool.map(self._fetch_single_quote, primary_benchmarks))
@@ -661,43 +678,44 @@ class VirtualTradingEngine:
                     except Exception as fe:
                         logger.debug(f"External fetch error: {fe}")
 
-                # 2. Continuous sub-second micro-ticks with zero-drift mean-reversion
-                for sym in all_symbols:
-                    if sym.endswith("-FUT"):
-                        continue  # Futures are derived from spot index below
+                # 2. Continuous sub-second micro-ticks with zero-drift mean-reversion ONLY DURING ACTIVE MARKET HOURS
+                if market_is_open:
+                    for sym in all_symbols:
+                        if sym.endswith("-FUT"):
+                            continue  # Futures are derived from spot index below
 
-                    cached = self.quotes_cache.get(sym)
-                    if cached:
-                        cur_ltp = cached["ltp"]
-                        anchor = cached.get("anchor_price", cur_ltp)
-                        drift = cur_ltp - anchor
-                        max_band = max(0.4, anchor * 0.0015)  # 0.15% maximum band
+                        cached = self.quotes_cache.get(sym)
+                        if cached:
+                            cur_ltp = cached["ltp"]
+                            anchor = cached.get("anchor_price", cur_ltp)
+                            drift = cur_ltp - anchor
+                            max_band = max(0.4, anchor * 0.0015)  # 0.15% maximum band
 
-                        if "INDEX" in sym:
-                            if drift > max_band:
-                                step = random.choice([-2.0, -1.5, -1.0])
-                            elif drift < -max_band:
-                                step = random.choice([1.0, 1.5, 2.0])
+                            if "INDEX" in sym:
+                                if drift > max_band:
+                                    step = random.choice([-2.0, -1.5, -1.0])
+                                elif drift < -max_band:
+                                    step = random.choice([1.0, 1.5, 2.0])
+                                else:
+                                    step = random.choice([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
                             else:
-                                step = random.choice([-1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5])
-                        else:
-                            if drift > max_band:
-                                step = random.choice([-0.20, -0.15, -0.10])
-                            elif drift < -max_band:
-                                step = random.choice([0.10, 0.15, 0.20])
-                            else:
-                                step = random.choice([-0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15])
+                                if drift > max_band:
+                                    step = random.choice([-0.20, -0.15, -0.10])
+                                elif drift < -max_band:
+                                    step = random.choice([0.10, 0.15, 0.20])
+                                else:
+                                    step = random.choice([-0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15])
 
-                        new_ltp = round(max(1.0, cur_ltp + step), 2)
-                        prev_close = cached.get("prev_close", new_ltp)
-                        change = round(new_ltp - prev_close, 2)
-                        chg_pct = round((change / prev_close) * 100.0, 2) if prev_close else 0.0
+                            new_ltp = round(max(1.0, cur_ltp + step), 2)
+                            prev_close = cached.get("prev_close", new_ltp)
+                            change = round(new_ltp - prev_close, 2)
+                            chg_pct = round((change / prev_close) * 100.0, 2) if prev_close else 0.0
 
-                        cached["ltp"] = new_ltp
-                        cached["change"] = change
-                        cached["chg_percent"] = chg_pct
-                        cached["high"] = max(cached.get("high", new_ltp), new_ltp)
-                        cached["low"] = min(cached.get("low", new_ltp), new_ltp)
+                            cached["ltp"] = new_ltp
+                            cached["change"] = change
+                            cached["chg_percent"] = chg_pct
+                            cached["high"] = max(cached.get("high", new_ltp), new_ltp)
+                            cached["low"] = min(cached.get("low", new_ltp), new_ltp)
 
                 # 3. Synchronize Index Futures tightly with their spot underlying + fixed basis (zero drift)
                 fut_pairs = [
@@ -734,7 +752,7 @@ class VirtualTradingEngine:
             except Exception as e:
                 logger.debug(f"Feed worker exception: {e}")
 
-            time.sleep(0.5)  # 500ms continuous streaming tick cycle
+            time.sleep(0.5 if market_is_open else 2.0)
 
     def _option_chain_worker(self):
         """Continuously pre-fetches and maintains real Indian market option chains in memory.
