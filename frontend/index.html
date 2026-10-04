@@ -364,8 +364,12 @@
     .pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
     .pt-safe { padding-top: max(0.5rem, env(safe-area-inset-top)); }
 
-    /* Touch momentum */
+    /* Touch momentum & Gesture Handling */
     .touch-scroll { -webkit-overflow-scrolling: touch; }
+    #rd-pane-watchlist, #watchlist-container {
+      touch-action: pan-y;
+      overscroll-behavior-y: contain;
+    }
 
     /* Glass Panels */
     .glass-card {
@@ -761,7 +765,7 @@
           </div>
 
           <!-- Pull to Refresh Spinner Indicator -->
-          <div id="watchlist-pull-refresh" class="hidden overflow-hidden transition-all duration-200 bg-brand/10 border-b border-brand/20 py-2 flex items-center justify-center gap-2 text-brand text-xs font-bold select-none">
+          <div id="watchlist-pull-refresh" style="height: 0px; opacity: 0;" class="overflow-hidden transition-all duration-200 bg-brand/10 border-b border-brand/20 flex items-center justify-center gap-2 text-brand text-xs font-bold select-none">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin text-brand"></i>
             <span id="watchlist-pull-text" class="text-[11px]">Refreshing Watchlist...</span>
           </div>
@@ -3458,107 +3462,175 @@
       // direction: +1 = swipe left (next watchlist), -1 = swipe right (prev watchlist)
       const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
       if (curIdx === -1) return;
-      const nextIdx = curIdx + direction;
-      if (nextIdx >= 0 && nextIdx < watchlistFilterOrder.length) {
-        const nextFilter = watchlistFilterOrder[nextIdx];
-        const container = document.getElementById('watchlist-container');
-        if (container && window.anime) {
-          try {
-            anime({
-              targets: container,
-              translateX: [direction * 35, 0],
-              opacity: [0.75, 1],
-              duration: 200,
-              easing: 'easeOutCubic'
-            });
-          } catch (e) {}
-        }
+      let nextIdx = curIdx + direction;
+      // Smooth wrap-around between Watchlist 1, 2, and 3
+      if (nextIdx < 0) nextIdx = watchlistFilterOrder.length - 1;
+      else if (nextIdx >= watchlistFilterOrder.length) nextIdx = 0;
+
+      const nextFilter = watchlistFilterOrder[nextIdx];
+      const container = document.getElementById('watchlist-container');
+      if (container) {
+        container.style.transition = 'transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.16s ease';
+        container.style.transform = `translateX(${direction * -20}px)`;
+        container.style.opacity = '0.7';
+        setTimeout(() => {
+          filterWatchlist(nextFilter);
+          container.style.transform = `translateX(${direction * 20}px)`;
+          requestAnimationFrame(() => {
+            container.style.transform = 'translateX(0)';
+            container.style.opacity = '1';
+          });
+        }, 70);
+      } else {
         filterWatchlist(nextFilter);
       }
     }
 
     function initWatchlistGestures() {
-      const container = document.getElementById('market-watch-panel');
+      const pane = document.getElementById('rd-pane-watchlist') || document.getElementById('right-trading-dock');
       const listEl = document.getElementById('watchlist-container');
       const pullEl = document.getElementById('watchlist-pull-refresh');
-      if (!container) return;
+      if (!pane && !listEl) return;
 
       let startX = 0;
       let startY = 0;
-      let isPulling = false;
+      let lastX = 0;
+      let lastY = 0;
+      let isTracking = false;
+      let startScrollTop = 0;
+      let isPullRefreshing = false;
 
-      container.addEventListener('touchstart', (e) => {
-        if (e.touches.length !== 1) return;
+      function onTouchStart(e) {
+        if (!e.touches || e.touches.length !== 1) return;
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
-        isPulling = false;
-      }, { passive: true });
+        lastX = startX;
+        lastY = startY;
+        isTracking = true;
+        startScrollTop = listEl ? listEl.scrollTop : 0;
+      }
 
-      container.addEventListener('touchmove', (e) => {
-        if (e.touches.length !== 1) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const deltaX = currentX - startX;
-        const deltaY = currentY - startY;
+      function onTouchMove(e) {
+        if (!isTracking || !e.touches || e.touches.length !== 1) return;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+        const deltaX = lastX - startX;
+        const deltaY = lastY - startY;
 
-        // Check for vertical pull-to-refresh at the top of the list
-        if (listEl && listEl.scrollTop <= 2 && deltaY > 25 && Math.abs(deltaY) > Math.abs(deltaX) * 1.3) {
-          isPulling = true;
-          if (pullEl) {
-            pullEl.classList.remove('hidden');
-            const pullDistance = Math.min(48, Math.round(deltaY * 0.4));
+        // Visual pull-down indicator when dragging down from top of list
+        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
+          if (pullEl && !isPullRefreshing) {
+            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
             pullEl.style.height = `${pullDistance}px`;
+            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
           }
         }
-      }, { passive: true });
+      }
 
-      container.addEventListener('touchend', async (e) => {
-        if (e.changedTouches.length !== 1) return;
-        const endX = e.changedTouches[0].clientX;
-        const endY = e.changedTouches[0].clientY;
-        const deltaX = endX - startX;
-        const deltaY = endY - startY;
+      async function onTouchEnd(e) {
+        if (!isTracking) return;
+        isTracking = false;
 
-        // 1. Check Horizontal Swipe (left/right to switch Watchlist 1/2/3)
-        if (Math.abs(deltaX) > 55 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+        if (e && e.changedTouches && e.changedTouches.length === 1) {
+          lastX = e.changedTouches[0].clientX;
+          lastY = e.changedTouches[0].clientY;
+        }
+
+        const deltaX = lastX - startX;
+        const deltaY = lastY - startY;
+
+        // 1. Horizontal Swipe (Left/Right to switch Watchlist tabs)
+        if (Math.abs(deltaX) >= 28 && Math.abs(deltaX) > Math.abs(deltaY) * 0.7) {
+          resetPullUI();
           if (deltaX < 0) {
-            swipeWatchlist(1); // Swipe Left -> next watchlist
+            swipeWatchlist(1);  // Swipe Left -> next watchlist
           } else {
             swipeWatchlist(-1); // Swipe Right -> previous watchlist
           }
-          if (pullEl) pullEl.classList.add('hidden');
           return;
         }
 
-        // 2. Check Pull-to-Refresh
-        if (isPulling && deltaY > 45) {
-          if (pullEl) {
-            pullEl.classList.remove('hidden');
-            pullEl.style.height = '36px';
-          }
-          try {
-            await refreshWatchlist();
-            await refreshFunds();
-            showToast('Watchlist updated', 'success');
-          } catch (err) {}
-          setTimeout(() => {
+        // 2. Pull Down to Refresh (Vertical drag down from top)
+        if (startScrollTop <= 5 && deltaY >= 35 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
+          if (!isPullRefreshing) {
+            isPullRefreshing = true;
             if (pullEl) {
-              pullEl.style.height = '0px';
-              setTimeout(() => { pullEl.classList.add('hidden'); }, 180);
+              pullEl.style.height = '36px';
+              pullEl.style.opacity = '1';
             }
-          }, 300);
-        } else {
-          if (pullEl) {
-            pullEl.style.height = '0px';
-            setTimeout(() => { pullEl.classList.add('hidden'); }, 150);
+            try {
+              await refreshWatchlist();
+              await refreshFunds();
+              showToast('Watchlist refreshed', 'success');
+            } catch (err) {}
+            setTimeout(() => {
+              resetPullUI();
+              isPullRefreshing = false;
+            }, 300);
+          }
+          return;
+        }
+
+        resetPullUI();
+      }
+
+      function resetPullUI() {
+        if (pullEl && !isPullRefreshing) {
+          pullEl.style.height = '0px';
+          pullEl.style.opacity = '0';
+        }
+      }
+
+      const elementsToBind = [pane, listEl].filter(Boolean);
+      elementsToBind.forEach(el => {
+        el.addEventListener('touchstart', onTouchStart, { passive: true });
+        el.addEventListener('touchmove', onTouchMove, { passive: true });
+        el.addEventListener('touchend', onTouchEnd, { passive: true });
+        el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+      });
+
+      // Pointer events for desktop trackpad / mouse drag
+      let isPointerDown = false;
+      const onPointerDown = (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.target && e.target.closest('button, input, a, select, [data-lucide]')) return;
+        isPointerDown = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        lastX = startX;
+        lastY = startY;
+        isTracking = true;
+        startScrollTop = listEl ? listEl.scrollTop : 0;
+      };
+      const onPointerMove = (e) => {
+        if (!isPointerDown) return;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        const deltaX = lastX - startX;
+        const deltaY = lastY - startY;
+        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
+          if (pullEl && !isPullRefreshing) {
+            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
+            pullEl.style.height = `${pullDistance}px`;
+            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
           }
         }
-        isPulling = false;
-      }, { passive: true });
+      };
+      const onPointerUp = (e) => {
+        if (!isPointerDown) return;
+        isPointerDown = false;
+        onTouchEnd(e);
+      };
+
+      elementsToBind.forEach(el => {
+        el.addEventListener('pointerdown', onPointerDown);
+      });
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
     }
 
     function toggleWatchlistCollapse() {
-      const panel = document.getElementById('market-watch-panel');
+      const panel = document.getElementById('rd-pane-watchlist') || document.getElementById('right-trading-dock');
       const expandBtn = document.getElementById('btn-expand-watchlist');
       if (!panel) return;
 
