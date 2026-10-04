@@ -408,9 +408,14 @@
 
   <!-- TOP NAVIGATION BAR -->
   <header class="h-14 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 z-20 flex-shrink-0">
-    <!-- LEFT: BRAND & IST MARKET CLOCK -->
+    <!-- LEFT: BRAND, SMART BACK BUTTON & IST MARKET CLOCK -->
     <div class="flex items-center gap-2 md:gap-3">
-      <div class="flex items-center gap-1.5 md:gap-2 text-brand font-black text-lg md:text-xl tracking-tight select-none cursor-pointer" onclick="switchWorkstation('chart')">
+      <!-- Mobile Smart Back Button (Visible when navigated away from Watchlist) -->
+      <button id="header-smart-back-btn" onclick="handleSmartBackClick()" class="hidden md:hidden flex items-center justify-center w-8 h-8 rounded-xl bg-darkBg hover:bg-slate-800 text-brand border border-borderSubtle text-xs shadow-sm active:scale-90 transition-all cursor-pointer" title="Back to Watchlist">
+        <i data-lucide="arrow-left" class="w-4 h-4 text-brand"></i>
+      </button>
+
+      <div class="flex items-center gap-1.5 md:gap-2 text-brand font-black text-lg md:text-xl tracking-tight select-none cursor-pointer" onclick="handleLogoClick()">
         <i data-lucide="zap" class="w-5 h-5 md:w-6 md:h-6 fill-current text-brand"></i>
         <span>INSTA<span class="text-white font-semibold">TRADE</span></span>
       </div>
@@ -688,8 +693,9 @@
                      class="w-full bg-darkBg text-xs pl-8 pr-20 py-2.5 rounded-xl border border-borderSubtle focus:outline-none focus:border-brand text-slate-200 placeholder-slate-500 transition-all">
               <div class="absolute right-2.5 flex items-center gap-2">
                 <span id="watch-count-pill-inner" class="text-[11px] font-mono text-slate-400 select-none">6/50</span>
-                <button type="button" onclick="openWatchSearchDropdown()" class="text-slate-400 hover:text-white p-0.5 cursor-pointer" title="Search Filters">
-                  <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                <button type="button" onclick="toggleWatchlistEditMode()" id="btn-watch-edit-mode" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-1 active:scale-95" title="Edit Watchlist (Shuffle & Delete)">
+                  <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5" id="icon-watch-edit"></i>
+                  <span id="label-watch-edit" class="hidden text-[10px] font-bold">Edit</span>
                 </button>
                 <button onclick="clearWatchSearch()" id="watch-search-clear" class="hidden text-slate-500 hover:text-white cursor-pointer" title="Clear">
                   <i data-lucide="x" class="w-3.5 h-3.5"></i>
@@ -709,6 +715,15 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Watchlist Edit Mode Notice Banner -->
+          <div id="watchlist-edit-banner" class="hidden bg-brand/10 border-b border-brand/25 px-4 py-2 flex items-center justify-between text-xs text-brand font-medium">
+            <div class="flex items-center gap-1.5">
+              <i data-lucide="edit-3" class="w-3.5 h-3.5 text-brand"></i>
+              <span class="text-[11px] font-bold">Edit Mode: Shuffle (▲/▼) or Delete (🗑️)</span>
+            </div>
+            <button onclick="toggleWatchlistEditMode()" class="px-2.5 py-0.5 rounded-md bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-[10px] cursor-pointer active:scale-95 shadow-sm transition-all">Done</button>
           </div>
 
           <!-- Watchlist Items Container -->
@@ -1260,6 +1275,54 @@
           <i data-lucide="check-circle-2" class="w-4 h-4"></i> EXECUTE BUY (30 Qty)
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- MOBILE STOCK ACTION BOTTOM SHEET (Zerodha Kite Style 1-tap Buy/Sell Popup) -->
+  <div id="mob-stock-action-backdrop" onclick="closeStockActionSheet()" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden transition-opacity"></div>
+  <div id="mob-stock-action-sheet" class="fixed inset-x-0 bottom-0 z-50 bg-cardBg border-t border-borderSubtle rounded-t-3xl p-5 transform translate-y-full bottom-sheet max-h-[85vh] overflow-y-auto shadow-2xl transition-transform duration-300">
+    <div class="w-12 h-1 bg-slate-700 rounded-full mx-auto mb-4"></div>
+    
+    <!-- Top Stock Header with Live Price -->
+    <div class="flex items-start justify-between pb-3.5 border-b border-borderSubtle">
+      <div>
+        <div class="flex items-center gap-2">
+          <h2 class="text-lg font-black text-white tracking-tight" id="action-sheet-symbol">RELIANCE</h2>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 font-mono" id="action-sheet-exchange">NSE</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25 font-mono" id="action-sheet-type">EQUITY</span>
+        </div>
+        <div class="text-xs text-slate-400 mt-0.5 font-mono" id="action-sheet-fullname">Reliance Industries Ltd</div>
+      </div>
+      <div class="text-right font-mono">
+        <div class="text-lg font-black text-white" id="action-sheet-ltp">₹ 0.00</div>
+        <div class="text-xs font-bold text-emerald-400" id="action-sheet-chg">+0.00 (+0.00%)</div>
+      </div>
+    </div>
+
+    <!-- 2 Big Primary Trade Buttons: BUY (Emerald) & SELL (Rose) -->
+    <div class="grid grid-cols-2 gap-3 my-4">
+      <button onclick="executeActionSheetTrade(1)" class="py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-glowBrand active:scale-95 transition-all cursor-pointer">
+        <i data-lucide="arrow-up-right" class="w-5 h-5 stroke-[3]"></i> BUY
+      </button>
+      <button onclick="executeActionSheetTrade(-1)" class="py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-400 hover:to-red-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-glowDanger active:scale-95 transition-all cursor-pointer">
+        <i data-lucide="arrow-down-right" class="w-5 h-5 stroke-[3]"></i> SELL
+      </button>
+    </div>
+
+    <!-- Quick Utilities: View Chart, Option Chain, Remove from Watchlist -->
+    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-borderSubtle/60 text-xs font-medium pb-safe">
+      <button onclick="openChartFromActionSheet()" class="py-2.5 px-2 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 border border-borderSubtle flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer">
+        <i data-lucide="line-chart" class="w-4 h-4 text-sky-400"></i>
+        <span class="text-[11px]">View Chart</span>
+      </button>
+      <button onclick="openOptionChainFromActionSheet()" id="action-sheet-opt-btn" class="py-2.5 px-2 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-200 border border-borderSubtle flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer">
+        <i data-lucide="layers" class="w-4 h-4 text-amber-400"></i>
+        <span class="text-[11px]">Option Chain</span>
+      </button>
+      <button onclick="deleteFromActionSheet()" class="py-2.5 px-2 rounded-xl bg-darkBg hover:bg-rose-500/10 text-rose-400 border border-rose-500/20 flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all cursor-pointer">
+        <i data-lucide="trash-2" class="w-4 h-4 text-rose-400"></i>
+        <span class="text-[11px]">Delete</span>
+      </button>
     </div>
   </div>
 
@@ -2187,6 +2250,16 @@
         }
       });
 
+      // Update Mobile Smart Back Button Visibility
+      const smartBackBtn = document.getElementById('header-smart-back-btn');
+      if (smartBackBtn) {
+        if (tab === 'watchlist') {
+          smartBackBtn.classList.add('hidden');
+        } else {
+          smartBackBtn.classList.remove('hidden');
+        }
+      }
+
       const rightDock = document.getElementById('right-trading-dock');
       const chartArea = document.getElementById('chart-area');
       const chartActionBar = document.getElementById('mob-chart-action-bar');
@@ -2224,6 +2297,18 @@
         if (chartActionBar) chartActionBar.classList.add('hidden');
       }
       try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function handleSmartBackClick() {
+      switchMobileTab('watchlist');
+    }
+
+    function handleLogoClick() {
+      if (window.innerWidth < 1024) {
+        switchMobileTab('watchlist');
+      } else {
+        switchWorkstation('chart');
+      }
     }
 
     function toggleOrderPanelDesktop() {
@@ -3056,7 +3141,30 @@
     let lastBackPressTime = 0;
 
     window.addEventListener('popstate', (e) => {
-      // 0. If Fyers Modal is open, close it first
+      // 0. If Stock Action Bottom Sheet is open, close it first
+      const stockActionSheet = document.getElementById('mob-stock-action-sheet');
+      if (stockActionSheet && !stockActionSheet.classList.contains('translate-y-full')) {
+        closeStockActionSheet();
+        history.pushState({ tab: currentMobileTab }, '', '#' + currentMobileTab);
+        return;
+      }
+
+      // 1. If Position Exit Modal is open, close it first
+      const posExitModal = document.getElementById('pos-exit-modal');
+      if (posExitModal && !posExitModal.classList.contains('hidden')) {
+        closePosExitModal();
+        history.pushState({ tab: currentMobileTab }, '', '#' + currentMobileTab);
+        return;
+      }
+
+      // 2. If Watchlist Edit Mode is active, exit edit mode first
+      if (isWatchlistEditMode) {
+        toggleWatchlistEditMode();
+        history.pushState({ tab: currentMobileTab }, '', '#' + currentMobileTab);
+        return;
+      }
+
+      // 3. If Fyers Modal is open, close it first
       const fyersModal = document.getElementById('fyers-modal');
       if (fyersModal && !fyersModal.classList.contains('hidden')) {
         closeFyersModal();
@@ -3064,7 +3172,7 @@
         return;
       }
 
-      // 1. If Trader Auth modal is open, close it first
+      // 4. If Trader Auth modal is open, close it first
       const authModal = document.getElementById('auth-modal');
       if (authModal && !authModal.classList.contains('hidden')) {
         closeAuthModal();
@@ -3072,7 +3180,7 @@
         return;
       }
 
-      // 2. If Mobile Order Pad drawer is open, close it first
+      // 5. If Mobile Order Pad drawer is open, close it first
       const orderPanel = document.getElementById('order-panel');
       if (orderPanel && !orderPanel.classList.contains('translate-y-full') && window.innerWidth < 1024) {
         closeOrderPad();
@@ -3080,7 +3188,7 @@
         return;
       }
 
-      // 3. If Search Dropdown is open, close it first
+      // 6. If Search Dropdown is open, close it first
       const searchDrop = document.getElementById('watch-search-dropdown');
       if (searchDrop && !searchDrop.classList.contains('hidden')) {
         closeWatchSearchDropdown();
@@ -3088,7 +3196,7 @@
         return;
       }
 
-      // 4. If Mobile Account Sheet is open, close it first
+      // 7. If Mobile Account Sheet is open, close it first
       const accountSheet = document.getElementById('mob-account-sheet');
       if (accountSheet && !accountSheet.classList.contains('translate-y-full')) {
         closeMobileAccountSheet();
@@ -3096,16 +3204,16 @@
         return;
       }
 
-      // 5. If user is on any other tab (Options, Portfolio, Chart, Account), return directly to Watchlist
+      // 8. If user is on any other tab (Options, Portfolio, Chart, Account), return directly to Watchlist
       if (currentMobileTab !== 'watchlist') {
         switchMobileTab('watchlist', false);
         history.replaceState({ tab: 'watchlist' }, '', '#watchlist');
         return;
       }
 
-      // 6. User is ALREADY on Watchlist (landing page): Press again to close app
+      // 9. User is ALREADY on Watchlist (landing page): Press again to close app
       const now = Date.now();
-      if (now - lastBackPressTime < 2000) {
+      if (now - lastBackPressTime < 2500) {
         // Confirmed second press: close / exit app
         if (window.navigator && window.navigator.app && window.navigator.app.exitApp) {
           window.navigator.app.exitApp();
@@ -3298,11 +3406,6 @@
 
       loadChartData();
       refreshWatchlist();
-
-      // If mobile user taps a watchlist item, smoothly navigate to the chart tab
-      if (window.innerWidth < 1024 && currentMobileTab === 'watchlist') {
-        switchMobileTab('chart');
-      }
     }
 
     // ------------------ WATCHLIST CONTROLS & FILTERING ------------------
@@ -3484,12 +3587,181 @@
       try { lucide.createIcons(); } catch (e) {}
     }
 
+    // ------------------ WATCHLIST EDIT MODE & REORDER ------------------
+    let isWatchlistEditMode = false;
+
+    function toggleWatchlistEditMode() {
+      isWatchlistEditMode = !isWatchlistEditMode;
+      const banner = document.getElementById('watchlist-edit-banner');
+      const editBtn = document.getElementById('btn-watch-edit-mode');
+      const editIcon = document.getElementById('icon-watch-edit');
+      const editLabel = document.getElementById('label-watch-edit');
+
+      if (isWatchlistEditMode) {
+        if (banner) banner.classList.remove('hidden');
+        if (editBtn) {
+          editBtn.className = 'px-2 py-1 rounded-lg bg-brand text-slate-950 font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-glowBrand';
+        }
+        if (editIcon) editIcon.setAttribute('data-lucide', 'check');
+        if (editLabel) editLabel.classList.remove('hidden');
+        showToast('Watchlist Edit Mode: Shuffle (▲/▼) or Delete (🗑️)', 'info');
+      } else {
+        if (banner) banner.classList.add('hidden');
+        if (editBtn) {
+          editBtn.className = 'p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer flex items-center gap-1 active:scale-95';
+        }
+        if (editIcon) editIcon.setAttribute('data-lucide', 'sliders-horizontal');
+        if (editLabel) editLabel.classList.add('hidden');
+      }
+      try { lucide.createIcons(); } catch (e) {}
+      refreshWatchlist();
+    }
+
+    // ------------------ MOBILE STOCK ACTION POPUP (Zerodha Kite Style) ------------------
+    let currentActionSheetSymbol = '';
+
+    function openStockActionSheet(sym) {
+      currentActionSheetSymbol = sym;
+      const sheet = document.getElementById('mob-stock-action-sheet');
+      const backdrop = document.getElementById('mob-stock-action-backdrop');
+      if (!sheet || !backdrop) return;
+
+      const q = (window.latestWatchQuotesMap && window.latestWatchQuotesMap[sym]) || {
+        symbol: sym,
+        short_name: sym.split(':').pop() || sym,
+        ltp: prevQuotes[sym] || 0,
+        change: 0,
+        chg_percent: 0
+      };
+
+      const symName = q.short_name || sym.split(':').pop() || sym;
+      const exchange = sym.startsWith('NSE:') ? 'NSE' : (sym.startsWith('BSE:') ? 'BSE' : 'NSE');
+      const isIndex = sym.includes('INDEX');
+      const isFut = sym.includes('FUT');
+      const typeStr = isIndex ? 'INDEX' : (isFut ? 'FUTURES' : 'EQUITY');
+
+      const symEl = document.getElementById('action-sheet-symbol');
+      const exchEl = document.getElementById('action-sheet-exchange');
+      const typeEl = document.getElementById('action-sheet-type');
+      const nameEl = document.getElementById('action-sheet-fullname');
+      const ltpEl = document.getElementById('action-sheet-ltp');
+      const chgEl = document.getElementById('action-sheet-chg');
+      const optBtn = document.getElementById('action-sheet-opt-btn');
+
+      if (symEl) symEl.innerText = symName;
+      if (exchEl) exchEl.innerText = exchange;
+      if (typeEl) {
+        typeEl.innerText = typeStr;
+        typeEl.className = isIndex 
+          ? 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400 font-mono'
+          : (isFut 
+            ? 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/25 font-mono'
+            : 'px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25 font-mono');
+      }
+
+      // Full names mapping
+      const fullNameMap = {
+        'NSE:NIFTY50-INDEX': 'Nifty 50 Index (NSE)',
+        'NSE:NIFTYBANK-INDEX': 'Nifty Bank Index (NSE)',
+        'BSE:SENSEX-INDEX': 'BSE Sensex 30 Index',
+        'NSE:FINNIFTY-INDEX': 'Nifty Financial Services Index',
+        'NSE:MIDCPNIFTY-INDEX': 'Nifty Midcap Select Index',
+        'NSE:NIFTY-FUT': 'Nifty 50 Futures',
+        'NSE:BANKNIFTY-FUT': 'Nifty Bank Futures',
+        'BSE:SENSEX-FUT': 'BSE Sensex Futures',
+        'NSE:FINNIFTY-FUT': 'Nifty Fin Services Futures',
+        'NSE:MIDCPNIFTY-FUT': 'Nifty Midcap Futures',
+        'NSE:RELIANCE-EQ': 'Reliance Industries Limited',
+        'NSE:HDFCBANK-EQ': 'HDFC Bank Limited',
+        'NSE:ICICIBANK-EQ': 'ICICI Bank Limited',
+        'NSE:INFY-EQ': 'Infosys Limited',
+        'NSE:TCS-EQ': 'Tata Consultancy Services',
+        'NSE:TATAMOTORS-EQ': 'Tata Motors Limited',
+        'NSE:TATASTEEL-EQ': 'Tata Steel Limited',
+        'NSE:SBIN-EQ': 'State Bank of India',
+        'NSE:ITC-EQ': 'ITC Limited'
+      };
+      if (nameEl) nameEl.innerText = fullNameMap[sym] || sym;
+
+      const isUp = (q.change || 0) >= 0;
+      const colorClass = isUp ? 'text-emerald-400' : 'text-danger';
+      if (ltpEl) ltpEl.innerText = `₹ ${Number(q.ltp || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (chgEl) {
+        chgEl.className = `text-xs font-bold ${colorClass}`;
+        chgEl.innerText = `${isUp ? '+' : ''}${Number(q.change || 0).toFixed(2)} (${isUp ? '+' : ''}${Number(q.chg_percent || 0).toFixed(2)}%)`;
+      }
+
+      // Show option chain button if index or futures or derivative stock
+      if (optBtn) {
+        const canHaveOptions = isIndex || isFut || sym.includes('RELIANCE') || sym.includes('HDFCBANK') || sym.includes('ICICIBANK') || sym.includes('INFY') || sym.includes('TCS') || sym.includes('TATAMOTORS') || sym.includes('SBIN');
+        optBtn.style.display = canHaveOptions ? 'flex' : 'none';
+      }
+
+      backdrop.classList.remove('hidden');
+      sheet.classList.remove('translate-y-full');
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function closeStockActionSheet() {
+      const sheet = document.getElementById('mob-stock-action-sheet');
+      const backdrop = document.getElementById('mob-stock-action-backdrop');
+      if (sheet) sheet.classList.add('translate-y-full');
+      if (backdrop) backdrop.classList.add('hidden');
+    }
+
+    function executeActionSheetTrade(side) {
+      if (!currentActionSheetSymbol) return;
+      const sym = currentActionSheetSymbol;
+      closeStockActionSheet();
+      selectSymbol(sym);
+      openOrderWithSide(side);
+    }
+
+    function openChartFromActionSheet() {
+      if (!currentActionSheetSymbol) return;
+      const sym = currentActionSheetSymbol;
+      closeStockActionSheet();
+      selectSymbol(sym);
+      switchMobileTab('chart');
+    }
+
+    function openOptionChainFromActionSheet() {
+      if (!currentActionSheetSymbol) return;
+      const sym = currentActionSheetSymbol;
+      closeStockActionSheet();
+      let underlying = 'BANKNIFTY';
+      if (sym.includes('SENSEX')) underlying = 'SENSEX';
+      else if (sym.includes('FINNIFTY')) underlying = 'FINNIFTY';
+      else if (sym.includes('MIDCPNIFTY')) underlying = 'MIDCPNIFTY';
+      else if (sym.includes('NIFTY')) underlying = 'NIFTY';
+      
+      changeChainUnderlying(underlying);
+      switchMobileTab('options');
+    }
+
+    function deleteFromActionSheet() {
+      if (!currentActionSheetSymbol) return;
+      const sym = currentActionSheetSymbol;
+      closeStockActionSheet();
+      removeFromWatchlist(sym);
+    }
+
+    function handleWatchlistRowClick(sym) {
+      if (isWatchlistEditMode) return;
+      if (window.innerWidth < 1024) {
+        openStockActionSheet(sym);
+      } else {
+        selectSymbol(sym);
+      }
+    }
+
     async function addToWatchlist(sym) {
       const list = getActiveWatchlist();
       if (!list.includes(sym)) {
         list.push(sym);
         saveActiveWatchlist(list);
         showToast(`Added ${sym} to Watchlist`, 'success');
+        applyWatchlistFilter();
         await refreshWatchlist();
       } else {
         showToast(`${sym} is already in Watchlist`, 'info');
@@ -3504,7 +3776,8 @@
       const rowId = 'watch-item-' + sym.replace(/[:.-]/g, '_');
       const el = document.getElementById(rowId);
       if (el) el.remove();
-      showToast(`Removed ${sym} from Watchlist`, 'info');
+      const displayName = sym.split(':')[1]?.replace('-EQ','')?.replace('-INDEX','')?.replace('-FUT',' FUT') || sym;
+      showToast(`Removed ${displayName} from Watchlist`, 'info');
       applyWatchlistFilter();
       renderSearchResultsList(lastSearchResults);
     }
@@ -3537,6 +3810,7 @@
       }
       const displayName = sym.split(':')[1]?.replace('-EQ','')?.replace('-INDEX','')?.replace('-FUT',' FUT') || sym;
       showToast(`Moved ${displayName} ${direction === -1 ? 'Up' : 'Down'}`, 'info');
+      applyWatchlistFilter();
     }
 
     // Close dropdown on click outside
@@ -3559,6 +3833,8 @@
         const result = await res.json();
         const quotesMap = {};
         (result.data || []).forEach(q => { quotesMap[q.symbol] = q; });
+        window.latestWatchQuotesMap = quotesMap;
+        
         // Maintain exact user-defined activeList sort order
         const quotes = activeList.map(sym => quotesMap[sym]).filter(Boolean);
         const container = document.getElementById('watchlist-container');
@@ -3570,6 +3846,10 @@
             el.remove();
           }
         });
+
+        // Update counter pill
+        const countPillInner = document.getElementById('watch-count-pill-inner');
+        if (countPillInner) countPillInner.innerText = `${activeList.length}/50`;
 
         quotes.forEach(q => {
           const isSelected = (q.symbol === currentSymbol);
@@ -3594,44 +3874,59 @@
               ? '<span class="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 py-0.2 rounded font-bold font-mono">FUT</span>'
               : '<span class="text-[8px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1 py-0.2 rounded font-bold font-mono">EQ</span>');
 
-          // Up / Down Re-shuffle Controls (desktop only)
-          const reorderButtons = `
-            <div class="hidden lg:flex flex-col gap-0.5 mr-0.5 text-slate-400 flex-shrink-0 select-none">
-              <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', -1)" title="Move Up" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▲</button>
-              <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', 1)" title="Move Down" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▼</button>
-            </div>
-          `;
-
-          // Action buttons: Reorder, Buy/Sell, and Remove (desktop only)
-          const actionButtons = isIndex ? `
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-              ${reorderButtons}
-              <span class="px-2 py-0.5 rounded bg-darkBg border border-borderSubtle text-slate-400 font-mono text-[9px] font-semibold tracking-wider">SPOT</span>
-              <!-- Desktop Remove Button -->
-              <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="hidden lg:flex p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors" title="Remove from Watchlist">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
-          ` : `
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-              ${reorderButtons}
-              <!-- Desktop Quick Action Buttons (revealed smoothly on hover) -->
-              <div class="hidden lg:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="px-2 py-0.5 rounded bg-brand text-slate-950 font-bold text-[11px] hover:bg-emerald-400 active:scale-95 transition-all shadow-sm" title="Buy ${q.short_name}">BUY</button>
-                <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="px-2 py-0.5 rounded bg-danger text-white font-bold text-[11px] hover:bg-rose-600 active:scale-95 transition-all shadow-sm" title="Sell ${q.short_name}">SELL</button>
-                <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors" title="Remove from Watchlist">
+          // Edit Mode vs Normal Controls
+          let actionMarkup = '';
+          if (isWatchlistEditMode) {
+            // Edit Mode: Prominent Reorder ▲/▼ and Delete 🗑️ for BOTH mobile and desktop
+            actionMarkup = `
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                <div class="flex items-center gap-1 bg-darkBg border border-borderSubtle rounded-lg p-0.5">
+                  <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', -1)" title="Move Up" class="p-1.5 hover:text-brand text-slate-300 cursor-pointer text-xs leading-none transition-colors active:scale-75 flex items-center justify-center">▲</button>
+                  <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', 1)" title="Move Down" class="p-1.5 hover:text-brand text-slate-300 cursor-pointer text-xs leading-none transition-colors active:scale-75 flex items-center justify-center">▼</button>
+                </div>
+                <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 border border-rose-500/30 cursor-pointer transition-colors active:scale-90" title="Delete from Watchlist">
                   <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
               </div>
-            </div>
-          `;
+            `;
+          } else {
+            // Normal Mode:
+            // Desktop: Hover Quick Actions (Buy, Sell, Trash) and Reorder arrows
+            const reorderButtons = `
+              <div class="hidden lg:flex flex-col gap-0.5 mr-0.5 text-slate-400 flex-shrink-0 select-none">
+                <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', -1)" title="Move Up" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▲</button>
+                <button onclick="event.stopPropagation(); moveWatchlistItem('${q.symbol}', 1)" title="Move Down" class="p-0.5 hover:text-brand cursor-pointer text-[9px] leading-none transition-colors active:scale-75">▼</button>
+              </div>
+            `;
+
+            actionMarkup = isIndex ? `
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                ${reorderButtons}
+                <span class="px-2 py-0.5 rounded bg-darkBg border border-borderSubtle text-slate-400 font-mono text-[9px] font-semibold tracking-wider">SPOT</span>
+                <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="hidden lg:flex p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors" title="Remove from Watchlist">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            ` : `
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                ${reorderButtons}
+                <div class="hidden lg:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(1);" class="px-2 py-0.5 rounded bg-brand text-slate-950 font-bold text-[11px] hover:bg-emerald-400 active:scale-95 transition-all shadow-sm" title="Buy ${q.short_name}">BUY</button>
+                  <button onclick="event.stopPropagation(); selectSymbol('${q.symbol}'); openOrderWithSide(-1);" class="px-2 py-0.5 rounded bg-danger text-white font-bold text-[11px] hover:bg-rose-600 active:scale-95 transition-all shadow-sm" title="Sell ${q.short_name}">SELL</button>
+                  <button onclick="event.stopPropagation(); removeFromWatchlist('${q.symbol}');" class="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors" title="Remove from Watchlist">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          }
 
           if (!item) {
             item = document.createElement('div');
             item.id = rowId;
             item.setAttribute('data-symbol', q.symbol);
             item.className = `group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
-            item.onclick = () => selectSymbol(q.symbol);
+            item.onclick = () => handleWatchlistRowClick(q.symbol);
             item.innerHTML = `
               <div class="min-w-0 pr-2">
                 <div class="font-bold text-sm lg:text-xs text-white truncate">${q.short_name}</div>
@@ -3641,12 +3936,12 @@
                 </div>
               </div>
               <div class="flex items-center gap-2.5">
-                <div class="text-right font-mono flex-shrink-0">
+                <div class="text-right font-mono flex-shrink-0 ${isWatchlistEditMode ? 'hidden sm:block' : ''}">
                   <div class="watch-price text-sm lg:text-xs font-bold ${colorClass}">${q.ltp.toFixed(2)}</div>
                   <div class="watch-chg text-[11px] lg:text-[10px] font-semibold ${colorClass}">${isUp ? '+' : ''}${q.change.toFixed(2)} (${isUp ? '+' : ''}${q.chg_percent.toFixed(2)}%)</div>
                 </div>
-                <div class="watch-action-wrapper hidden lg:flex items-center">
-                  ${actionButtons}
+                <div class="watch-action-wrapper ${isWatchlistEditMode ? 'flex' : 'hidden lg:flex'} items-center">
+                  ${actionMarkup}
                 </div>
               </div>
             `;
@@ -3655,6 +3950,7 @@
           } else {
             item.setAttribute('data-symbol', q.symbol);
             item.className = `group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
+            item.onclick = () => handleWatchlistRowClick(q.symbol);
             const priceEl = item.querySelector('.watch-price');
             const chgEl = item.querySelector('.watch-chg');
             if (priceEl) {
@@ -3672,7 +3968,8 @@
             }
             const actWrap = item.querySelector('.watch-action-wrapper');
             if (actWrap) {
-              actWrap.innerHTML = actionButtons;
+              actWrap.className = `watch-action-wrapper ${isWatchlistEditMode ? 'flex' : 'hidden lg:flex'} items-center`;
+              actWrap.innerHTML = actionMarkup;
             }
             container.appendChild(item);
           }
