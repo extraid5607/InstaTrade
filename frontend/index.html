@@ -677,7 +677,7 @@
     <!-- WORKSTATION 1: CHART DESK (Wide Chart Left + Right Trading Dock) -->
     <div id="ws-chart-desk" class="workstation-view flex-1 flex overflow-hidden w-full h-full">
       <!-- LEFT: Chart Canvas & Precision Header -->
-      <div id="chart-canvas-container" class="flex-1 flex flex-col min-w-0 bg-darkBg relative border-r border-borderSubtle pb-20 lg:pb-0 h-full overflow-hidden">
+      <div id="chart-canvas-container" class="flex-1 flex flex-col min-w-0 bg-darkBg relative border-r border-borderSubtle h-full overflow-hidden">
         
         <!-- Precision Chart Header Toolbar -->
         <div class="h-12 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-2 sm:px-4 text-xs z-10 flex-shrink-0">
@@ -721,15 +721,15 @@
           </div>
         </div>
 
-        <!-- Chart Canvas -->
-        <div id="chart-area" class="flex-1 w-full h-full relative min-h-0"></div>
+        <!-- Chart Canvas (Takes 100% remaining space above the BUY/SELL bar, full time & date axis visible) -->
+        <div id="chart-area" class="flex-1 w-full relative min-h-0"></div>
 
-        <!-- Mobile Floating Quick Trade Bar -->
-        <div id="mob-chart-action-bar" class="hidden absolute bottom-20 inset-x-4 z-20 flex gap-3 pointer-events-auto">
-          <button onclick="openOrderWithSide(1)" class="flex-1 py-2.5 bg-brand hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-2xl shadow-glowBrand flex items-center justify-center gap-2 punch-btn active:scale-95 transition-all">
+        <!-- Mobile Bottom Quick Scalp Action Bar (Cleanly docked below the chart so time/date scale is 100% visible) -->
+        <div id="mob-chart-action-bar" class="hidden lg:hidden h-14 bg-panelBg border-t border-borderSubtle px-4 flex items-center gap-3 flex-shrink-0 z-20">
+          <button onclick="openOrderWithSide(1)" class="flex-1 py-2.5 bg-brand hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-glowBrand flex items-center justify-center gap-1.5 punch-btn active:scale-95 transition-all">
             <i data-lucide="arrow-up-right" class="w-4 h-4 stroke-[3]"></i> BUY
           </button>
-          <button onclick="openOrderWithSide(-1)" class="flex-1 py-2.5 bg-danger hover:bg-rose-600 text-white font-black text-xs rounded-2xl shadow-glowDanger flex items-center justify-center gap-2 punch-btn active:scale-95 transition-all">
+          <button onclick="openOrderWithSide(-1)" class="flex-1 py-2.5 bg-danger hover:bg-rose-600 text-white font-black text-xs rounded-xl shadow-glowDanger flex items-center justify-center gap-1.5 punch-btn active:scale-95 transition-all">
             <i data-lucide="arrow-down-right" class="w-4 h-4 stroke-[3]"></i> SELL
           </button>
         </div>
@@ -3547,8 +3547,8 @@
       }
 
       // 5. If Mobile Order Pad drawer is open, close it first
-      const orderPanel = document.getElementById('order-panel');
-      if (orderPanel && !orderPanel.classList.contains('translate-y-full') && window.innerWidth < 1024) {
+      const orderOverlay = document.getElementById('dock-orderpad-overlay');
+      if (orderOverlay && !orderOverlay.classList.contains('hidden') && window.innerWidth < 1024) {
         closeOrderPad();
         history.pushState({ tab: currentMobileTab }, '', '#' + currentMobileTab);
         return;
@@ -3573,7 +3573,7 @@
       // 8. If user is on any other tab (Options, Portfolio, Chart, Account), return directly to Watchlist
       if (currentMobileTab !== 'watchlist') {
         switchMobileTab('watchlist', false);
-        history.replaceState({ tab: 'watchlist' }, '', '#watchlist');
+        history.pushState({ tab: 'watchlist' }, '', '#watchlist');
         return;
       }
 
@@ -3585,7 +3585,7 @@
           window.navigator.app.exitApp();
         } else {
           window.close();
-          window.history.back();
+          window.history.go(-1);
         }
       } else {
         lastBackPressTime = now;
