@@ -129,6 +129,7 @@ class DatabaseManager:
                     price REAL NOT NULL,
                     status VARCHAR(50) NOT NULL,
                     expiry VARCHAR(50) DEFAULT '',
+                    order_date VARCHAR(50) DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -144,7 +145,7 @@ class DatabaseManager:
 
             # Safe column migrations for existing tables
             migrations = [
-                ("user_orders", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+                ("user_orders", "order_date", "VARCHAR(50) DEFAULT ''"),
                 ("user_orders", "expiry", "VARCHAR(50) DEFAULT ''"),
                 ("user_positions", "expiry", "VARCHAR(50) DEFAULT ''"),
                 ("user_positions", "created_date", "VARCHAR(50) DEFAULT ''"),
@@ -390,16 +391,23 @@ class DatabaseManager:
                         created_date
                     ))
             if orders:
+                IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+                today_ist = datetime.datetime.now(IST).strftime("%Y-%m-%d")
                 for o in orders:
                     if not o or not o.get("id") or not o.get("symbol"):
                         continue
+                    o_date = o.get("order_date") or o.get("date") or today_ist
+                    # Only accept orders from today's trading session (previous days are cleared at EOD)
+                    if o_date != today_ist:
+                        continue
                     self._execute(cursor, """
-                        INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status, expiry)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status, expiry, order_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(id) DO UPDATE SET
                             order_time = excluded.order_time,
                             status = excluded.status,
-                            expiry = excluded.expiry
+                            expiry = excluded.expiry,
+                            order_date = excluded.order_date
                     """, (
                         o["id"],
                         clean_user,
@@ -411,7 +419,8 @@ class DatabaseManager:
                         int(o.get("qty", 1)),
                         float(o.get("price", 0.0)),
                         o.get("status", "FILLED"),
-                        o.get("expiry", "")
+                        o.get("expiry", ""),
+                        o_date
                     ))
             conn.commit()
 
@@ -545,30 +554,54 @@ class DatabaseManager:
             conn.commit()
 
     # ------------------ ORDERS PER USER ------------------
-    def get_orders(self, username: str) -> List[Dict[str, Any]]:
+    def get_orders(self, username: str, today_only: bool = True) -> List[Dict[str, Any]]:
+        IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        today_ist = datetime.datetime.now(IST).strftime("%Y-%m-%d")
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
-            self._execute(cursor, """
-                SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status, expiry
-                FROM user_orders WHERE username = ? ORDER BY created_at DESC, id DESC
-            """, (username,))
+            if today_only:
+                # EOD Auto-Pruning: Purge old orders older than today's IST trading session
+                try:
+                    self._execute(cursor, """
+                        DELETE FROM user_orders 
+                        WHERE username = ? AND order_date != '' AND order_date IS NOT NULL AND order_date < ?
+                    """, (username, today_ist))
+                    conn.commit()
+                except Exception:
+                    pass
+
+                self._execute(cursor, """
+                    SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status, expiry, order_date as date
+                    FROM user_orders 
+                    WHERE username = ? AND order_date = ?
+                    ORDER BY id DESC
+                """, (username, today_ist))
+            else:
+                self._execute(cursor, """
+                    SELECT id, order_time as time, symbol, side, order_type as type, product, qty, price, status, expiry, order_date as date
+                    FROM user_orders WHERE username = ? ORDER BY id DESC
+                """, (username,))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
 
     def add_order(self, username: str, order: Dict[str, Any]):
+        IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        today_ist = datetime.datetime.now(IST).strftime("%Y-%m-%d")
+        order_date = order.get("order_date") or order.get("date") or today_ist
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
-                INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status, expiry)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO user_orders (id, username, order_time, symbol, side, order_type, product, qty, price, status, expiry, order_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     order_time = excluded.order_time,
                     status = excluded.status,
-                    expiry = excluded.expiry
+                    expiry = excluded.expiry,
+                    order_date = excluded.order_date
             """, (
                 order["id"],
                 username,
-                order.get("time", datetime.datetime.now().strftime("%H:%M:%S")),
+                order.get("time", datetime.datetime.now(IST).strftime("%H:%M:%S")),
                 order["symbol"],
                 order["side"],
                 order.get("type", "BUY"),
@@ -576,7 +609,8 @@ class DatabaseManager:
                 int(order["qty"]),
                 float(order["price"]),
                 order.get("status", "FILLED"),
-                order.get("expiry", "")
+                order.get("expiry", ""),
+                order_date
             ))
             conn.commit()
 

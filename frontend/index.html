@@ -1809,6 +1809,16 @@
       } catch (e) {}
     }
 
+    function getTodayISTDateString() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const ist = new Date(utc + (3600000 * 5.5));
+      const y = ist.getFullYear();
+      const m = String(ist.getMonth() + 1).padStart(2, '0');
+      const d = String(ist.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
 
     // ------------------ MULTI-WORKSTATION ARCHITECTURE CONTROLLER ------------------
     let currentWorkstation = 'chart';
@@ -4548,8 +4558,21 @@
       if (!container) return;
 
       const activeUser = getActiveUsername();
+      const todayIST = getTodayISTDateString();
       const cacheKeyPos = 'insta_trade_saved_positions_' + activeUser;
-      const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser;
+      const cacheKeyOrd = 'insta_trade_saved_orders_' + activeUser + '_' + todayIST;
+
+      // EOD Auto-Pruning: Purge old legacy order cache keys from previous days
+      try {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('insta_trade_saved_orders_' + activeUser) && k !== cacheKeyOrd) {
+            keysToRemove.push(k);
+          }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+      } catch (e) {}
 
       let positions = [];
       let orders = [];
@@ -4606,7 +4629,7 @@
         }
       }
 
-      // Orders LocalStorage Caching & Fallback
+      // Daily Orders LocalStorage Caching (Current Trading Day Only)
       if (orders.length > 0) {
         try { localStorage.setItem(cacheKeyOrd, JSON.stringify(orders)); } catch (e) {}
       } else {
@@ -4616,13 +4639,6 @@
             const savedOrd = JSON.parse(savedOrdRaw);
             if (Array.isArray(savedOrd) && savedOrd.length > 0) {
               orders = savedOrd;
-              try {
-                fetch('/api/positions/sync', {
-                  method: 'POST',
-                  headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-                  body: JSON.stringify({ positions: positions, orders: savedOrd })
-                });
-              } catch (e) {}
             }
           } catch (e) {}
         }

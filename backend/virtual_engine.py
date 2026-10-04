@@ -1926,6 +1926,7 @@ class VirtualTradingEngine:
                 db.update_funds(user, avail, used, realized)
 
                 now_str = now_ist.strftime("%H:%M:%S")
+                today_str = now_ist.strftime("%Y-%m-%d")
                 settle_order = {
                     "id": f"EXP-{int(time.time() * 1000) % 1000000}",
                     "time": now_str,
@@ -1938,6 +1939,7 @@ class VirtualTradingEngine:
                     "price": round(settle_price, 2),
                     "status": "EXPIRED",
                     "expiry": exp_date.strftime("%Y-%m-%d") if exp_date else "",
+                    "order_date": today_str,
                 }
                 db.add_order(user, settle_order)
                 db.delete_position(user, sym)
@@ -2121,7 +2123,10 @@ class VirtualTradingEngine:
             }
 
         order_id = f"ORD-{int(time.time() * 1000)}-{random.randint(100, 999)}"
-        now_str = datetime.datetime.now().strftime("%H:%M:%S")
+        IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        now_ist = datetime.datetime.now(IST)
+        now_str = now_ist.strftime("%H:%M:%S")
+        today_str = now_ist.strftime("%Y-%m-%d")
 
         order_record = {
             "id": order_id,
@@ -2135,6 +2140,7 @@ class VirtualTradingEngine:
             "price": round(execution_price, 2),
             "status": "FILLED",
             "expiry": order_expiry,
+            "order_date": today_str,
         }
         db.add_order(username, order_record)
 
