@@ -480,8 +480,18 @@ class VirtualTradingEngine:
         self.last_cache_time = 0
         self._chain_raw_cache: Dict[str, Any] = {}
         self._chain_cache_time: Dict[str, float] = {}
+        self.active_watched_symbols: Set[str] = set([
+            "NSE:NIFTY50-INDEX", "NSE:NIFTY-FUT",
+            "NSE:NIFTYBANK-INDEX", "NSE:BANKNIFTY-FUT",
+            "BSE:SENSEX-INDEX", "BSE:SENSEX-FUT",
+            "NSE:FINNIFTY-INDEX", "NSE:FINNIFTY-FUT",
+            "NSE:MIDCPNIFTY-INDEX", "NSE:MIDCPNIFTY-FUT",
+            "NSE:RELIANCE-EQ", "NSE:HDFCBANK-EQ", "NSE:ICICIBANK-EQ",
+            "NSE:INFY-EQ", "NSE:TCS-EQ", "NSE:TATAMOTORS-EQ",
+            "NSE:TATASTEEL-EQ", "NSE:SBIN-EQ", "NSE:ITC-EQ"
+        ])
 
-        # Seed in-memory cache with baseline values so get_quotes returns in 0.01ms
+        # Seed in-memory cache with baseline values so get_quotes returns immediately
         for sym, (y_sym, s_name, base_p) in SYMBOL_MAP.items():
             self.quotes_cache[sym] = {
                 "symbol": sym,
@@ -494,16 +504,17 @@ class VirtualTradingEngine:
                 "low": base_p,
                 "prev_close": base_p,
                 "volume": 500000,
+                "is_fallback": True,
             }
 
         # Shared persistent HTTP client with connection pooling and socket reuse
         self.http_client = httpx.Client(
-            timeout=httpx.Timeout(connect=3.0, read=6.0, write=3.0, pool=6.0),
-            limits=httpx.Limits(max_keepalive_connections=8, max_connections=16, keepalive_expiry=30.0),
+            timeout=httpx.Timeout(connect=3.0, read=5.0, write=3.0, pool=5.0),
+            limits=httpx.Limits(max_keepalive_connections=16, max_connections=32, keepalive_expiry=30.0),
             follow_redirects=True,
         )
-        # Shared persistent thread pool for feed fetching
-        self.feed_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="feed_worker")
+        # Shared persistent thread pool for real-time parallel feed fetching
+        self.feed_pool = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="feed_worker")
         # Track active underlying to prioritize option chain pre-warming without memory explosion
         self.active_underlying = "NIFTY"
         self._last_inactive_option_fetch = 0.0
@@ -552,7 +563,7 @@ class VirtualTradingEngine:
                 basis = 47.0
 
             underlying_quote = self.quotes_cache.get(underlying_sym)
-            if not underlying_quote:
+            if not underlying_quote or underlying_quote.get("is_fallback"):
                 underlying_quote = self._fetch_single_quote(underlying_sym)
 
             short_name = SYMBOL_MAP.get(sym, (None, sym.split(":")[-1], 100.0))[1]
@@ -574,6 +585,7 @@ class VirtualTradingEngine:
                     "low": round(underlying_quote.get("low", u_ltp) + basis, 2),
                     "prev_close": fut_prev,
                     "volume": 2850000,
+                    "is_fallback": False,
                 }
 
         # 2. Real-time Indian Benchmark Indices via Groww livePrice (Zero-delay spot)
@@ -588,7 +600,7 @@ class VirtualTradingEngine:
             try:
                 g_slug = groww_slug_map[sym]
                 g_url = f"https://groww.in/v1/api/option_chain_service/v1/option_chain/derivatives/{g_slug}"
-                g_headers = {"User-Agent": "Mozilla/5.0"}
+                g_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
                 g_resp = self.http_client.get(g_url, headers=g_headers, timeout=2.5)
                 if g_resp.status_code == 200:
                     g_data = g_resp.json()
@@ -610,82 +622,126 @@ class VirtualTradingEngine:
                             "low": round(float(lp.get("low") or val), 2),
                             "prev_close": round(prev_c, 2),
                             "volume": 6500000,
+                            "is_fallback": False,
                         }
             except Exception:
                 pass
 
-        # 3. Standard Equity / Fallback Quote via Yahoo Finance
+        # 3. Equities & Stocks: Yahoo Finance / Groww live market quotes
         yahoo_sym, short_name, default_base = SYMBOL_MAP.get(sym, (None, sym.split(":")[-1], 100.0))
+        clean = sym.split(":")[-1].replace("-EQ", "").replace("-INDEX", "").strip()
         if not yahoo_sym:
-            clean = sym.split(":")[-1].replace("-EQ", "").replace("-INDEX", "")
             yahoo_sym = f"{clean}.NS"
             short_name = clean
 
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_sym}?interval=1m&range=1d"
-            headers = {"User-Agent": "Mozilla/5.0"}
-            resp = self.http_client.get(url, headers=headers)
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            resp = self.http_client.get(url, headers=headers, timeout=3.0)
             if resp.status_code == 200:
                 meta = resp.json()["chart"]["result"][0]["meta"]
-                ltp = float(meta.get("regularMarketPrice") or default_base)
+                ltp = float(meta.get("regularMarketPrice") or 0)
                 prev_close = float(meta.get("chartPreviousClose") or meta.get("previousClose") or ltp)
-                change = round(ltp - prev_close, 2)
-                chg_pct = round((change / prev_close) * 100.0, 2) if prev_close else 0.0
-                return {
-                    "symbol": sym,
-                    "short_name": short_name,
-                    "ltp": round(ltp, 2),
-                    "change": change,
-                    "chg_percent": chg_pct,
-                    "open": round(float(meta.get("regularMarketDayOpen") or prev_close), 2),
-                    "high": round(float(meta.get("regularMarketDayHigh") or ltp), 2),
-                    "low": round(float(meta.get("regularMarketDayLow") or ltp), 2),
-                    "prev_close": round(prev_close, 2),
-                    "volume": meta.get("regularMarketVolume", 0),
-                }
+                if ltp > 0 and prev_close > 0:
+                    change = round(ltp - prev_close, 2)
+                    chg_pct = round((change / prev_close) * 100.0, 2)
+                    return {
+                        "symbol": sym,
+                        "short_name": short_name,
+                        "ltp": round(ltp, 2),
+                        "change": change,
+                        "chg_percent": chg_pct,
+                        "open": round(float(meta.get("regularMarketDayOpen") or prev_close), 2),
+                        "high": round(float(meta.get("regularMarketDayHigh") or ltp), 2),
+                        "low": round(float(meta.get("regularMarketDayLow") or ltp), 2),
+                        "prev_close": round(prev_close, 2),
+                        "volume": meta.get("regularMarketVolume", 0),
+                        "is_fallback": False,
+                    }
         except Exception:
             pass
+
+        try:
+            g_stock_url = f"https://groww.in/v1/api/stocks_data/v1/accord_points/exchange/NSE/segment/CASH/latest_prices_ohlc/{clean}"
+            g_resp = self.http_client.get(g_stock_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=2.5)
+            if g_resp.status_code == 200:
+                d = g_resp.json()
+                ltp = float(d.get("close") or d.get("ltp") or 0)
+                chg = float(d.get("dayChange") or 0)
+                chg_pct = float(d.get("dayChangePerc") or 0)
+                prev_c = round(ltp - chg, 2) if chg != 0 else ltp
+                if ltp > 0:
+                    return {
+                        "symbol": sym,
+                        "short_name": short_name,
+                        "ltp": round(ltp, 2),
+                        "change": round(chg, 2),
+                        "chg_percent": round(chg_pct, 2),
+                        "open": round(float(d.get("open") or prev_c), 2),
+                        "high": round(float(d.get("high") or ltp), 2),
+                        "low": round(float(d.get("low") or ltp), 2),
+                        "prev_close": round(prev_c, 2),
+                        "volume": d.get("volume", 500000),
+                        "is_fallback": False,
+                    }
+        except Exception:
+            pass
+
         return None
 
     def _feed_worker(self):
         last_external_fetch = 0
-        primary_benchmarks = [
-            "NSE:NIFTY50-INDEX",
-            "NSE:NIFTYBANK-INDEX",
-            "BSE:SENSEX-INDEX",
-            "NSE:FINNIFTY-INDEX",
-            "NSE:MIDCPNIFTY-INDEX",
-            "NSE:RELIANCE-EQ",
-        ]
+        eq_keys = [k for k in SYMBOL_MAP.keys() if not k.endswith("-INDEX") and not k.endswith("-FUT")]
+        eq_batch_idx = 0
 
         while True:
             try:
                 now = time.time()
-                all_symbols = list(set(list(SYMBOL_MAP.keys()) + list(self.quotes_cache.keys())))
                 market_is_open = is_indian_market_open()
 
-                # 1. External sync for primary benchmarks periodically using persistent pool
-                # When market is open: fetch every 2.5s. When market is closed: sync occasionally (every 30s)
-                sync_interval = 2.5 if market_is_open else 30.0
+                # External sync: fetch every 3.0s during market hours, or 20.0s when market closed
+                sync_interval = 3.0 if market_is_open else 20.0
                 if now - last_external_fetch > sync_interval:
                     last_external_fetch = now
+
+                    # Prioritize indices + actively watched watchlist symbols + round-robin slice of equities
+                    fetch_set = set([
+                        "NSE:NIFTY50-INDEX",
+                        "NSE:NIFTYBANK-INDEX",
+                        "BSE:SENSEX-INDEX",
+                        "NSE:FINNIFTY-INDEX",
+                        "NSE:MIDCPNIFTY-INDEX",
+                    ])
+                    fetch_set.update(self.active_watched_symbols)
+
+                    # Add next batch of 12 equities from catalog for continuous warm cache
+                    batch_size = 12
+                    if eq_keys:
+                        end_idx = min(len(eq_keys), eq_batch_idx + batch_size)
+                        fetch_set.update(eq_keys[eq_batch_idx:end_idx])
+                        eq_batch_idx = end_idx if end_idx < len(eq_keys) else 0
+
+                    fetch_list = [s for s in fetch_set if not s.endswith("-FUT")]
                     try:
-                        results = list(self.feed_pool.map(self._fetch_single_quote, primary_benchmarks))
+                        results = list(self.feed_pool.map(self._fetch_single_quote, fetch_list))
                         for quote in results:
                             if quote:
                                 quote["anchor_price"] = quote["ltp"]
+                                quote["is_fallback"] = False
                                 self.quotes_cache[quote["symbol"]] = quote
                     except Exception as fe:
                         logger.debug(f"External fetch error: {fe}")
 
-                # 2. Continuous sub-second micro-ticks with zero-drift mean-reversion ONLY DURING ACTIVE MARKET HOURS
+                all_symbols = list(set(list(SYMBOL_MAP.keys()) + list(self.quotes_cache.keys())))
+
+                # Continuous sub-second micro-ticks with zero-drift mean-reversion ONLY DURING ACTIVE MARKET HOURS
                 if market_is_open:
                     for sym in all_symbols:
                         if sym.endswith("-FUT"):
                             continue  # Futures are derived from spot index below
 
                         cached = self.quotes_cache.get(sym)
-                        if cached:
+                        if cached and not cached.get("is_fallback"):
                             cur_ltp = cached["ltp"]
                             anchor = cached.get("anchor_price", cur_ltp)
                             drift = cur_ltp - anchor
@@ -717,7 +773,7 @@ class VirtualTradingEngine:
                             cached["high"] = max(cached.get("high", new_ltp), new_ltp)
                             cached["low"] = min(cached.get("low", new_ltp), new_ltp)
 
-                # 3. Synchronize Index Futures tightly with their spot underlying + fixed basis (zero drift)
+                # Synchronize Index Futures tightly with their spot underlying + fixed basis (zero drift)
                 fut_pairs = [
                     ("NSE:NIFTY-FUT", "NSE:NIFTY50-INDEX", 47.0, "NIFTY FUT"),
                     ("NSE:BANKNIFTY-FUT", "NSE:NIFTYBANK-INDEX", 127.0, "BANK NIFTY FUT"),
@@ -727,7 +783,7 @@ class VirtualTradingEngine:
                 ]
                 for fut_sym, spot_sym, basis, name in fut_pairs:
                     spot_q = self.quotes_cache.get(spot_sym)
-                    if spot_q:
+                    if spot_q and not spot_q.get("is_fallback"):
                         s_ltp = spot_q["ltp"]
                         s_prev = spot_q.get("prev_close", s_ltp)
                         fut_ltp = round(s_ltp + basis, 2)
@@ -746,6 +802,7 @@ class VirtualTradingEngine:
                             "prev_close": fut_prev,
                             "volume": 2850000,
                             "anchor_price": fut_ltp,
+                            "is_fallback": False,
                         }
 
                 self._update_open_positions_mtm()
@@ -967,28 +1024,68 @@ class VirtualTradingEngine:
     # ------------------ REAL LIVE MARKET DATA ------------------
     def get_quotes(self, symbols: List[str]) -> List[Dict[str, Any]]:
         self._update_open_positions_mtm()
+        self.active_watched_symbols.update(symbols)
         results = []
+        missing_to_fetch = []
+
         for sym in symbols:
             cached = self.quotes_cache.get(sym)
-            if cached:
+            if cached and not cached.get("is_fallback"):
                 results.append(cached)
             else:
-                _, short_name, default_base = SYMBOL_MAP.get(sym, (None, sym.split(":")[-1], 100.0))
-                fallback = {
-                    "symbol": sym,
-                    "short_name": short_name,
-                    "ltp": default_base,
-                    "change": 0.0,
-                    "chg_percent": 0.0,
-                    "open": default_base,
-                    "high": default_base,
-                    "low": default_base,
-                    "prev_close": default_base,
-                    "volume": 0,
-                }
-                self.quotes_cache[sym] = fallback
-                results.append(fallback)
-        return results
+                missing_to_fetch.append(sym)
+
+        # On-demand instant fetch for missing / newly added symbols
+        if missing_to_fetch:
+            try:
+                fetch_targets = [s for s in missing_to_fetch if not s.endswith("-FUT")]
+                if fetch_targets:
+                    fetched = list(self.feed_pool.map(self._fetch_single_quote, fetch_targets))
+                    for q in fetched:
+                        if q:
+                            q["anchor_price"] = q["ltp"]
+                            q["is_fallback"] = False
+                            self.quotes_cache[q["symbol"]] = q
+
+                for sym in missing_to_fetch:
+                    # If futures, try synthesizing from spot
+                    if sym.endswith("-FUT"):
+                        fut_q = self._fetch_single_quote(sym)
+                        if fut_q:
+                            self.quotes_cache[sym] = fut_q
+                            results.append(fut_q)
+                            continue
+
+                    cached = self.quotes_cache.get(sym)
+                    if cached:
+                        results.append(cached)
+                    else:
+                        _, short_name, default_base = SYMBOL_MAP.get(sym, (None, sym.split(":")[-1], 100.0))
+                        fb = {
+                            "symbol": sym,
+                            "short_name": short_name,
+                            "ltp": default_base,
+                            "change": 0.0,
+                            "chg_percent": 0.0,
+                            "open": default_base,
+                            "high": default_base,
+                            "low": default_base,
+                            "prev_close": default_base,
+                            "volume": 0,
+                            "is_fallback": True,
+                        }
+                        self.quotes_cache[sym] = fb
+                        results.append(fb)
+            except Exception as e:
+                logger.debug(f"On-demand fetch error: {e}")
+                for sym in missing_to_fetch:
+                    cached = self.quotes_cache.get(sym)
+                    if cached:
+                        results.append(cached)
+
+        # Return results in the exact requested order
+        quote_map = {q["symbol"]: q for q in results}
+        return [quote_map[s] for s in symbols if s in quote_map]
 
     def get_history(self, symbol: str, resolution: str = "5") -> List[Dict[str, Any]]:
         # Safeguard: Option symbols do not have direct historical bars; resolve to underlying index
@@ -2140,6 +2237,12 @@ class VirtualTradingEngine:
             if q in sym.upper() or q in short_name.upper():
                 cat = "INDEX" if "INDEX" in sym else ("FUTURES" if "FUT" in sym else "EQUITY")
                 cached = self.quotes_cache.get(sym)
+                if not cached or cached.get("is_fallback"):
+                    live_q = self._fetch_single_quote(sym)
+                    if live_q:
+                        live_q["is_fallback"] = False
+                        self.quotes_cache[sym] = live_q
+                        cached = live_q
                 ltp = cached["ltp"] if cached else base_price
                 chg_pct = cached.get("chg_percent", 0.0) if cached else 0.0
                 results.append({
@@ -2157,6 +2260,13 @@ class VirtualTradingEngine:
         custom_sym = f"NSE:{clean_q}-EQ"
         if len(clean_q) >= 2 and not any(r["symbol"] == custom_sym for r in results):
             cached = self.quotes_cache.get(custom_sym)
+            if not cached or cached.get("is_fallback"):
+                live_q = self._fetch_single_quote(custom_sym)
+                if live_q:
+                    live_q["is_fallback"] = False
+                    self.quotes_cache[custom_sym] = live_q
+                    cached = live_q
+
             ltp = cached["ltp"] if cached else 100.0
             chg_pct = cached.get("chg_percent", 0.0) if cached else 0.0
             results.append({
