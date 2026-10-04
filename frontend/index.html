@@ -253,12 +253,37 @@
     [data-theme="light"] input[type="text"],
     [data-theme="light"] input[type="number"],
     [data-theme="light"] input[type="password"] {
-      background-color: #f8fafc !important;
+      background-color: #ffffff !important;
       color: #0f172a !important;
       border-color: #cbd5e1 !important;
     }
     [data-theme="light"] input::placeholder {
       color: #94a3b8 !important;
+    }
+    [data-theme="light"] #watch-search-dropdown {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.12), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    }
+    [data-theme="light"] #watch-search-dropdown > div:first-child {
+      background-color: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+      color: #475569 !important;
+    }
+    [data-theme="light"] #watch-search-results-list > div {
+      border-color: #f1f5f9 !important;
+    }
+    [data-theme="light"] #watch-search-results-list > div:hover {
+      background-color: #f8fafc !important;
+    }
+    [data-theme="light"] #mob-stock-action-sheet {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+    }
+    [data-theme="light"] #mob-stock-action-sheet button.bg-darkBg {
+      background-color: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+      color: #0f172a !important;
     }
     [data-theme="light"] .mob-zk-pos-row {
       border-color: #e2e8f0 !important;
@@ -266,16 +291,25 @@
     [data-theme="light"] .divide-borderSubtle\/60 > :not([hidden]) ~ :not([hidden]) {
       border-color: #e2e8f0 !important;
     }
-    [data-theme="light"] #pos-exit-modal-backdrop {
-      background-color: rgba(0, 0, 0, 0.4) !important;
+    [data-theme="light"] #pos-exit-modal-backdrop,
+    [data-theme="light"] #mob-stock-action-backdrop {
+      background-color: rgba(0, 0, 0, 0.45) !important;
     }
     [data-theme="light"] .bg-sky-500\/15 {
       background-color: rgba(14, 165, 233, 0.12) !important;
       border-color: rgba(14, 165, 233, 0.3) !important;
+      color: #0284c7 !important;
     }
     [data-theme="light"] .bg-orange-500\/15 {
       background-color: rgba(249, 115, 22, 0.12) !important;
       border-color: rgba(249, 115, 22, 0.3) !important;
+      color: #ea580c !important;
+    }
+    [data-theme="light"] .bg-amber-500\/15,
+    [data-theme="light"] .bg-amber-500\/20 {
+      background-color: rgba(245, 158, 11, 0.12) !important;
+      border-color: rgba(245, 158, 11, 0.3) !important;
+      color: #b45309 !important;
     }
     [data-theme="light"] .pos-expiry-badge {
       background-color: #f1f5f9 !important;
@@ -703,8 +737,8 @@
               </div>
 
               <!-- Interactive Search Dropdown -->
-              <div id="watch-search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-[#0d121c] border border-borderSubtle rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 flex flex-col">
-                <div class="p-2.5 px-3 border-b border-borderSubtle text-[10px] text-slate-400 flex items-center justify-between font-mono bg-[#070a0f]">
+              <div id="watch-search-dropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-cardBg border border-borderSubtle rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 flex flex-col">
+                <div class="p-2.5 px-3 border-b border-borderSubtle text-[10px] text-slate-400 flex items-center justify-between font-mono bg-darkBg">
                   <span class="flex items-center gap-1.5 font-bold tracking-wider text-slate-300">
                     <i data-lucide="sparkles" class="w-3 h-3 text-brand"></i> MARKET SEARCH & ADD
                   </span>
@@ -724,6 +758,12 @@
               <span class="text-[11px] font-bold">Edit Mode: Shuffle (▲/▼) or Delete (🗑️)</span>
             </div>
             <button onclick="toggleWatchlistEditMode()" class="px-2.5 py-0.5 rounded-md bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-[10px] cursor-pointer active:scale-95 shadow-sm transition-all">Done</button>
+          </div>
+
+          <!-- Pull to Refresh Spinner Indicator -->
+          <div id="watchlist-pull-refresh" class="hidden overflow-hidden transition-all duration-200 bg-brand/10 border-b border-brand/20 py-2 flex items-center justify-center gap-2 text-brand text-xs font-bold select-none">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin text-brand"></i>
+            <span id="watchlist-pull-text" class="text-[11px]">Refreshing Watchlist...</span>
           </div>
 
           <!-- Watchlist Items Container -->
@@ -3095,6 +3135,7 @@
       try { await loadChartData(); } catch (e) { console.error('Chart load error:', e); }
       try { await loadDockContent(); } catch (e) { console.error('Dock load error:', e); }
       try { await loadUserProfile(); } catch (e) { console.error('User profile load error:', e); }
+      try { initWatchlistGestures(); } catch (e) { console.error('Gesture init error:', e); }
 
       if (window.innerWidth < 1024) {
         switchMobileTab('watchlist', false);
@@ -3408,9 +3449,113 @@
       refreshWatchlist();
     }
 
-    // ------------------ WATCHLIST CONTROLS & FILTERING ------------------
+    // ------------------ WATCHLIST CONTROLS, FILTERING & SWIPE ------------------
     let currentWatchFilter = 'INDICES';
     let isWatchlistCollapsed = false;
+    const watchlistFilterOrder = ['INDICES', 'FUTURES', 'EQUITY'];
+
+    function swipeWatchlist(direction) {
+      // direction: +1 = swipe left (next watchlist), -1 = swipe right (prev watchlist)
+      const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
+      if (curIdx === -1) return;
+      const nextIdx = curIdx + direction;
+      if (nextIdx >= 0 && nextIdx < watchlistFilterOrder.length) {
+        const nextFilter = watchlistFilterOrder[nextIdx];
+        const container = document.getElementById('watchlist-container');
+        if (container && window.anime) {
+          try {
+            anime({
+              targets: container,
+              translateX: [direction * 35, 0],
+              opacity: [0.75, 1],
+              duration: 200,
+              easing: 'easeOutCubic'
+            });
+          } catch (e) {}
+        }
+        filterWatchlist(nextFilter);
+      }
+    }
+
+    function initWatchlistGestures() {
+      const container = document.getElementById('market-watch-panel');
+      const listEl = document.getElementById('watchlist-container');
+      const pullEl = document.getElementById('watchlist-pull-refresh');
+      if (!container) return;
+
+      let startX = 0;
+      let startY = 0;
+      let isPulling = false;
+
+      container.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isPulling = false;
+      }, { passive: true });
+
+      container.addEventListener('touchmove', (e) => {
+        if (e.touches.length !== 1) return;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
+
+        // Check for vertical pull-to-refresh at the top of the list
+        if (listEl && listEl.scrollTop <= 2 && deltaY > 25 && Math.abs(deltaY) > Math.abs(deltaX) * 1.3) {
+          isPulling = true;
+          if (pullEl) {
+            pullEl.classList.remove('hidden');
+            const pullDistance = Math.min(48, Math.round(deltaY * 0.4));
+            pullEl.style.height = `${pullDistance}px`;
+          }
+        }
+      }, { passive: true });
+
+      container.addEventListener('touchend', async (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const deltaX = endX - startX;
+        const deltaY = endY - startY;
+
+        // 1. Check Horizontal Swipe (left/right to switch Watchlist 1/2/3)
+        if (Math.abs(deltaX) > 55 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+          if (deltaX < 0) {
+            swipeWatchlist(1); // Swipe Left -> next watchlist
+          } else {
+            swipeWatchlist(-1); // Swipe Right -> previous watchlist
+          }
+          if (pullEl) pullEl.classList.add('hidden');
+          return;
+        }
+
+        // 2. Check Pull-to-Refresh
+        if (isPulling && deltaY > 45) {
+          if (pullEl) {
+            pullEl.classList.remove('hidden');
+            pullEl.style.height = '36px';
+          }
+          try {
+            await refreshWatchlist();
+            await refreshFunds();
+            showToast('Watchlist updated', 'success');
+          } catch (err) {}
+          setTimeout(() => {
+            if (pullEl) {
+              pullEl.style.height = '0px';
+              setTimeout(() => { pullEl.classList.add('hidden'); }, 180);
+            }
+          }, 300);
+        } else {
+          if (pullEl) {
+            pullEl.style.height = '0px';
+            setTimeout(() => { pullEl.classList.add('hidden'); }, 150);
+          }
+        }
+        isPulling = false;
+      }, { passive: true });
+    }
 
     function toggleWatchlistCollapse() {
       const panel = document.getElementById('market-watch-panel');
@@ -3552,26 +3697,26 @@
       results.forEach(item => {
         const isAdded = activeList.includes(item.symbol);
         const typeBadge = item.type === 'INDEX'
-          ? '<span class="text-[9px] bg-slate-800 text-slate-400 font-mono px-1.5 py-0.5 rounded font-bold">INDEX SPOT</span>'
+          ? '<span class="text-[9px] bg-slate-800 text-slate-300 dark:text-slate-400 font-mono px-1.5 py-0.5 rounded font-bold">INDEX SPOT</span>'
           : item.type === 'FUTURES'
-          ? '<span class="text-[9px] bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono px-1.5 py-0.5 rounded font-bold">FUT</span>'
-          : '<span class="text-[9px] bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono px-1.5 py-0.5 rounded font-bold">EQ</span>';
+          ? '<span class="text-[9px] bg-amber-500/15 text-amber-600 dark:text-amber-300 border border-amber-500/30 font-mono px-1.5 py-0.5 rounded font-bold">FUT</span>'
+          : '<span class="text-[9px] bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30 font-mono px-1.5 py-0.5 rounded font-bold">EQ</span>';
 
         html += `
-          <div class="p-2.5 px-3 flex items-center justify-between hover:bg-slate-800/60 transition-colors">
+          <div class="p-2.5 px-3 flex items-center justify-between hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors border-b border-borderSubtle/40 last:border-b-0">
             <div class="min-w-0 pr-2">
               <div class="flex items-center gap-1.5">
-                <span class="font-bold text-white text-xs">${item.short_name}</span>
+                <span class="font-bold text-slate-900 dark:text-white text-xs">${item.short_name}</span>
                 ${typeBadge}
               </div>
-              <div class="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-0.5">
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-2 mt-0.5">
                 <span>${item.symbol}</span>
-                <span class="text-slate-300 font-bold">₹${Number(item.ltp).toFixed(2)}</span>
+                <span class="text-slate-700 dark:text-slate-300 font-bold">₹${Number(item.ltp).toFixed(2)}</span>
               </div>
             </div>
             <div>
               ${isAdded ? `
-                <button disabled class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 font-semibold text-[11px] flex items-center gap-1 border border-emerald-500/30 cursor-default">
+                <button disabled class="px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px] flex items-center gap-1 border border-emerald-500/30 cursor-default">
                   <i data-lucide="check" class="w-3 h-3"></i> Added
                 </button>
               ` : `
