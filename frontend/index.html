@@ -492,6 +492,17 @@
     .flash-down {
       animation: flashRed 0.45s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    /* Zerodha Kite Hardware-Accelerated Touch Swipe Surfaces */
+    #watchlist-container, 
+    #dock-content,
+    #ws-positions-desk {
+      touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transform: translate3d(0, 0, 0);
+    }
 
   </style>
   <script>
@@ -3782,10 +3793,38 @@
       refreshWatchlist();
     }
 
-    // ------------------ WATCHLIST CONTROLS, FILTERING & SWIPE ------------------
+    // ------------------ WATCHLIST CONTROLS, FILTERING & SOFT ZERODHA SWIPE ------------------
     let currentWatchFilter = 'INDICES';
     let isWatchlistCollapsed = false;
     const watchlistFilterOrder = ['INDICES', 'FUTURES', 'EQUITY'];
+
+    function transitionWatchlistTo(nextFilter, direction = 1) {
+      const container = document.getElementById('watchlist-container');
+      if (!container) {
+        filterWatchlist(nextFilter);
+        return;
+      }
+      triggerHaptic(10);
+      container.style.transition = 'transform 0.18s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.18s ease-out';
+      container.style.transform = `translate3d(${direction > 0 ? '-70px' : '70px'}, 0, 0)`;
+      container.style.opacity = '0.3';
+
+      setTimeout(() => {
+        filterWatchlist(nextFilter);
+        container.style.transition = 'none';
+        container.style.transform = `translate3d(${direction > 0 ? '70px' : '-70px'}, 0, 0)`;
+        container.style.opacity = '0.3';
+        void container.offsetWidth; // Force synchronous reflow
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            container.style.transition = 'transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1)';
+            container.style.transform = 'translate3d(0, 0, 0)';
+            container.style.opacity = '1';
+          });
+        });
+      }, 130);
+    }
 
     function swipeWatchlist(direction) {
       // direction: +1 = swipe left (next watchlist), -1 = swipe right (prev watchlist)
@@ -3796,24 +3835,8 @@
       if (nextIdx < 0) nextIdx = watchlistFilterOrder.length - 1;
       else if (nextIdx >= watchlistFilterOrder.length) nextIdx = 0;
 
-      triggerHaptic(12);
       const nextFilter = watchlistFilterOrder[nextIdx];
-      const container = document.getElementById('watchlist-container');
-      if (container) {
-        container.style.transition = 'transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.16s ease';
-        container.style.transform = `translateX(${direction * -20}px)`;
-        container.style.opacity = '0.7';
-        setTimeout(() => {
-          filterWatchlist(nextFilter);
-          container.style.transform = `translateX(${direction * 20}px)`;
-          requestAnimationFrame(() => {
-            container.style.transform = 'translateX(0)';
-            container.style.opacity = '1';
-          });
-        }, 70);
-      } else {
-        filterWatchlist(nextFilter);
-      }
+      transitionWatchlistTo(nextFilter, direction);
     }
 
     function initWatchlistGestures() {
@@ -3824,9 +3847,9 @@
 
       let startX = 0;
       let startY = 0;
-      let lastX = 0;
-      let lastY = 0;
+      let startTime = 0;
       let isTracking = false;
+      let gestureAxis = null; // 'x' | 'y' | 'pull'
       let startScrollTop = 0;
       let isPullRefreshing = false;
 
@@ -3834,26 +3857,47 @@
         if (!e.touches || e.touches.length !== 1) return;
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
-        lastX = startX;
-        lastY = startY;
+        startTime = performance.now();
         isTracking = true;
+        gestureAxis = null;
         startScrollTop = listEl ? listEl.scrollTop : 0;
+        if (listEl) {
+          listEl.style.transition = 'none';
+        }
       }
 
       function onTouchMove(e) {
         if (!isTracking || !e.touches || e.touches.length !== 1) return;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
-        const deltaX = lastX - startX;
-        const deltaY = lastY - startY;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
 
-        // Visual pull-down indicator when dragging down from top of list
-        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
-          if (pullEl && !isPullRefreshing) {
-            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
-            pullEl.style.height = `${pullDistance}px`;
-            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
+        // Axis locking with 6px deadzone
+        if (!gestureAxis) {
+          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+              gestureAxis = 'x';
+            } else if (startScrollTop <= 2 && deltaY > 6) {
+              gestureAxis = 'pull';
+            } else {
+              gestureAxis = 'y';
+            }
           }
+        }
+
+        // Real-time 1:1 finger tracking for horizontal swipe (Zerodha soft feel)
+        if (gestureAxis === 'x' && listEl) {
+          const dragX = deltaX * 0.92;
+          listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
+          listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+        }
+
+        // Visual pull-down indicator
+        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
+          pullEl.style.height = `${pullDistance}px`;
+          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
       }
 
@@ -3861,27 +3905,43 @@
         if (!isTracking) return;
         isTracking = false;
 
+        let endX = startX;
+        let endY = startY;
         if (e && e.changedTouches && e.changedTouches.length === 1) {
-          lastX = e.changedTouches[0].clientX;
-          lastY = e.changedTouches[0].clientY;
+          endX = e.changedTouches[0].clientX;
+          endY = e.changedTouches[0].clientY;
         }
 
-        const deltaX = lastX - startX;
-        const deltaY = lastY - startY;
+        const deltaX = endX - startX;
+        const deltaY = endY - startY;
+        const elapsed = Math.max(1, performance.now() - startTime);
+        const velocity = Math.abs(deltaX) / elapsed;
 
         // 1. Horizontal Swipe (Left/Right to switch Watchlist tabs)
-        if (Math.abs(deltaX) >= 28 && Math.abs(deltaX) > Math.abs(deltaY) * 0.7) {
-          resetPullUI();
-          if (deltaX < 0) {
-            swipeWatchlist(1);  // Swipe Left -> next watchlist
+        if (gestureAxis === 'x' && listEl) {
+          const isFlick = velocity > 0.28 && Math.abs(deltaX) > 18;
+          const isPassedThreshold = Math.abs(deltaX) >= 38;
+
+          if (isFlick || isPassedThreshold) {
+            resetPullUI();
+            const direction = deltaX < 0 ? 1 : -1;
+            const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
+            let nextIdx = curIdx + direction;
+            if (nextIdx < 0) nextIdx = watchlistFilterOrder.length - 1;
+            else if (nextIdx >= watchlistFilterOrder.length) nextIdx = 0;
+            const nextFilter = watchlistFilterOrder[nextIdx];
+            transitionWatchlistTo(nextFilter, direction);
+            return;
           } else {
-            swipeWatchlist(-1); // Swipe Right -> previous watchlist
+            // Cancelled swipe: soft spring bounce back to center
+            listEl.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1)';
+            listEl.style.transform = 'translate3d(0, 0, 0)';
+            listEl.style.opacity = '1';
           }
-          return;
         }
 
         // 2. Pull Down to Refresh (Vertical drag down from top)
-        if (startScrollTop <= 5 && deltaY >= 35 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
+        if (gestureAxis === 'pull' && deltaY >= 38) {
           if (!isPullRefreshing) {
             isPullRefreshing = true;
             if (pullEl) {
@@ -3907,8 +3967,12 @@
 
       function resetPullUI() {
         if (pullEl && !isPullRefreshing) {
+          pullEl.style.transition = 'height 0.2s ease, opacity 0.2s ease';
           pullEl.style.height = '0px';
           pullEl.style.opacity = '0';
+          setTimeout(() => {
+            if (pullEl) pullEl.style.transition = '';
+          }, 200);
         }
       }
 
@@ -3928,23 +3992,37 @@
         isPointerDown = true;
         startX = e.clientX;
         startY = e.clientY;
-        lastX = startX;
-        lastY = startY;
+        startTime = performance.now();
         isTracking = true;
+        gestureAxis = null;
         startScrollTop = listEl ? listEl.scrollTop : 0;
+        if (listEl) listEl.style.transition = 'none';
       };
       const onPointerMove = (e) => {
         if (!isPointerDown) return;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        const deltaX = lastX - startX;
-        const deltaY = lastY - startY;
-        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
-          if (pullEl && !isPullRefreshing) {
-            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
-            pullEl.style.height = `${pullDistance}px`;
-            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
+        const currentX = e.clientX;
+        const currentY = e.clientY;
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
+
+        if (!gestureAxis) {
+          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
+            if (Math.abs(deltaX) > Math.abs(deltaY)) gestureAxis = 'x';
+            else if (startScrollTop <= 2 && deltaY > 6) gestureAxis = 'pull';
+            else gestureAxis = 'y';
           }
+        }
+
+        if (gestureAxis === 'x' && listEl) {
+          const dragX = deltaX * 0.92;
+          listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
+          listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+        }
+
+        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
+          pullEl.style.height = `${pullDistance}px`;
+          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
       };
       const onPointerUp = (e) => {
@@ -3960,7 +4038,35 @@
       window.addEventListener('pointerup', onPointerUp);
     }
 
-    // ------------------ PORTFOLIO GESTURES (SWIPE & PULL-TO-REFRESH) ------------------
+    // ------------------ PORTFOLIO GESTURES (SOFT ZERODHA SWIPE & PULL-TO-REFRESH) ------------------
+    function transitionPortfolioTo(targetSubTab, direction = 1) {
+      const container = document.getElementById('dock-content');
+      if (!container) {
+        switchPositionsSubTab(targetSubTab);
+        return;
+      }
+      triggerHaptic(10);
+      container.style.transition = 'transform 0.18s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.18s ease-out';
+      container.style.transform = `translate3d(${direction > 0 ? '-70px' : '70px'}, 0, 0)`;
+      container.style.opacity = '0.3';
+
+      setTimeout(() => {
+        switchDockTab(targetSubTab);
+        container.style.transition = 'none';
+        container.style.transform = `translate3d(${direction > 0 ? '70px' : '-70px'}, 0, 0)`;
+        container.style.opacity = '0.3';
+        void container.offsetWidth;
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            container.style.transition = 'transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1)';
+            container.style.transform = 'translate3d(0, 0, 0)';
+            container.style.opacity = '1';
+          });
+        });
+      }, 130);
+    }
+
     function initPortfolioGestures() {
       const deskEl = document.getElementById('ws-positions-desk');
       const dockContent = document.getElementById('dock-content');
@@ -3969,9 +4075,9 @@
 
       let startX = 0;
       let startY = 0;
-      let lastX = 0;
-      let lastY = 0;
+      let startTime = 0;
       let isTracking = false;
+      let gestureAxis = null;
       let startScrollTop = 0;
       let isPullRefreshing = false;
 
@@ -3979,26 +4085,44 @@
         if (!e.touches || e.touches.length !== 1) return;
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
-        lastX = startX;
-        lastY = startY;
+        startTime = performance.now();
         isTracking = true;
+        gestureAxis = null;
         startScrollTop = deskEl ? deskEl.scrollTop : 0;
+        if (dockContent) dockContent.style.transition = 'none';
       }
 
       function onTouchMove(e) {
         if (!isTracking || !e.touches || e.touches.length !== 1) return;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
-        const deltaX = lastX - startX;
-        const deltaY = lastY - startY;
+        const currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
 
-        // Visual pull-down indicator when dragging down from top of portfolio
-        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
-          if (pullEl && !isPullRefreshing) {
-            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
-            pullEl.style.height = `${pullDistance}px`;
-            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
+        if (!gestureAxis) {
+          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+              gestureAxis = 'x';
+            } else if (startScrollTop <= 2 && deltaY > 6) {
+              gestureAxis = 'pull';
+            } else {
+              gestureAxis = 'y';
+            }
           }
+        }
+
+        // Real-time 1:1 finger tracking for portfolio subtab swipe
+        if (gestureAxis === 'x' && dockContent) {
+          const dragX = deltaX * 0.92;
+          dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
+          dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+        }
+
+        // Visual pull-down indicator
+        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
+          pullEl.style.height = `${pullDistance}px`;
+          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
       }
 
@@ -4006,33 +4130,45 @@
         if (!isTracking) return;
         isTracking = false;
 
+        let endX = startX;
+        let endY = startY;
         if (e && e.changedTouches && e.changedTouches.length === 1) {
-          lastX = e.changedTouches[0].clientX;
-          lastY = e.changedTouches[0].clientY;
+          endX = e.changedTouches[0].clientX;
+          endY = e.changedTouches[0].clientY;
         }
 
-        const deltaX = lastX - startX;
-        const deltaY = lastY - startY;
+        const deltaX = endX - startX;
+        const deltaY = endY - startY;
+        const elapsed = Math.max(1, performance.now() - startTime);
+        const velocity = Math.abs(deltaX) / elapsed;
 
         // 1. Horizontal Swipe (Left/Right to switch POSITIONS vs ORDERS tabs)
-        if (Math.abs(deltaX) >= 28 && Math.abs(deltaX) > Math.abs(deltaY) * 0.7) {
-          resetPullUI();
-          if (deltaX < 0) {
-            // Swipe Left -> switch to POSITIONS if currently on ORDERS
-            if (currentDockTab === 'orders') {
-              switchPositionsSubTab('positions');
+        if (gestureAxis === 'x' && dockContent) {
+          const isFlick = velocity > 0.28 && Math.abs(deltaX) > 18;
+          const isPassedThreshold = Math.abs(deltaX) >= 38;
+
+          if (isFlick || isPassedThreshold) {
+            resetPullUI();
+            const direction = deltaX < 0 ? 1 : -1;
+            let targetTab = 'positions';
+            if (direction > 0) {
+              // Swipe Left: from positions -> orders, or from orders -> positions
+              targetTab = (currentDockTab === 'positions') ? 'orders' : 'positions';
+            } else {
+              // Swipe Right: from orders -> positions, or from positions -> orders
+              targetTab = (currentDockTab === 'orders') ? 'positions' : 'orders';
             }
+            transitionPortfolioTo(targetTab, direction);
+            return;
           } else {
-            // Swipe Right -> switch to ORDERS if currently on POSITIONS
-            if (currentDockTab === 'positions') {
-              switchPositionsSubTab('orders');
-            }
+            dockContent.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1)';
+            dockContent.style.transform = 'translate3d(0, 0, 0)';
+            dockContent.style.opacity = '1';
           }
-          return;
         }
 
         // 2. Pull Down to Refresh (Vertical drag down from top)
-        if (startScrollTop <= 5 && deltaY >= 35 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
+        if (gestureAxis === 'pull' && deltaY >= 38) {
           if (!isPullRefreshing) {
             isPullRefreshing = true;
             if (pullEl) {
@@ -4058,8 +4194,12 @@
 
       function resetPullUI() {
         if (pullEl && !isPullRefreshing) {
+          pullEl.style.transition = 'height 0.2s ease, opacity 0.2s ease';
           pullEl.style.height = '0px';
           pullEl.style.opacity = '0';
+          setTimeout(() => {
+            if (pullEl) pullEl.style.transition = '';
+          }, 200);
         }
       }
 
@@ -4079,23 +4219,37 @@
         isPointerDown = true;
         startX = e.clientX;
         startY = e.clientY;
-        lastX = startX;
-        lastY = startY;
+        startTime = performance.now();
         isTracking = true;
+        gestureAxis = null;
         startScrollTop = deskEl ? deskEl.scrollTop : 0;
+        if (dockContent) dockContent.style.transition = 'none';
       };
       const onPointerMove = (e) => {
         if (!isPointerDown) return;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        const deltaX = lastX - startX;
-        const deltaY = lastY - startY;
-        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
-          if (pullEl && !isPullRefreshing) {
-            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
-            pullEl.style.height = `${pullDistance}px`;
-            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
+        const currentX = e.clientX;
+        const currentY = e.clientY;
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
+
+        if (!gestureAxis) {
+          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
+            if (Math.abs(deltaX) > Math.abs(deltaY)) gestureAxis = 'x';
+            else if (startScrollTop <= 2 && deltaY > 6) gestureAxis = 'pull';
+            else gestureAxis = 'y';
           }
+        }
+
+        if (gestureAxis === 'x' && dockContent) {
+          const dragX = deltaX * 0.92;
+          dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
+          dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+        }
+
+        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
+          pullEl.style.height = `${pullDistance}px`;
+          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
       };
       const onPointerUp = (e) => {
