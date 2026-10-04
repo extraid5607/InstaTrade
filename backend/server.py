@@ -434,6 +434,24 @@ def get_holdings(username: Optional[str] = Depends(get_current_username)):
     }
 
 
+@app.get("/api/account/pnl-history")
+def get_account_pnl_history(
+    range: str = "1y",
+    username: Optional[str] = Depends(get_current_username)
+):
+    clean_user = (username or "aman_trader").strip().lower()
+    days_map = {"30d": 30, "3m": 90, "6m": 180, "1y": 365}
+    days_limit = days_map.get(range.lower(), 365)
+    history_data = db.get_daily_pnl_history(username=clean_user, days_limit=days_limit)
+    return {
+        "s": "ok",
+        "authenticated": bool(username),
+        "username": clean_user,
+        "range": range,
+        "data": history_data
+    }
+
+
 # ------------------ FRONTEND MOUNT ------------------
 if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")

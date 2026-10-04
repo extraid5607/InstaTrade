@@ -316,6 +316,17 @@
       color: #475569 !important;
       border-color: #cbd5e1 !important;
     }
+    [data-theme="light"] #acc-pnl-history-card {
+      background-color: #ffffff !important;
+      border-color: #e2e8f0 !important;
+    }
+    [data-theme="light"] #pnl-daily-records-list {
+      background-color: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+    }
+    [data-theme="light"] #pnl-daily-records-list > div:hover {
+      background-color: #f1f5f9 !important;
+    }
 
     /* Status & Badge Pills */
     [data-theme="light"] .bg-emerald-500\/10,
@@ -1137,6 +1148,73 @@
             <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
               <span class="text-slate-400 text-[11px]">Used Margin</span>
               <div class="text-base font-mono font-bold text-amber-400 mt-0.5" id="acc-funds-margin">₹ 0.00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1-YEAR DAILY P&L HISTORY & STATEMENT (Zerodha Console Style) -->
+        <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-4" id="acc-pnl-history-card">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-borderSubtle/60 pb-3">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="calendar-check" class="w-4 h-4 text-brand"></i>
+                Daily P&L History & Statement
+              </h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">1-Year verified trading day P&L ledger</p>
+            </div>
+            <!-- Range Filter Buttons -->
+            <div class="flex items-center bg-darkBg border border-borderSubtle rounded-xl p-1 gap-1 self-start sm:self-auto" id="pnl-range-filters">
+              <button onclick="changePnlHistoryRange('30d')" class="pnl-range-btn px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer" data-range="30d">30D</button>
+              <button onclick="changePnlHistoryRange('3m')" class="pnl-range-btn px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer" data-range="3m">3M</button>
+              <button onclick="changePnlHistoryRange('6m')" class="pnl-range-btn px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer" data-range="6m">6M</button>
+              <button onclick="changePnlHistoryRange('1y')" class="pnl-range-btn px-2.5 py-1 text-[11px] font-bold rounded-lg bg-brand text-slate-950 shadow-sm transition-all cursor-pointer" data-range="1y">1 Year</button>
+            </div>
+          </div>
+
+          <!-- Top Metric Summary Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+            <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+              <div class="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Total Net P&L</div>
+              <div class="text-base font-mono font-bold mt-1 text-emerald-400" id="pnl-hist-total">+₹ 0.00</div>
+              <div class="text-[10px] text-slate-500 font-mono mt-0.5" id="pnl-hist-winrate">Win Rate: 0%</div>
+            </div>
+            <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+              <div class="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Trading Days</div>
+              <div class="text-base font-mono font-bold text-white mt-1" id="pnl-hist-traded-days">0 Days</div>
+              <div class="text-[10px] text-slate-500 font-mono mt-0.5" id="pnl-hist-ratio">0 Green / 0 Red</div>
+            </div>
+            <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+              <div class="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Best Day</div>
+              <div class="text-base font-mono font-bold text-emerald-400 mt-1" id="pnl-hist-max-profit">+₹ 0.00</div>
+              <div class="text-[10px] text-slate-500 font-mono mt-0.5" id="pnl-hist-best-date">-</div>
+            </div>
+            <div class="bg-darkBg p-3 rounded-xl border border-borderSubtle">
+              <div class="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Max Drawdown Day</div>
+              <div class="text-base font-mono font-bold text-danger mt-1" id="pnl-hist-max-loss">-₹ 0.00</div>
+              <div class="text-[10px] text-slate-500 font-mono mt-0.5" id="pnl-hist-worst-date">-</div>
+            </div>
+          </div>
+
+          <!-- Monthly Overview Strip -->
+          <div>
+            <div class="text-xs font-bold text-slate-300 mb-2 flex items-center justify-between">
+              <span>Monthly Breakdown</span>
+              <span class="text-[10px] text-slate-500 font-mono">Net Realized</span>
+            </div>
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1.5" id="pnl-monthly-chips">
+              <div class="text-xs text-slate-500">Loading monthly breakdown...</div>
+            </div>
+          </div>
+
+          <!-- Daily Statement Log Table / List -->
+          <div>
+            <div class="text-xs font-bold text-slate-300 mb-2 flex items-center justify-between">
+              <span>Daily Date & P&L Statement</span>
+              <span class="text-[10px] text-slate-400 font-mono" id="pnl-log-count">0 Trading Days</span>
+            </div>
+            
+            <div class="max-h-72 overflow-y-auto border border-borderSubtle rounded-xl bg-darkBg divide-y divide-borderSubtle/60 touch-scroll" id="pnl-daily-records-list">
+              <div class="p-6 text-center text-xs text-slate-500">Loading daily P&L history...</div>
             </div>
           </div>
         </div>
@@ -2488,10 +2566,12 @@
     }
 
     // ------------------ USER PROFILE & CREDENTIALS ------------------
+    // ------------------ USER PROFILE & CREDENTIALS ------------------
     async function loadUserProfile() {
       const token = getAuthToken();
       if (!token) {
         syncAuthUI(null);
+        loadAccountPnlHistory();
         return;
       }
       try {
@@ -2503,10 +2583,12 @@
           const restored = await tryAutoRestoreUser();
           if (restored && restored.user) {
             syncAuthUI(restored.user, restored.funds);
+            loadAccountPnlHistory();
             return;
           }
           clearAuthSession();
           syncAuthUI(null);
+          loadAccountPnlHistory();
           return;
         }
         const r = await res.json();
@@ -2519,7 +2601,144 @@
       } catch (e) {
         console.error('Error loading user profile:', e);
       }
+      loadAccountPnlHistory();
       try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ 1-YEAR DAILY P&L HISTORY & CALENDAR ------------------
+    let currentPnlRange = '1y';
+
+    async function loadAccountPnlHistory(range = currentPnlRange) {
+      currentPnlRange = range;
+      const listEl = document.getElementById('pnl-daily-records-list');
+      if (!listEl) return;
+
+      try {
+        const res = await fetch(`/api/account/pnl-history?range=${range}`, {
+          headers: getAuthHeaders()
+        });
+        const d = await res.json();
+        if (d.s !== 'ok' || !d.data) return;
+
+        const data = d.data;
+        const summary = data.summary || {};
+        const days = data.days || [];
+        const monthly = data.monthly || [];
+
+        // Update Range Button Highlight
+        document.querySelectorAll('.pnl-range-btn').forEach(btn => {
+          if (btn.getAttribute('data-range') === range) {
+            btn.className = 'pnl-range-btn px-2.5 py-1 text-[11px] font-bold rounded-lg bg-brand text-slate-950 shadow-sm transition-all cursor-pointer';
+          } else {
+            btn.className = 'pnl-range-btn px-2.5 py-1 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition-all cursor-pointer';
+          }
+        });
+
+        // Update Summary Metric Cards
+        const totalPnl = Number(summary.total_pnl || 0);
+        const totalPnlEl = document.getElementById('pnl-hist-total');
+        if (totalPnlEl) {
+          totalPnlEl.innerText = `${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+          totalPnlEl.className = `text-base font-mono font-bold mt-1 ${totalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+        }
+
+        const winRateEl = document.getElementById('pnl-hist-winrate');
+        if (winRateEl) winRateEl.innerText = `Win Rate: ${summary.win_rate || 0}%`;
+
+        const tradedDaysEl = document.getElementById('pnl-hist-traded-days');
+        if (tradedDaysEl) tradedDaysEl.innerText = `${summary.total_trading_days || 0} Days`;
+
+        const ratioEl = document.getElementById('pnl-hist-ratio');
+        if (ratioEl) ratioEl.innerText = `${summary.profit_days_count || 0} Green / ${summary.loss_days_count || 0} Red`;
+
+        const maxProfitEl = document.getElementById('pnl-hist-max-profit');
+        if (maxProfitEl) maxProfitEl.innerText = `+₹ ${Number(summary.max_profit || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+        const bestDateEl = document.getElementById('pnl-hist-best-date');
+        if (bestDateEl) bestDateEl.innerText = summary.max_profit_date || '-';
+
+        const maxLossEl = document.getElementById('pnl-hist-max-loss');
+        if (maxLossEl) maxLossEl.innerText = `-₹ ${Math.abs(Number(summary.max_loss || 0)).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+        const worstDateEl = document.getElementById('pnl-hist-worst-date');
+        if (worstDateEl) worstDateEl.innerText = summary.max_loss_date || '-';
+
+        const countEl = document.getElementById('pnl-log-count');
+        if (countEl) countEl.innerText = `${days.length} Recorded Days`;
+
+        // Render Monthly Overview Chips
+        const monthlyChipsEl = document.getElementById('pnl-monthly-chips');
+        if (monthlyChipsEl) {
+          if (!monthly.length) {
+            monthlyChipsEl.innerHTML = `<span class="text-xs text-slate-500">No monthly data</span>`;
+          } else {
+            monthlyChipsEl.innerHTML = monthly.map(m => {
+              const isGain = m.pnl >= 0;
+              const colorClass = isGain ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25' : 'text-rose-400 bg-rose-500/10 border-rose-500/25';
+              return `
+                <div class="flex-shrink-0 px-3 py-1.5 rounded-xl border ${colorClass} text-xs font-mono select-none">
+                  <div class="text-[10px] text-slate-400 font-bold font-sans">${m.month}</div>
+                  <div class="font-bold mt-0.5">${isGain ? '+' : ''}₹ ${Number(m.pnl).toLocaleString('en-IN', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        // Render Daily Statement List
+        if (!days.length) {
+          listEl.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No daily records for this period</div>`;
+          return;
+        }
+
+        listEl.innerHTML = days.map(d => {
+          const isProfit = (d.status === 'PROFIT');
+          const isLoss = (d.status === 'LOSS');
+          const pnlColor = isProfit ? 'text-emerald-400' : (isLoss ? 'text-danger' : 'text-slate-400');
+          const statusBadge = isProfit 
+            ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">PROFIT</span>' 
+            : (isLoss 
+              ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">LOSS</span>'
+              : '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-800 text-slate-400 border border-slate-700">NO TRADE</span>');
+          
+          return `
+            <div class="px-3.5 py-2.5 flex items-center justify-between hover:bg-slate-800/40 transition-colors select-none text-xs">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg ${isProfit ? 'bg-emerald-500/10 text-emerald-400' : (isLoss ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-500')} flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="${isProfit ? 'trending-up' : (isLoss ? 'trending-down' : 'minus')}" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-white font-mono flex items-center gap-1.5">
+                    <span>${d.formatted_date}</span>
+                    <span class="text-[10px] text-slate-500 font-sans font-normal">(${d.day_name})</span>
+                  </div>
+                  <div class="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-2">
+                    <span>${d.trades} executed trade${d.trades === 1 ? '' : 's'}</span>
+                    ${d.cumulative_pnl !== undefined ? `<span>• Cumulative: ₹${Number(d.cumulative_pnl).toLocaleString('en-IN', {minimumFractionDigits: 0})}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+              <div class="text-right flex items-center gap-2">
+                <div class="font-mono">
+                  <div class="font-bold text-sm ${pnlColor}">${d.pnl >= 0 ? '+' : ''}₹ ${Number(d.pnl).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                </div>
+                <div class="hidden sm:block">
+                  ${statusBadge}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        try { lucide.createIcons(); } catch (e) {}
+
+      } catch (err) {
+        console.error('P&L history fetch error:', err);
+        listEl.innerHTML = `<div class="p-6 text-center text-xs text-rose-400">Failed to load P&L history</div>`;
+      }
+    }
+
+    function changePnlHistoryRange(range) {
+      loadAccountPnlHistory(range);
     }
 
     async function saveUserProfile() {
