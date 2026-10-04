@@ -506,6 +506,7 @@ class DatabaseManager:
             """, (capital, username))
             self._execute(cursor, "DELETE FROM user_positions WHERE username = ?", (username,))
             self._execute(cursor, "DELETE FROM user_orders WHERE username = ?", (username,))
+            self._execute(cursor, "DELETE FROM user_daily_pnl WHERE username = ?", (username,))
             conn.commit()
 
     # ------------------ POSITIONS PER USER ------------------
@@ -647,94 +648,70 @@ class DatabaseManager:
         now_ist = datetime.datetime.now(IST)
         today_date = now_ist.date()
         today_str = today_date.strftime("%Y-%m-%d")
+        cutoff_date_str = (today_date - datetime.timedelta(days=days_limit)).strftime("%Y-%m-%d")
 
-        # Sync today's current realized P&L from funds into daily table
+        # Sync today's current Realized P&L from closed positions (Unrealized MTM is strictly excluded)
         try:
             funds = self.get_funds(clean_user)
             today_realized = float(funds.get("realized_pnl", 0.0))
-            # Count today's executed orders
             today_orders = self.get_orders(clean_user, today_only=True)
             if today_realized != 0.0 or len(today_orders) > 0:
                 self.record_daily_pnl(clean_user, today_str, today_realized, len(today_orders))
         except Exception:
             pass
 
-        # Query existing recorded daily rows
+        # Query ONLY actual recorded rows from genuine trades in the database
         with self._get_connection() as conn:
             cursor = self._get_cursor(conn)
             self._execute(cursor, """
                 SELECT pnl_date, realized_pnl, trades_count
                 FROM user_daily_pnl
-                WHERE username = ?
+                WHERE username = ? AND pnl_date >= ?
                 ORDER BY pnl_date DESC
-            """, (clean_user,))
+            """, (clean_user, cutoff_date_str))
             rows = cursor.fetchall()
-            db_records = {r["pnl_date"]: {"pnl": float(r["realized_pnl"]), "trades": int(r["trades_count"])} for r in rows}
-
-        # If user has fewer than 10 historical entries, generate realistic trading calendar days
-        # for a complete 1-year historical statement
-        seed_val = int(hashlib.md5(clean_user.encode("utf-8")).hexdigest()[:6], 16)
-        import random
-        rng = random.Random(seed_val)
 
         all_entries = []
-        cutoff_date = today_date - datetime.timedelta(days=days_limit)
+        for r in rows:
+            pnl_val = float(r["realized_pnl"])
+            tr_cnt = int(r["trades_count"])
+            d_str = r["pnl_date"]
+            try:
+                d_obj = datetime.datetime.strptime(d_str, "%Y-%m-%d").date()
+                formatted_date = d_obj.strftime("%d %b %Y")
+                day_name = d_obj.strftime("%A")
+            except Exception:
+                formatted_date = d_str
+                day_name = ""
 
-        cur_date = today_date
-        while cur_date >= cutoff_date:
-            # Skip weekends (Saturday=5, Sunday=6)
-            if cur_date.weekday() < 5:
-                d_str = cur_date.strftime("%Y-%m-%d")
-                if d_str in db_records:
-                    pnl_val = db_records[d_str]["pnl"]
-                    tr_cnt = db_records[d_str]["trades"]
-                elif cur_date == today_date:
-                    pnl_val = 0.0
-                    tr_cnt = 0
-                else:
-                    # Realistic baseline trading day: 65% win rate, typical intraday swing
-                    is_traded = rng.random() > 0.18
-                    if is_traded:
-                        is_profit = rng.random() < 0.65
-                        if is_profit:
-                            pnl_val = round(rng.uniform(650.0, 4850.0), 2)
-                        else:
-                            pnl_val = round(-rng.uniform(450.0, 2950.0), 2)
-                        tr_cnt = rng.randint(2, 9)
-                    else:
-                        pnl_val = 0.0
-                        tr_cnt = 0
+            status = "PROFIT" if pnl_val > 0 else ("LOSS" if pnl_val < 0 else "BREAKEVEN")
+            all_entries.append({
+                "date": d_str,
+                "formatted_date": formatted_date,
+                "day_name": day_name,
+                "pnl": round(pnl_val, 2),
+                "trades": tr_cnt,
+                "status": status,
+            })
 
-                status = "PROFIT" if pnl_val > 0 else ("LOSS" if pnl_val < 0 else "BREAKEVEN")
-                formatted_date = cur_date.strftime("%d %b %Y")
-                day_name = cur_date.strftime("%A")
-
-                all_entries.append({
-                    "date": d_str,
-                    "formatted_date": formatted_date,
-                    "day_name": day_name,
-                    "pnl": round(pnl_val, 2),
-                    "trades": tr_cnt,
-                    "status": status,
-                })
-            cur_date -= datetime.timedelta(days=1)
-
-        # Calculate cumulative metrics
+        # Calculate metrics from real data only
         total_pnl = sum(e["pnl"] for e in all_entries)
-        traded_days = [e for e in all_entries if e["trades"] > 0 or e["pnl"] != 0.0]
-        profit_days = [e for e in traded_days if e["pnl"] > 0]
-        loss_days = [e for e in traded_days if e["pnl"] < 0]
+        profit_days = [e for e in all_entries if e["pnl"] > 0]
+        loss_days = [e for e in all_entries if e["pnl"] < 0]
         breakeven_days = [e for e in all_entries if e["pnl"] == 0.0]
 
-        win_rate = round((len(profit_days) / len(traded_days) * 100), 1) if traded_days else 0.0
+        win_rate = round((len(profit_days) / len(all_entries) * 100), 1) if all_entries else 0.0
 
-        max_profit_day = max(all_entries, key=lambda x: x["pnl"]) if all_entries else None
-        max_loss_day = min(all_entries, key=lambda x: x["pnl"]) if all_entries else None
+        max_profit_day = max(profit_days, key=lambda x: x["pnl"]) if profit_days else None
+        max_loss_day = min(loss_days, key=lambda x: x["pnl"]) if loss_days else None
 
-        # Monthly aggregation
+        # Monthly aggregation from real data only
         monthly_map = {}
         for e in all_entries:
-            month_key = datetime.datetime.strptime(e["date"], "%Y-%m-%d").strftime("%b %Y")
+            try:
+                month_key = datetime.datetime.strptime(e["date"], "%Y-%m-%d").strftime("%b %Y")
+            except Exception:
+                month_key = "Recent"
             if month_key not in monthly_map:
                 monthly_map[month_key] = {"month": month_key, "pnl": 0.0, "trades": 0, "profit_days": 0, "loss_days": 0, "total_days": 0}
             monthly_map[month_key]["pnl"] += e["pnl"]
@@ -752,9 +729,8 @@ class DatabaseManager:
             m["win_rate"] = round((m["profit_days"] / active_d * 100), 1) if active_d > 0 else 0.0
             monthly_breakdown.append(m)
 
-        # Running cumulative P&L computation
+        # Running cumulative P&L
         cumulative = 0.0
-        # Compute in chronological order then revert for display
         for e in reversed(all_entries):
             cumulative += e["pnl"]
             e["cumulative_pnl"] = round(cumulative, 2)
@@ -763,16 +739,15 @@ class DatabaseManager:
             "summary": {
                 "total_pnl": round(total_pnl, 2),
                 "win_rate": win_rate,
-                "total_trading_days": len(traded_days),
-                "total_calendar_days": len(all_entries),
+                "total_trading_days": len(all_entries),
                 "profit_days_count": len(profit_days),
                 "loss_days_count": len(loss_days),
                 "breakeven_days_count": len(breakeven_days),
-                "max_profit": max_profit_day["pnl"] if max_profit_day and max_profit_day["pnl"] > 0 else 0.0,
-                "max_profit_date": max_profit_day["formatted_date"] if max_profit_day and max_profit_day["pnl"] > 0 else "-",
-                "max_loss": max_loss_day["pnl"] if max_loss_day and max_loss_day["pnl"] < 0 else 0.0,
-                "max_loss_date": max_loss_day["formatted_date"] if max_loss_day and max_loss_day["pnl"] < 0 else "-",
-                "avg_daily_pnl": round(total_pnl / len(traded_days), 2) if traded_days else 0.0,
+                "max_profit": max_profit_day["pnl"] if max_profit_day else 0.0,
+                "max_profit_date": max_profit_day["formatted_date"] if max_profit_day else "-",
+                "max_loss": max_loss_day["pnl"] if max_loss_day else 0.0,
+                "max_loss_date": max_loss_day["formatted_date"] if max_loss_day else "-",
+                "avg_daily_pnl": round(total_pnl / len(all_entries), 2) if all_entries else 0.0,
             },
             "monthly": monthly_breakdown,
             "days": all_entries,

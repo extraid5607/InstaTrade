@@ -2670,7 +2670,7 @@
         const monthlyChipsEl = document.getElementById('pnl-monthly-chips');
         if (monthlyChipsEl) {
           if (!monthly.length) {
-            monthlyChipsEl.innerHTML = `<span class="text-xs text-slate-500">No monthly data</span>`;
+            monthlyChipsEl.innerHTML = `<span class="text-[11px] text-slate-500 font-mono py-1">No monthly history recorded yet</span>`;
           } else {
             monthlyChipsEl.innerHTML = monthly.map(m => {
               const isGain = m.pnl >= 0;
@@ -2687,7 +2687,16 @@
 
         // Render Daily Statement List
         if (!days.length) {
-          listEl.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">No daily records for this period</div>`;
+          listEl.innerHTML = `
+            <div class="py-8 px-4 text-center">
+              <div class="w-10 h-10 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+                <i data-lucide="calendar" class="w-5 h-5"></i>
+              </div>
+              <div class="text-xs font-bold text-slate-300">No Trading History Recorded Yet</div>
+              <div class="text-[11px] text-slate-500 mt-1">When trades are closed and Realized P&L is generated, daily records will appear here.</div>
+            </div>
+          `;
+          try { lucide.createIcons(); } catch (e) {}
           return;
         }
 
