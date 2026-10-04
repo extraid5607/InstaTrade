@@ -376,8 +376,11 @@
     .pt-safe { padding-top: max(0.5rem, env(safe-area-inset-top)); }
 
     /* Touch momentum & Gesture Handling */
-    .touch-scroll { -webkit-overflow-scrolling: touch; }
-    #rd-pane-watchlist, #watchlist-container {
+    .touch-scroll { 
+      -webkit-overflow-scrolling: touch; 
+      overscroll-behavior-y: contain;
+    }
+    #rd-pane-watchlist, #watchlist-container, #ws-positions-desk, #dock-content {
       touch-action: pan-y;
       overscroll-behavior-y: contain;
     }
@@ -397,7 +400,8 @@
 
     /* Mobile bottom sheet drawer transition */
     .bottom-sheet {
-      transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+      will-change: transform, opacity;
     }
 
     /* Active mobile tab indicator */
@@ -421,14 +425,57 @@
       font-weight: 700;
     }
 
-    .pill-btn {
-      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Tactile Spring Button & Punch Dynamics */
+    .punch-btn, 
+    button.bg-brand, 
+    button.bg-danger, 
+    button.bg-rose-500, 
+    button.bg-rose-600,
+    button.bg-slate-800,
+    #btn-submit-order, 
+    #btn-quick-buy, 
+    #btn-quick-sell, 
+    .scalp-btn,
+    .pill-btn,
+    .ws-btn,
+    .mob-zk-tab-btn,
+    .action-sheet-btn {
+      transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                  box-shadow 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                  background-color 0.15s ease, 
+                  border-color 0.15s ease, 
+                  opacity 0.15s ease !important;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      will-change: transform;
     }
-    .pill-btn:hover {
+    
+    .punch-btn:hover, 
+    button.bg-brand:hover, 
+    button.bg-danger:hover, 
+    button.bg-rose-500:hover, 
+    #btn-submit-order:hover, 
+    #btn-quick-buy:hover, 
+    #btn-quick-sell:hover {
       transform: translateY(-1px);
     }
-    .pill-btn:active {
-      transform: scale(0.97);
+
+    .punch-btn:active, 
+    button.bg-brand:active, 
+    button.bg-danger:active, 
+    button.bg-rose-500:active, 
+    button.bg-rose-600:active,
+    #btn-submit-order:active, 
+    #btn-quick-buy:active, 
+    #btn-quick-sell:active, 
+    .scalp-btn:active,
+    .pill-btn:active,
+    .action-sheet-btn:active,
+    button:active:not(:disabled) {
+      transform: scale(0.93) translateY(1.5px) !important;
+      filter: brightness(1.08);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
     }
 
     @keyframes flashGreen {
@@ -941,6 +988,12 @@
             <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand"></div>
           </label>
         </div>
+      </div>
+
+      <!-- Pull to Refresh Spinner Indicator for Portfolio -->
+      <div id="portfolio-pull-refresh" style="height: 0px; opacity: 0;" class="overflow-hidden transition-all duration-200 bg-brand/10 border-b border-brand/20 flex items-center justify-center gap-2 text-brand text-xs font-bold select-none">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin text-brand"></i>
+        <span id="portfolio-pull-text" class="text-[11px]">Refreshing Positions & Orders...</span>
       </div>
 
       <!-- DESKTOP TOP BENTO HEADER & ACTIONS (>= md) -->
@@ -1682,6 +1735,15 @@
     window.currentProfile = null;
     let currentOrderExpiry = '';
 
+    // Tactile Mobile / Physical Haptic Feedback Engine
+    function triggerHaptic(pattern = 15) {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate(pattern);
+        }
+      } catch (e) {}
+    }
+
     function formatExpiryBadge(exp) {
       if (!exp) return '<span class="text-slate-500 font-mono text-[11px]">-</span>';
       let cleanExp = String(exp).trim();
@@ -2180,7 +2242,20 @@
 
     // Toggle Sub-tabs inside Portfolio & P&L Command Center
     function switchPositionsSubTab(subTab) {
+      triggerHaptic(12);
       switchDockTab(subTab);
+      const dockContent = document.getElementById('dock-content');
+      if (dockContent && window.anime) {
+        try {
+          anime({
+            targets: dockContent,
+            opacity: [0.75, 1],
+            translateX: subTab === 'orders' ? [14, 0] : [-14, 0],
+            duration: 200,
+            easing: 'easeOutCubic'
+          });
+        } catch (e) {}
+      }
     }
 
     // Top Market Ticker Ribbon Quick Select
@@ -2532,6 +2607,7 @@
     }
 
     function openOrderWithSide(side) {
+      triggerHaptic(15);
       if (currentSymbol.includes('INDEX')) {
         let futSym = 'NSE:NIFTY-FUT';
         if (currentSymbol.includes('BANK') || currentSymbol.includes('BANKNIFTY')) futSym = 'NSE:BANKNIFTY-FUT';
@@ -3378,6 +3454,7 @@
       try { await loadDockContent(); } catch (e) { console.error('Dock load error:', e); }
       try { await loadUserProfile(); } catch (e) { console.error('User profile load error:', e); }
       try { initWatchlistGestures(); } catch (e) { console.error('Gesture init error:', e); }
+      try { initPortfolioGestures(); } catch (e) { console.error('Portfolio gesture init error:', e); }
 
       if (window.innerWidth < 1024) {
         switchMobileTab('watchlist', false);
@@ -3705,6 +3782,7 @@
       if (nextIdx < 0) nextIdx = watchlistFilterOrder.length - 1;
       else if (nextIdx >= watchlistFilterOrder.length) nextIdx = 0;
 
+      triggerHaptic(12);
       const nextFilter = watchlistFilterOrder[nextIdx];
       const container = document.getElementById('watchlist-container');
       if (container) {
@@ -3796,6 +3874,7 @@
               pullEl.style.height = '36px';
               pullEl.style.opacity = '1';
             }
+            triggerHaptic(20);
             try {
               await refreshWatchlist();
               await refreshFunds();
@@ -3839,6 +3918,157 @@
         lastY = startY;
         isTracking = true;
         startScrollTop = listEl ? listEl.scrollTop : 0;
+      };
+      const onPointerMove = (e) => {
+        if (!isPointerDown) return;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        const deltaX = lastX - startX;
+        const deltaY = lastY - startY;
+        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
+          if (pullEl && !isPullRefreshing) {
+            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
+            pullEl.style.height = `${pullDistance}px`;
+            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
+          }
+        }
+      };
+      const onPointerUp = (e) => {
+        if (!isPointerDown) return;
+        isPointerDown = false;
+        onTouchEnd(e);
+      };
+
+      elementsToBind.forEach(el => {
+        el.addEventListener('pointerdown', onPointerDown);
+      });
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+    }
+
+    // ------------------ PORTFOLIO GESTURES (SWIPE & PULL-TO-REFRESH) ------------------
+    function initPortfolioGestures() {
+      const deskEl = document.getElementById('ws-positions-desk');
+      const dockContent = document.getElementById('dock-content');
+      const pullEl = document.getElementById('portfolio-pull-refresh');
+      if (!deskEl) return;
+
+      let startX = 0;
+      let startY = 0;
+      let lastX = 0;
+      let lastY = 0;
+      let isTracking = false;
+      let startScrollTop = 0;
+      let isPullRefreshing = false;
+
+      function onTouchStart(e) {
+        if (!e.touches || e.touches.length !== 1) return;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        lastX = startX;
+        lastY = startY;
+        isTracking = true;
+        startScrollTop = deskEl ? deskEl.scrollTop : 0;
+      }
+
+      function onTouchMove(e) {
+        if (!isTracking || !e.touches || e.touches.length !== 1) return;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+        const deltaX = lastX - startX;
+        const deltaY = lastY - startY;
+
+        // Visual pull-down indicator when dragging down from top of portfolio
+        if (startScrollTop <= 5 && deltaY > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
+          if (pullEl && !isPullRefreshing) {
+            const pullDistance = Math.min(42, Math.round((deltaY - 12) * 0.45));
+            pullEl.style.height = `${pullDistance}px`;
+            pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
+          }
+        }
+      }
+
+      async function onTouchEnd(e) {
+        if (!isTracking) return;
+        isTracking = false;
+
+        if (e && e.changedTouches && e.changedTouches.length === 1) {
+          lastX = e.changedTouches[0].clientX;
+          lastY = e.changedTouches[0].clientY;
+        }
+
+        const deltaX = lastX - startX;
+        const deltaY = lastY - startY;
+
+        // 1. Horizontal Swipe (Left/Right to switch POSITIONS vs ORDERS tabs)
+        if (Math.abs(deltaX) >= 28 && Math.abs(deltaX) > Math.abs(deltaY) * 0.7) {
+          resetPullUI();
+          if (deltaX < 0) {
+            // Swipe Left -> switch to POSITIONS if currently on ORDERS
+            if (currentDockTab === 'orders') {
+              switchPositionsSubTab('positions');
+            }
+          } else {
+            // Swipe Right -> switch to ORDERS if currently on POSITIONS
+            if (currentDockTab === 'positions') {
+              switchPositionsSubTab('orders');
+            }
+          }
+          return;
+        }
+
+        // 2. Pull Down to Refresh (Vertical drag down from top)
+        if (startScrollTop <= 5 && deltaY >= 35 && Math.abs(deltaY) > Math.abs(deltaX) * 1.1) {
+          if (!isPullRefreshing) {
+            isPullRefreshing = true;
+            if (pullEl) {
+              pullEl.style.height = '36px';
+              pullEl.style.opacity = '1';
+            }
+            triggerHaptic(20);
+            try {
+              await loadDockContent();
+              await refreshFunds();
+              showToast('Portfolio & Orders refreshed', 'success');
+            } catch (err) {}
+            setTimeout(() => {
+              resetPullUI();
+              isPullRefreshing = false;
+            }, 300);
+          }
+          return;
+        }
+
+        resetPullUI();
+      }
+
+      function resetPullUI() {
+        if (pullEl && !isPullRefreshing) {
+          pullEl.style.height = '0px';
+          pullEl.style.opacity = '0';
+        }
+      }
+
+      const elementsToBind = [deskEl, dockContent].filter(Boolean);
+      elementsToBind.forEach(el => {
+        el.addEventListener('touchstart', onTouchStart, { passive: true });
+        el.addEventListener('touchmove', onTouchMove, { passive: true });
+        el.addEventListener('touchend', onTouchEnd, { passive: true });
+        el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+      });
+
+      // Pointer events for desktop trackpad / mouse drag
+      let isPointerDown = false;
+      const onPointerDown = (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.target && e.target.closest('button, input, a, select, [data-lucide]')) return;
+        isPointerDown = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        lastX = startX;
+        lastY = startY;
+        isTracking = true;
+        startScrollTop = deskEl ? deskEl.scrollTop : 0;
       };
       const onPointerMove = (e) => {
         if (!isPointerDown) return;
@@ -4165,6 +4395,7 @@
     }
 
     function executeActionSheetTrade(side) {
+      triggerHaptic(18);
       if (!currentActionSheetSymbol) return;
       const sym = currentActionSheetSymbol;
       closeStockActionSheet();
@@ -4665,6 +4896,7 @@
     }
 
     async function executeOrder() {
+      triggerHaptic(25);
       if (!getAuthToken()) {
         showToast('Please sign in with your Login ID to place virtual trades', 'info');
         openAuthModal('login');
@@ -4729,6 +4961,7 @@
         }
         const r = await res.json();
         if (r.s === 'ok') {
+          triggerHaptic([35, 45, 35]);
           window._userExplicitlyClosedAll = false;
           showToast(`Order Placed: ${currentSide === 1 ? 'BUY' : 'SELL'} ${qty} ${currentSymbol}`, 'success');
           loadDockContent();
@@ -4738,9 +4971,11 @@
             closeOrderPad();
           }, 600);
         } else {
+          triggerHaptic(40);
           showToast(`Order Failed: ${r.message || 'Error'}`, 'error');
         }
       } catch (err) {
+        triggerHaptic(40);
         showToast(`Order Error: ${err}`, 'error');
       } finally {
         if (submitBtn) {
@@ -5922,6 +6157,7 @@
         openAuthModal('login');
         return;
       }
+      triggerHaptic(20);
       try {
         const res = await fetch(`/api/positions?symbol=${encodeURIComponent(symbol)}`, {
           method: 'DELETE',
@@ -5942,6 +6178,7 @@
           localStorage.setItem(cacheKeyPos, JSON.stringify(updated));
         } catch (e) {}
 
+        triggerHaptic([30, 40, 30]);
         showToast(`Position exited for ${symbol}`, 'success');
         loadDockContent();
         refreshFunds();
@@ -5951,6 +6188,7 @@
     }
 
     async function exitAllPositions() {
+      triggerHaptic(25);
       if (!getAuthToken()) {
         showToast('Please sign in to manage positions', 'info');
         openAuthModal('login');
