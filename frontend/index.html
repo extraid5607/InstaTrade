@@ -3843,7 +3843,8 @@
       const pane = document.getElementById('rd-pane-watchlist') || document.getElementById('right-trading-dock');
       const listEl = document.getElementById('watchlist-container');
       const pullEl = document.getElementById('watchlist-pull-refresh');
-      if (!pane && !listEl) return;
+      const targetEl = listEl || pane;
+      if (!targetEl) return;
 
       let startX = 0;
       let startY = 0;
@@ -3873,12 +3874,12 @@
         const deltaX = currentX - startX;
         const deltaY = currentY - startY;
 
-        // Axis locking with 6px deadzone
+        // Axis locking with 5px deadzone
         if (!gestureAxis) {
-          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (Math.abs(deltaX) >= 5 || Math.abs(deltaY) >= 5) {
+            if (Math.abs(deltaX) >= Math.abs(deltaY)) {
               gestureAxis = 'x';
-            } else if (startScrollTop <= 2 && deltaY > 6) {
+            } else if (startScrollTop <= 3 && deltaY > 5) {
               gestureAxis = 'pull';
             } else {
               gestureAxis = 'y';
@@ -3888,14 +3889,14 @@
 
         // Real-time 1:1 finger tracking for horizontal swipe (Zerodha soft feel)
         if (gestureAxis === 'x' && listEl) {
-          const dragX = deltaX * 0.92;
+          const dragX = deltaX * 0.95;
           listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+          listEl.style.opacity = `${Math.max(0.7, 1 - (Math.abs(dragX) / 450))}`;
         }
 
         // Visual pull-down indicator
         if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
+          const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
@@ -3917,10 +3918,19 @@
         const elapsed = Math.max(1, performance.now() - startTime);
         const velocity = Math.abs(deltaX) / elapsed;
 
+        // Fallback axis check for fast flicks where touchmove did not lock axis
+        if (!gestureAxis) {
+          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 15) {
+            gestureAxis = 'x';
+          } else if (startScrollTop <= 3 && deltaY >= 25 && Math.abs(deltaY) > Math.abs(deltaX)) {
+            gestureAxis = 'pull';
+          }
+        }
+
         // 1. Horizontal Swipe (Left/Right to switch Watchlist tabs)
         if (gestureAxis === 'x' && listEl) {
-          const isFlick = velocity > 0.28 && Math.abs(deltaX) > 18;
-          const isPassedThreshold = Math.abs(deltaX) >= 38;
+          const isFlick = velocity > 0.18 && Math.abs(deltaX) >= 15;
+          const isPassedThreshold = Math.abs(deltaX) >= 22;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
@@ -3934,14 +3944,14 @@
             return;
           } else {
             // Cancelled swipe: soft spring bounce back to center
-            listEl.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1)';
+            listEl.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
             listEl.style.transform = 'translate3d(0, 0, 0)';
             listEl.style.opacity = '1';
           }
         }
 
         // 2. Pull Down to Refresh (Vertical drag down from top)
-        if (gestureAxis === 'pull' && deltaY >= 38) {
+        if (gestureAxis === 'pull' && deltaY >= 35) {
           if (!isPullRefreshing) {
             isPullRefreshing = true;
             if (pullEl) {
@@ -3976,13 +3986,10 @@
         }
       }
 
-      const elementsToBind = [pane, listEl].filter(Boolean);
-      elementsToBind.forEach(el => {
-        el.addEventListener('touchstart', onTouchStart, { passive: true });
-        el.addEventListener('touchmove', onTouchMove, { passive: true });
-        el.addEventListener('touchend', onTouchEnd, { passive: true });
-        el.addEventListener('touchcancel', onTouchEnd, { passive: true });
-      });
+      targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
+      targetEl.addEventListener('touchmove', onTouchMove, { passive: true });
+      targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
+      targetEl.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
       // Pointer events for desktop trackpad / mouse drag
       let isPointerDown = false;
@@ -4006,21 +4013,21 @@
         const deltaY = currentY - startY;
 
         if (!gestureAxis) {
-          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
-            if (Math.abs(deltaX) > Math.abs(deltaY)) gestureAxis = 'x';
-            else if (startScrollTop <= 2 && deltaY > 6) gestureAxis = 'pull';
+          if (Math.abs(deltaX) >= 5 || Math.abs(deltaY) >= 5) {
+            if (Math.abs(deltaX) >= Math.abs(deltaY)) gestureAxis = 'x';
+            else if (startScrollTop <= 3 && deltaY > 5) gestureAxis = 'pull';
             else gestureAxis = 'y';
           }
         }
 
         if (gestureAxis === 'x' && listEl) {
-          const dragX = deltaX * 0.92;
+          const dragX = deltaX * 0.95;
           listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+          listEl.style.opacity = `${Math.max(0.7, 1 - (Math.abs(dragX) / 450))}`;
         }
 
         if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
+          const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
@@ -4031,9 +4038,7 @@
         onTouchEnd(e);
       };
 
-      elementsToBind.forEach(el => {
-        el.addEventListener('pointerdown', onPointerDown);
-      });
+      targetEl.addEventListener('pointerdown', onPointerDown);
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);
     }
@@ -4071,7 +4076,8 @@
       const deskEl = document.getElementById('ws-positions-desk');
       const dockContent = document.getElementById('dock-content');
       const pullEl = document.getElementById('portfolio-pull-refresh');
-      if (!deskEl) return;
+      const targetEl = dockContent || deskEl;
+      if (!targetEl) return;
 
       let startX = 0;
       let startY = 0;
@@ -4100,10 +4106,10 @@
         const deltaY = currentY - startY;
 
         if (!gestureAxis) {
-          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
-            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+          if (Math.abs(deltaX) >= 5 || Math.abs(deltaY) >= 5) {
+            if (Math.abs(deltaX) >= Math.abs(deltaY)) {
               gestureAxis = 'x';
-            } else if (startScrollTop <= 2 && deltaY > 6) {
+            } else if (startScrollTop <= 3 && deltaY > 5) {
               gestureAxis = 'pull';
             } else {
               gestureAxis = 'y';
@@ -4111,16 +4117,14 @@
           }
         }
 
-        // Real-time 1:1 finger tracking for portfolio subtab swipe
         if (gestureAxis === 'x' && dockContent) {
-          const dragX = deltaX * 0.92;
+          const dragX = deltaX * 0.95;
           dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+          dockContent.style.opacity = `${Math.max(0.7, 1 - (Math.abs(dragX) / 450))}`;
         }
 
-        // Visual pull-down indicator
         if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
+          const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
@@ -4142,33 +4146,37 @@
         const elapsed = Math.max(1, performance.now() - startTime);
         const velocity = Math.abs(deltaX) / elapsed;
 
-        // 1. Horizontal Swipe (Left/Right to switch POSITIONS vs ORDERS tabs)
+        if (!gestureAxis) {
+          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 15) {
+            gestureAxis = 'x';
+          } else if (startScrollTop <= 3 && deltaY >= 25 && Math.abs(deltaY) > Math.abs(deltaX)) {
+            gestureAxis = 'pull';
+          }
+        }
+
         if (gestureAxis === 'x' && dockContent) {
-          const isFlick = velocity > 0.28 && Math.abs(deltaX) > 18;
-          const isPassedThreshold = Math.abs(deltaX) >= 38;
+          const isFlick = velocity > 0.18 && Math.abs(deltaX) >= 15;
+          const isPassedThreshold = Math.abs(deltaX) >= 22;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
             const direction = deltaX < 0 ? 1 : -1;
             let targetTab = 'positions';
             if (direction > 0) {
-              // Swipe Left: from positions -> orders, or from orders -> positions
               targetTab = (currentDockTab === 'positions') ? 'orders' : 'positions';
             } else {
-              // Swipe Right: from orders -> positions, or from positions -> orders
               targetTab = (currentDockTab === 'orders') ? 'positions' : 'orders';
             }
             transitionPortfolioTo(targetTab, direction);
             return;
           } else {
-            dockContent.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1)';
+            dockContent.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
             dockContent.style.transform = 'translate3d(0, 0, 0)';
             dockContent.style.opacity = '1';
           }
         }
 
-        // 2. Pull Down to Refresh (Vertical drag down from top)
-        if (gestureAxis === 'pull' && deltaY >= 38) {
+        if (gestureAxis === 'pull' && deltaY >= 35) {
           if (!isPullRefreshing) {
             isPullRefreshing = true;
             if (pullEl) {
@@ -4203,13 +4211,10 @@
         }
       }
 
-      const elementsToBind = [deskEl, dockContent].filter(Boolean);
-      elementsToBind.forEach(el => {
-        el.addEventListener('touchstart', onTouchStart, { passive: true });
-        el.addEventListener('touchmove', onTouchMove, { passive: true });
-        el.addEventListener('touchend', onTouchEnd, { passive: true });
-        el.addEventListener('touchcancel', onTouchEnd, { passive: true });
-      });
+      targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
+      targetEl.addEventListener('touchmove', onTouchMove, { passive: true });
+      targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
+      targetEl.addEventListener('touchcancel', onTouchEnd, { passive: true });
 
       // Pointer events for desktop trackpad / mouse drag
       let isPointerDown = false;
@@ -4258,9 +4263,7 @@
         onTouchEnd(e);
       };
 
-      elementsToBind.forEach(el => {
-        el.addEventListener('pointerdown', onPointerDown);
-      });
+      targetEl.addEventListener('pointerdown', onPointerDown);
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);
     }
