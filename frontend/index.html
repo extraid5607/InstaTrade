@@ -507,8 +507,8 @@
     <!-- LEFT: BRAND, SMART BACK BUTTON & IST MARKET CLOCK -->
     <div class="flex items-center gap-2 md:gap-3">
       <!-- Mobile Smart Back Button (Visible when navigated away from Watchlist) -->
-      <button id="header-smart-back-btn" onclick="handleSmartBackClick()" class="hidden md:hidden flex items-center justify-center w-8 h-8 rounded-xl bg-darkBg hover:bg-slate-800 text-brand border border-borderSubtle text-xs shadow-sm active:scale-90 transition-all cursor-pointer" title="Back to Watchlist">
-        <i data-lucide="arrow-left" class="w-4 h-4 text-brand"></i>
+      <button id="header-smart-back-btn" onclick="handleSmartBackClick(event)" class="hidden md:hidden flex items-center justify-center w-8 h-8 rounded-xl bg-darkBg hover:bg-slate-800 text-brand border border-borderSubtle text-xs shadow-sm active:scale-90 transition-all cursor-pointer z-30 flex-shrink-0" title="Back to Watchlist">
+        <i data-lucide="arrow-left" class="w-4 h-4 text-brand pointer-events-none"></i>
       </button>
 
       <div class="flex items-center gap-1.5 md:gap-2 text-brand font-black text-lg md:text-xl tracking-tight select-none cursor-pointer" onclick="handleLogoClick()">
@@ -677,59 +677,59 @@
     <!-- WORKSTATION 1: CHART DESK (Wide Chart Left + Right Trading Dock) -->
     <div id="ws-chart-desk" class="workstation-view flex-1 flex overflow-hidden w-full h-full">
       <!-- LEFT: Chart Canvas & Precision Header -->
-      <div class="flex-1 flex flex-col min-w-0 bg-darkBg relative border-r border-borderSubtle">
+      <div id="chart-canvas-container" class="flex-1 flex flex-col min-w-0 bg-darkBg relative border-r border-borderSubtle pb-20 lg:pb-0 h-full overflow-hidden">
         
         <!-- Precision Chart Header Toolbar -->
-        <div class="h-12 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 md:px-4 text-xs z-10 flex-shrink-0">
+        <div class="h-12 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-2 sm:px-4 text-xs z-10 flex-shrink-0">
           <!-- Active Symbol & Live Quote Info -->
-          <div class="flex items-center gap-2.5 sm:gap-4">
-            <div class="flex items-center gap-1.5">
-              <span class="font-bold text-white text-xs sm:text-sm font-sans tracking-tight" id="active-symbol-title">NSE:NIFTY50-INDEX</span>
-              <span class="text-[9px] text-brand font-mono font-bold bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded" id="chart-market-type">F&O ACTIVE</span>
+          <div class="flex items-center gap-1.5 sm:gap-4 min-w-0 overflow-hidden">
+            <div class="flex items-center gap-1 min-w-0">
+              <span class="font-bold text-white text-xs sm:text-sm font-sans tracking-tight truncate max-w-[105px] xs:max-w-[140px] sm:max-w-none" id="active-symbol-title">NSE:NIFTY50-INDEX</span>
+              <span class="hidden sm:inline-block text-[9px] text-brand font-mono font-bold bg-brand/10 border border-brand/20 px-1.5 py-0.5 rounded flex-shrink-0" id="chart-market-type">F&O ACTIVE</span>
             </div>
-            <div class="flex items-center gap-1.5 font-mono">
+            <div class="flex items-center gap-1 font-mono flex-shrink-0">
               <span class="text-brand font-bold text-xs sm:text-sm" id="active-symbol-ltp">25,425.00</span>
-              <span class="text-[10px] sm:text-xs text-brand font-semibold" id="active-symbol-chg">+115.00 (+0.45%)</span>
+              <span class="text-[10px] sm:text-xs text-brand font-semibold hidden md:inline" id="active-symbol-chg">+115.00 (+0.45%)</span>
             </div>
           </div>
 
           <!-- Timeframes & Scalper Actions -->
-          <div class="flex items-center gap-2">
-            <!-- Fast Scalper Buy/Sell Buttons directly on chart -->
+          <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            <!-- Fast Scalper Buy/Sell Buttons directly on chart (Desktop / Tablet) -->
             <div class="hidden sm:flex items-center gap-1 font-mono">
-              <button onclick="openOrderWithSide(1)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm" title="Quick Buy Active Symbol">
+              <button onclick="openOrderWithSide(1)" class="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 border border-emerald-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all punch-btn shadow-sm" title="Quick Buy Active Symbol">
                 <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i> BUY
               </button>
-              <button onclick="openOrderWithSide(-1)" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500 hover:text-white text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm" title="Quick Sell Active Symbol">
+              <button onclick="openOrderWithSide(-1)" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500 hover:text-white text-rose-400 border border-rose-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all punch-btn shadow-sm" title="Quick Sell Active Symbol">
                 <i data-lucide="arrow-down-right" class="w-3.5 h-3.5"></i> SELL
               </button>
             </div>
 
             <!-- Chart Timeframe Selector -->
             <div id="chart-timeframes" class="flex items-center gap-0.5 bg-darkBg p-0.5 rounded-xl border border-borderSubtle shadow-sm">
-              <button onclick="setResolution('1')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1">1m</button>
-              <button onclick="setResolution('5')" class="res-btn px-2 py-1 rounded-lg text-[11px] bg-slate-800 text-white font-bold transition-colors" data-res="5">5m</button>
-              <button onclick="setResolution('15')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="15">15m</button>
-              <button onclick="setResolution('60')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="60">1h</button>
-              <button onclick="setResolution('1D')" class="res-btn px-2 py-1 rounded-lg text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1D">1D</button>
+              <button onclick="setResolution('1')" class="res-btn px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1">1m</button>
+              <button onclick="setResolution('5')" class="res-btn px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] bg-slate-800 text-white font-bold transition-colors" data-res="5">5m</button>
+              <button onclick="setResolution('15')" class="res-btn px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] text-slate-400 hover:text-white transition-colors" data-res="15">15m</button>
+              <button onclick="setResolution('60')" class="res-btn px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] text-slate-400 hover:text-white transition-colors" data-res="60">1h</button>
+              <button onclick="setResolution('1D')" class="res-btn px-1.5 sm:px-2 py-1 rounded-lg text-[10px] sm:text-[11px] text-slate-400 hover:text-white transition-colors" data-res="1D">1D</button>
             </div>
 
-            <!-- Dock Toggle Button (Collapse/Expand Right Trading Dock) -->
-            <button onclick="toggleRightDock()" id="btn-toggle-right-dock" class="p-1.5 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-colors shadow-sm" title="Toggle Right Dock">
+            <!-- Dock Toggle Button (Collapse/Expand Right Trading Dock - Desktop Only) -->
+            <button onclick="toggleRightDock()" id="btn-toggle-right-dock" class="hidden lg:flex p-1.5 rounded-xl bg-darkBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-colors shadow-sm" title="Toggle Right Dock">
               <i data-lucide="panel-right-close" class="w-4 h-4" id="icon-right-dock"></i>
             </button>
           </div>
         </div>
 
         <!-- Chart Canvas -->
-        <div id="chart-area" class="flex-1 w-full relative"></div>
+        <div id="chart-area" class="flex-1 w-full h-full relative min-h-0"></div>
 
         <!-- Mobile Floating Quick Trade Bar -->
-        <div id="mob-chart-action-bar" class="hidden absolute bottom-4 inset-x-4 z-20 flex gap-3 pointer-events-auto">
-          <button onclick="openOrderWithSide(1)" class="flex-1 py-3 bg-brand hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-2xl shadow-glowBrand flex items-center justify-center gap-2 pill-btn active:scale-95 transition-all">
+        <div id="mob-chart-action-bar" class="hidden absolute bottom-20 inset-x-4 z-20 flex gap-3 pointer-events-auto">
+          <button onclick="openOrderWithSide(1)" class="flex-1 py-2.5 bg-brand hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-2xl shadow-glowBrand flex items-center justify-center gap-2 punch-btn active:scale-95 transition-all">
             <i data-lucide="arrow-up-right" class="w-4 h-4 stroke-[3]"></i> BUY
           </button>
-          <button onclick="openOrderWithSide(-1)" class="flex-1 py-3 bg-danger hover:bg-rose-600 text-white font-black text-xs rounded-2xl shadow-glowDanger flex items-center justify-center gap-2 pill-btn active:scale-95 transition-all">
+          <button onclick="openOrderWithSide(-1)" class="flex-1 py-2.5 bg-danger hover:bg-rose-600 text-white font-black text-xs rounded-2xl shadow-glowDanger flex items-center justify-center gap-2 punch-btn active:scale-95 transition-all">
             <i data-lucide="arrow-down-right" class="w-4 h-4 stroke-[3]"></i> SELL
           </button>
         </div>
@@ -1136,49 +1136,6 @@
           <button id="acc-hero-logout-btn" onclick="logoutTrader()" class="hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 border border-rose-500/30 cursor-pointer transition-colors" title="Log out and switch trader account">
             <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Log Out
           </button>
-        </div>
-
-        <!-- PROFILE SETTINGS -->
-        <div class="bg-cardBg border border-borderSubtle rounded-2xl p-4 md:p-5 shadow-sm space-y-4">
-          <h3 class="text-sm font-bold text-white flex items-center gap-2">
-            <i data-lucide="user-cog" class="w-4 h-4 text-brand"></i>
-            Trader Credentials & Profile
-          </h3>
-
-          <div class="space-y-3 text-xs">
-            <div>
-              <label class="text-slate-300 font-semibold block mb-1">Trader ID (Username)</label>
-              <div class="relative">
-                <i data-lucide="user" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-                <input type="text" id="acc-input-username" readonly 
-                       class="w-full bg-slate-900/60 border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-slate-300 font-mono cursor-not-allowed">
-              </div>
-            </div>
-
-            <div>
-              <label class="text-slate-300 font-semibold block mb-1">Trader Display Name</label>
-              <div class="relative">
-                <i data-lucide="badge-check" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-                <input type="text" id="acc-input-name" placeholder="e.g. Aman" 
-                       class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white focus:outline-none focus:border-brand">
-              </div>
-            </div>
-
-            <div>
-              <label class="text-slate-300 font-semibold block mb-1">Client ID / Broker Code</label>
-              <div class="relative">
-                <i data-lucide="hash" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-                <input type="text" id="acc-input-client-id" placeholder="e.g. XH01499" 
-                       class="w-full bg-darkBg border border-borderSubtle rounded-xl pl-9 pr-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-brand">
-              </div>
-            </div>
-          </div>
-
-          <div class="pt-2">
-            <button onclick="saveUserProfile()" class="w-full py-2.5 rounded-xl bg-brand hover:bg-emerald-400 text-slate-950 font-bold text-xs pill-btn flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md">
-              <i data-lucide="save" class="w-4 h-4"></i> Save Account Credentials
-            </button>
-          </div>
         </div>
 
         <!-- FUNDS & MARGINS QUICK CARD -->
@@ -2030,6 +1987,18 @@
             chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
           }, 100);
         }
+        if (window.innerWidth >= 1024) {
+          const rightDock = document.getElementById('right-trading-dock');
+          const chartCanvasContainer = document.getElementById('chart-canvas-container');
+          if (rightDock) {
+            rightDock.classList.remove('hidden');
+            rightDock.style.display = '';
+          }
+          if (chartCanvasContainer) {
+            chartCanvasContainer.classList.remove('hidden');
+            chartCanvasContainer.style.display = '';
+          }
+        }
       } else if (mode === 'optionchain') {
         loadOptionChain(true);
       } else if (mode === 'positions') {
@@ -2038,6 +2007,19 @@
         initOrResizeSplitScreen();
       } else if (mode === 'account') {
         loadUserProfile();
+      }
+
+      if (window.innerWidth < 1024) {
+        const smartBackBtn = document.getElementById('header-smart-back-btn');
+        if (smartBackBtn) {
+          if (mode === 'chart' && currentMobileTab === 'watchlist') {
+            smartBackBtn.classList.add('hidden');
+            smartBackBtn.style.display = 'none';
+          } else {
+            smartBackBtn.classList.remove('hidden');
+            smartBackBtn.style.display = 'inline-flex';
+          }
+        }
       }
 
       try { lucide.createIcons(); } catch (e) {}
@@ -2432,6 +2414,7 @@
 
     // ------------------ MOBILE NAVIGATION CONTROLS ------------------
     function switchMobileTab(tab, pushHistory = true) {
+      triggerHaptic(10);
       if (tab === 'portfolio') tab = 'positions';
       const prevTab = currentMobileTab;
       currentMobileTab = tab;
@@ -2462,12 +2445,15 @@
       if (smartBackBtn) {
         if (tab === 'watchlist') {
           smartBackBtn.classList.add('hidden');
+          smartBackBtn.style.display = 'none';
         } else {
           smartBackBtn.classList.remove('hidden');
+          smartBackBtn.style.display = 'inline-flex';
         }
       }
 
       const rightDock = document.getElementById('right-trading-dock');
+      const chartCanvasContainer = document.getElementById('chart-canvas-container');
       const chartArea = document.getElementById('chart-area');
       const chartActionBar = document.getElementById('mob-chart-action-bar');
 
@@ -2477,20 +2463,36 @@
         if (rightDock) {
           rightDock.classList.remove('hidden');
           rightDock.classList.add('flex', 'w-full');
+          rightDock.style.display = 'flex';
         }
-        if (chartArea && chartArea.parentElement) chartArea.parentElement.classList.add('hidden');
-        if (chartActionBar) chartActionBar.classList.add('hidden');
+        if (chartCanvasContainer) {
+          chartCanvasContainer.classList.add('hidden');
+          chartCanvasContainer.style.display = 'none';
+        }
+        if (chartActionBar) {
+          chartActionBar.classList.add('hidden');
+          chartActionBar.style.display = 'none';
+        }
       } else if (tab === 'chart') {
         switchWorkstation('chart');
         if (rightDock) {
           rightDock.classList.add('hidden');
           rightDock.classList.remove('flex', 'w-full');
+          rightDock.style.display = 'none';
         }
-        if (chartArea && chartArea.parentElement) chartArea.parentElement.classList.remove('hidden');
-        if (chartActionBar) chartActionBar.classList.remove('hidden');
-        if (chart) {
+        if (chartCanvasContainer) {
+          chartCanvasContainer.classList.remove('hidden');
+          chartCanvasContainer.style.display = 'flex';
+        }
+        if (chartActionBar) {
+          chartActionBar.classList.remove('hidden');
+          chartActionBar.style.display = 'flex';
+        }
+        if (chart && chartArea) {
           setTimeout(() => {
-            chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+            if (chartArea.clientWidth > 0 && chartArea.clientHeight > 0) {
+              chart.applyOptions({ width: chartArea.clientWidth, height: chartArea.clientHeight });
+            }
           }, 80);
         }
       } else if (tab === 'options') {
@@ -2506,7 +2508,11 @@
       try { lucide.createIcons(); } catch (e) {}
     }
 
-    function handleSmartBackClick() {
+    function handleSmartBackClick(e) {
+      if (e) {
+        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+      }
+      triggerHaptic(15);
       switchMobileTab('watchlist');
     }
 
@@ -3684,12 +3690,20 @@
       }
 
       window.addEventListener('resize', () => {
-        if (chart && container) {
+        if (chart && container && container.clientWidth > 0 && container.clientHeight > 0) {
           chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
         }
       });
+      if (window.ResizeObserver && container) {
+        const ro = new ResizeObserver(() => {
+          if (chart && container && container.clientWidth > 0 && container.clientHeight > 0) {
+            chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+          }
+        });
+        ro.observe(container);
+      }
       setTimeout(() => {
-        if (chart && container) {
+        if (chart && container && container.clientWidth > 0 && container.clientHeight > 0) {
           chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
         }
       }, 100);
