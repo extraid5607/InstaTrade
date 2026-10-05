@@ -21,6 +21,8 @@
   <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: ['selector', '[data-theme="dark"]'],
@@ -494,16 +496,39 @@
     .flash-down {
       animation: flashRed 0.45s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    /* Zerodha Kite Hardware-Accelerated Touch Swipe Surfaces */
+    /* Zerodha Kite Hardware-Accelerated Touch Swipe Surfaces & Swiper Layout */
+    #watchlist-swiper,
+    .watchlist-page,
     #watchlist-container, 
     #dock-content,
     #ws-positions-desk {
       touch-action: pan-y;
       -webkit-overflow-scrolling: touch;
-      will-change: transform, opacity;
+      will-change: transform;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
-      transform: translate3d(0, 0, 0);
+    }
+    .watchlist-swiper {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    .watchlist-swiper .swiper-wrapper {
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+    .watchlist-swiper .swiper-slide {
+      width: 100%;
+      height: 100%;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .watchlist-page {
+      width: 100%;
+      height: 100%;
+      overscroll-behavior-y: contain;
     }
 
   </style>
@@ -841,9 +866,22 @@
             <span id="watchlist-pull-text" class="text-[11px]">Refreshing Watchlist...</span>
           </div>
 
-          <!-- Watchlist Items Container -->
-          <div class="flex-1 overflow-y-auto pb-16 lg:pb-0 touch-scroll" id="watchlist-container">
-            <!-- Watchlist items dynamically injected -->
+          <!-- Watchlist Items Swiper Container (nolimits4web/swiper Zerodha-style touch slider) -->
+          <div class="swiper watchlist-swiper flex-1 w-full overflow-hidden" id="watchlist-swiper">
+            <div class="swiper-wrapper h-full">
+              <!-- Slide 0: Watchlist 1 (INDICES) -->
+              <div class="swiper-slide h-full flex flex-col" data-filter="INDICES">
+                <div class="watchlist-page flex-1 overflow-y-auto pb-20 lg:pb-0 touch-scroll overscroll-contain" id="watchlist-page-INDICES"></div>
+              </div>
+              <!-- Slide 1: Watchlist 2 (FUTURES) -->
+              <div class="swiper-slide h-full flex flex-col" data-filter="FUTURES">
+                <div class="watchlist-page flex-1 overflow-y-auto pb-20 lg:pb-0 touch-scroll overscroll-contain" id="watchlist-page-FUTURES"></div>
+              </div>
+              <!-- Slide 2: Watchlist 3 (EQUITY) -->
+              <div class="swiper-slide h-full flex flex-col" data-filter="EQUITY">
+                <div class="watchlist-page flex-1 overflow-y-auto pb-20 lg:pb-0 touch-scroll overscroll-contain" id="watchlist-page-EQUITY"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2108,6 +2146,10 @@
         renderRightDockPositions();
       } else if (tab === 'optionchain') {
         loadDockOptionChain(false);
+      } else if (tab === 'watchlist') {
+        if (watchlistSwiper) {
+          setTimeout(() => { try { watchlistSwiper.update(); } catch(e){} }, 50);
+        }
       }
 
       try { lucide.createIcons(); } catch (e) {}
@@ -2680,6 +2722,9 @@
         if (chartActionBar) {
           chartActionBar.classList.add('hidden');
           chartActionBar.style.display = 'none';
+        }
+        if (watchlistSwiper) {
+          setTimeout(() => { try { watchlistSwiper.update(); } catch(e){} }, 60);
         }
       } else if (tab === 'chart') {
         switchWorkstation('chart');
@@ -3681,11 +3726,8 @@
       // Live search filter
       const searchBox = document.getElementById('watch-search');
       if (searchBox) {
-        searchBox.addEventListener('input', (e) => {
-          const val = e.target.value.toLowerCase();
-          document.querySelectorAll('#watchlist-container > div').forEach(el => {
-            el.style.display = el.innerText.toLowerCase().includes(val) ? 'flex' : 'none';
-          });
+        searchBox.addEventListener('input', () => {
+          applyWatchlistFilter();
         });
       }
 
@@ -4002,220 +4044,158 @@
       refreshWatchlist();
     }
 
-    // ------------------ WATCHLIST CONTROLS, FILTERING & SOFT ZERODHA SWIPE ------------------
+    // ------------------ WATCHLIST CONTROLS, FILTERING & ZERODHA SWIPER ------------------
     let currentWatchFilter = 'INDICES';
     let isWatchlistCollapsed = false;
+    let watchlistSwiper = null;
+    let lastSwipeTime = 0;
     const watchlistFilterOrder = ['INDICES', 'FUTURES', 'EQUITY'];
 
     function selectWatchlistTab(filter) {
-      if (filter === currentWatchFilter) return;
-      const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
-      const nextIdx = watchlistFilterOrder.indexOf(filter);
-      const direction = (nextIdx >= curIdx) ? 1 : -1;
-      transitionWatchlistTo(filter, direction);
+      currentWatchFilter = filter;
+      updateWatchlistTabs(filter);
+      const idx = watchlistFilterOrder.indexOf(filter);
+      if (watchlistSwiper && idx !== -1 && watchlistSwiper.activeIndex !== idx) {
+        watchlistSwiper.slideTo(idx, 280);
+      }
+      applyWatchlistFilter();
+      triggerHaptic(10);
     }
 
-    function transitionWatchlistTo(nextFilter, direction = 1) {
-      const container = document.getElementById('watchlist-container');
-      if (!container) {
-        filterWatchlist(nextFilter);
-        return;
-      }
-      triggerHaptic(12);
-
-      if (window.anime) {
-        anime.remove(container);
-        anime({
-          targets: container,
-          translateX: direction > 0 ? -60 : 60,
-          opacity: 0.15,
-          duration: 110,
-          easing: 'easeOutQuad',
-          complete: () => {
-            filterWatchlist(nextFilter);
-            container.scrollTop = 0;
-            anime({
-              targets: container,
-              translateX: [direction > 0 ? 60 : -60, 0],
-              opacity: [0.15, 1],
-              duration: 220,
-              easing: 'easeOutCubic'
-            });
-          }
-        });
-      } else {
-        filterWatchlist(nextFilter);
-        container.scrollTop = 0;
-      }
+    function updateWatchlistTabs(filter) {
+      document.querySelectorAll('.watch-filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-filter') === filter) {
+          btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-brand border-b-2 border-brand cursor-pointer transition-all whitespace-nowrap';
+          try { btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
+        } else {
+          btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap';
+        }
+      });
     }
 
     function swipeWatchlist(direction) {
-      // direction: +1 = swipe left (next watchlist), -1 = swipe right (prev watchlist)
-      const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
-      if (curIdx === -1) return;
-      let nextIdx = curIdx + direction;
-      // Smooth wrap-around between Watchlist 1, 2, and 3
-      if (nextIdx < 0) nextIdx = watchlistFilterOrder.length - 1;
-      else if (nextIdx >= watchlistFilterOrder.length) nextIdx = 0;
-
-      const nextFilter = watchlistFilterOrder[nextIdx];
-      transitionWatchlistTo(nextFilter, direction);
+      if (watchlistSwiper) {
+        if (direction > 0) watchlistSwiper.slideNext(280);
+        else watchlistSwiper.slidePrev(280);
+      } else {
+        const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
+        let nextIdx = curIdx + direction;
+        if (nextIdx < 0) nextIdx = watchlistFilterOrder.length - 1;
+        else if (nextIdx >= watchlistFilterOrder.length) nextIdx = 0;
+        selectWatchlistTab(watchlistFilterOrder[nextIdx]);
+      }
     }
 
-    let lastSwipeTime = 0;
-
     function initWatchlistGestures() {
-      const pane = document.getElementById('rd-pane-watchlist') || document.getElementById('right-trading-dock');
-      const listEl = document.getElementById('watchlist-container');
-      const pullEl = document.getElementById('watchlist-pull-refresh');
-      const targetEl = pane || listEl;
-      if (!targetEl) return;
+      const swiperContainer = document.getElementById('watchlist-swiper');
+      if (!swiperContainer) return;
 
-      let startX = 0;
-      let startY = 0;
-      let startTime = 0;
-      let isTracking = false;
-      let gestureAxis = null; // 'x' | 'y' | 'pull'
-      let startScrollTop = 0;
-      let isPullRefreshing = false;
-      let hasSwipedHorizontally = false;
-
-      // 1. LAPTOP TRACKPAD TWO-FINGER HORIZONTAL SWIPE
-      let lastWheelSwipe = 0;
-      const onWheel = (e) => {
-        const dx = e.deltaX;
-        const dy = e.deltaY;
-        if (Math.abs(dx) > 25 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-          if (Date.now() - lastWheelSwipe < 380) return;
-          lastWheelSwipe = Date.now();
-          lastSwipeTime = Date.now();
-          const direction = dx > 0 ? 1 : -1;
-          swipeWatchlist(direction);
+      if (typeof Swiper !== 'undefined') {
+        if (watchlistSwiper) {
+          try { watchlistSwiper.destroy(true, true); } catch (e) {}
+          watchlistSwiper = null;
         }
-      };
-      targetEl.addEventListener('wheel', onWheel, { passive: true });
-      if (listEl && listEl !== targetEl) listEl.addEventListener('wheel', onWheel, { passive: true });
 
-      // 2. MOBILE TOUCH GESTURES
-      function onTouchStart(e) {
-        if (!e.touches || e.touches.length !== 1) return;
-        if (e.target && e.target.closest('#watch-search, #watch-search-dropdown, #watch-search-clear, #btn-watch-edit-mode, select')) {
-          isTracking = false;
-          return;
-        }
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        startTime = performance.now();
-        isTracking = true;
-        gestureAxis = null;
-        hasSwipedHorizontally = false;
-        startScrollTop = listEl ? listEl.scrollTop : 0;
-        if (listEl && window.anime) anime.remove(listEl);
-      }
-
-      function onTouchMove(e) {
-        if (!isTracking || !e.touches || e.touches.length !== 1) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const deltaX = currentX - startX;
-        const deltaY = currentY - startY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-
-        if (!gestureAxis) {
-          if (absX >= 8 || absY >= 8) {
-            if (absX >= absY) {
-              gestureAxis = 'x';
-              hasSwipedHorizontally = true;
+        watchlistSwiper = new Swiper('#watchlist-swiper', {
+          direction: 'horizontal',
+          speed: 280,
+          touchAngle: 45,
+          resistance: true,
+          resistanceRatio: 0.85,
+          preventClicks: true,
+          preventClicksPropagation: true,
+          touchStartPreventDefault: false,
+          nested: false,
+          grabCursor: true,
+          observer: true,
+          observeParents: true,
+          observeSlideChildren: true,
+          threshold: 8,
+          mousewheel: {
+            forceToAxis: true,
+            sensitivity: 0.8,
+            releaseOnEdges: true
+          },
+          keyboard: {
+            enabled: true,
+            onlyInViewport: true
+          },
+          on: {
+            init: function() {
+              const idx = watchlistFilterOrder.indexOf(currentWatchFilter);
+              if (idx !== -1 && this.activeIndex !== idx) {
+                this.slideTo(idx, 0, false);
+              }
+              updateWatchlistTabs(currentWatchFilter);
+            },
+            slideChange: function() {
               lastSwipeTime = Date.now();
-            } else if (startScrollTop <= 2 && deltaY > 8) {
-              gestureAxis = 'pull';
-            } else {
-              gestureAxis = 'y';
+              const newIdx = this.activeIndex;
+              const newFilter = watchlistFilterOrder[newIdx] || 'INDICES';
+              currentWatchFilter = newFilter;
+              updateWatchlistTabs(newFilter);
+              applyWatchlistFilter();
+              triggerHaptic(10);
+            },
+            sliderMove: function() {
+              lastSwipeTime = Date.now();
             }
           }
-        }
-
-        if (gestureAxis === 'x') {
-          if (e.cancelable) e.preventDefault();
-          hasSwipedHorizontally = true;
-          lastSwipeTime = Date.now();
-          if (listEl) {
-            const dragX = deltaX * 0.92;
-            listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
-            listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
-          }
-        } else if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          if (e.cancelable) e.preventDefault();
-          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
-          pullEl.style.height = `${pullDistance}px`;
-          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
-        }
+        });
       }
 
-      async function onTouchEnd(e) {
-        if (!isTracking) return;
-        isTracking = false;
+      // Initialize Pull-to-refresh on each watchlist-page
+      initWatchlistPullToRefresh();
+    }
 
-        let endX = startX;
-        let endY = startY;
-        if (e && e.changedTouches && e.changedTouches.length >= 1) {
-          endX = e.changedTouches[0].clientX;
-          endY = e.changedTouches[0].clientY;
-        }
+    function initWatchlistPullToRefresh() {
+      const pullEl = document.getElementById('watchlist-pull-refresh');
+      const pullText = document.getElementById('watchlist-pull-text');
+      if (!pullEl) return;
 
-        const deltaX = endX - startX;
-        const deltaY = endY - startY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        const elapsed = Math.max(1, performance.now() - startTime);
-        const velocity = absX / elapsed;
+      ['INDICES', 'FUTURES', 'EQUITY'].forEach(cat => {
+        const page = document.getElementById(`watchlist-page-${cat}`);
+        if (!page) return;
 
-        if (!gestureAxis) {
-          if (absX >= absY && absX >= 12) {
-            gestureAxis = 'x';
-            hasSwipedHorizontally = true;
-            lastSwipeTime = Date.now();
-          } else if (startScrollTop <= 2 && deltaY >= 25 && absY > absX) {
-            gestureAxis = 'pull';
-          }
-        }
+        let startY = 0;
+        let isPulling = false;
+        let isRefreshing = false;
 
-        if (hasSwipedHorizontally || gestureAxis === 'x') {
-          lastSwipeTime = Date.now();
-        }
-
-        if (gestureAxis === 'x' && listEl) {
-          const isFlick = velocity > 0.16 && absX >= 15;
-          const isPassedThreshold = absX >= 30;
-
-          if (isFlick || isPassedThreshold) {
-            resetPullUI();
-            const direction = deltaX < 0 ? 1 : -1;
-            const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
-            let nextIdx = curIdx + direction;
-            if (nextIdx < 0) nextIdx = watchlistFilterOrder.length - 1;
-            else if (nextIdx >= watchlistFilterOrder.length) nextIdx = 0;
-            const nextFilter = watchlistFilterOrder[nextIdx];
-            transitionWatchlistTo(nextFilter, direction);
-            return;
+        page.addEventListener('touchstart', (e) => {
+          if (e.touches.length !== 1) return;
+          if (page.scrollTop <= 0) {
+            startY = e.touches[0].clientY;
+            isPulling = true;
           } else {
-            if (window.anime) {
-              anime({ targets: listEl, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
-            } else {
-              listEl.style.transform = 'translate3d(0, 0, 0)';
-              listEl.style.opacity = '1';
+            isPulling = false;
+          }
+        }, { passive: true });
+
+        page.addEventListener('touchmove', (e) => {
+          if (!isPulling || isRefreshing || e.touches.length !== 1) return;
+          const currentY = e.touches[0].clientY;
+          const deltaY = currentY - startY;
+          if (deltaY > 8 && page.scrollTop <= 0) {
+            const pullDistance = Math.min(48, Math.round((deltaY - 8) * 0.42));
+            pullEl.style.height = `${pullDistance}px`;
+            pullEl.style.opacity = `${Math.min(1, pullDistance / 26)}`;
+            if (pullText) {
+              pullText.innerText = pullDistance >= 36 ? 'Release to refresh' : 'Pull to refresh';
             }
           }
-        }
+        }, { passive: true });
 
-        if (gestureAxis === 'pull' && deltaY >= 35) {
-          if (!isPullRefreshing) {
-            isPullRefreshing = true;
-            if (pullEl) {
-              pullEl.style.height = '36px';
-              pullEl.style.opacity = '1';
-            }
+        page.addEventListener('touchend', async (e) => {
+          if (!isPulling || isRefreshing) return;
+          isPulling = false;
+          const endY = e.changedTouches[0]?.clientY || startY;
+          const deltaY = endY - startY;
+
+          if (deltaY >= 45 && page.scrollTop <= 0) {
+            isRefreshing = true;
+            pullEl.style.height = '38px';
+            pullEl.style.opacity = '1';
+            if (pullText) pullText.innerText = 'Refreshing Watchlist...';
             triggerHaptic(20);
             try {
               await refreshWatchlist();
@@ -4223,87 +4203,24 @@
               showToast('Watchlist refreshed', 'success');
             } catch (err) {}
             setTimeout(() => {
-              resetPullUI();
-              isPullRefreshing = false;
-            }, 300);
+              pullEl.style.transition = 'height 0.25s ease, opacity 0.25s ease';
+              pullEl.style.height = '0px';
+              pullEl.style.opacity = '0';
+              setTimeout(() => {
+                pullEl.style.transition = '';
+                isRefreshing = false;
+              }, 250);
+            }, 350);
+          } else {
+            pullEl.style.transition = 'height 0.2s ease, opacity 0.2s ease';
+            pullEl.style.height = '0px';
+            pullEl.style.opacity = '0';
+            setTimeout(() => {
+              pullEl.style.transition = '';
+            }, 200);
           }
-          return;
-        }
-
-        resetPullUI();
-      }
-
-      function resetPullUI() {
-        if (pullEl && !isPullRefreshing) {
-          pullEl.style.transition = 'height 0.2s ease, opacity 0.2s ease';
-          pullEl.style.height = '0px';
-          pullEl.style.opacity = '0';
-          setTimeout(() => {
-            if (pullEl) pullEl.style.transition = '';
-          }, 200);
-        }
-      }
-
-      targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
-      targetEl.addEventListener('touchmove', onTouchMove, { passive: false });
-      targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
-      targetEl.addEventListener('touchcancel', () => {
-        if (listEl && isTracking) {
-          isTracking = false;
-          if (window.anime) anime({ targets: listEl, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
-          else { listEl.style.transform = 'translate3d(0, 0, 0)'; listEl.style.opacity = '1'; }
-        }
-        resetPullUI();
-      }, { passive: true });
-
-      // 3. DESKTOP MOUSE DRAG SWIPE
-      let isMouseDown = false;
-      let mouseStartX = 0;
-      let mouseStartY = 0;
-      let mouseDraggedX = false;
-
-      const onMouseDown = (e) => {
-        if (e.button !== 0) return;
-        if (e.target && e.target.closest('#watch-search, #watch-search-dropdown, #watch-search-clear, #btn-watch-edit-mode, select, input')) return;
-        isMouseDown = true;
-        mouseStartX = e.clientX;
-        mouseStartY = e.clientY;
-        mouseDraggedX = false;
-      };
-
-      const onMouseMove = (e) => {
-        if (!isMouseDown) return;
-        const dx = e.clientX - mouseStartX;
-        const dy = e.clientY - mouseStartY;
-        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
-          mouseDraggedX = true;
-          lastSwipeTime = Date.now();
-          if (listEl) {
-            listEl.style.transform = `translate3d(${dx * 0.75}px, 0, 0)`;
-            listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dx) / 500))}`;
-          }
-        }
-      };
-
-      const onMouseUp = (e) => {
-        if (!isMouseDown) return;
-        isMouseDown = false;
-        if (mouseDraggedX) {
-          lastSwipeTime = Date.now();
-          const dx = e.clientX - mouseStartX;
-          if (Math.abs(dx) >= 30) {
-            const direction = dx < 0 ? 1 : -1;
-            swipeWatchlist(direction);
-          } else if (listEl) {
-            if (window.anime) anime({ targets: listEl, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
-            else { listEl.style.transform = 'translate3d(0, 0, 0)'; listEl.style.opacity = '1'; }
-          }
-        }
-      };
-
-      targetEl.addEventListener('mousedown', onMouseDown);
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
+        }, { passive: true });
+      });
     }
 
     // ------------------ PORTFOLIO GESTURES (SOFT ZERODHA SWIPE & PULL-TO-REFRESH) ------------------
@@ -4598,16 +4515,7 @@
     }
 
     function filterWatchlist(filter) {
-      currentWatchFilter = filter;
-      document.querySelectorAll('.watch-filter-btn').forEach(btn => {
-        if (btn.getAttribute('data-filter') === filter) {
-          btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-brand border-b-2 border-brand cursor-pointer transition-all whitespace-nowrap';
-          try { btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
-        } else {
-          btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap';
-        }
-      });
-      applyWatchlistFilter();
+      selectWatchlistTab(filter);
     }
 
     function clearWatchSearch() {
@@ -4627,52 +4535,42 @@
         else clearBtn.classList.add('hidden');
       }
 
-      let visibleCount = 0;
-      document.querySelectorAll('#watchlist-container > div').forEach(el => {
-        if (el.id === 'watch-empty-state') return;
-        const sym = el.getAttribute('data-symbol') || '';
-        const text = el.innerText.toLowerCase();
-        
-        let matchesCategory = true;
-        if (!searchVal) {
-          if (currentWatchFilter === 'INDICES') {
-            matchesCategory = sym.includes('INDEX');
-          } else if (currentWatchFilter === 'FUTURES') {
-            matchesCategory = sym.includes('FUT');
-          } else if (currentWatchFilter === 'EQUITY') {
-            matchesCategory = !sym.includes('INDEX') && !sym.includes('FUT');
+      let activeVisibleCount = 0;
+
+      const categories = ['INDICES', 'FUTURES', 'EQUITY'];
+      categories.forEach(cat => {
+        const pageEl = document.getElementById(`watchlist-page-${cat}`);
+        if (!pageEl) return;
+
+        let catVisibleCount = 0;
+        pageEl.querySelectorAll('.watchlist-item').forEach(el => {
+          const sym = el.getAttribute('data-symbol') || '';
+          const text = el.innerText.toLowerCase();
+          const matchesSearch = !searchVal || text.includes(searchVal) || sym.toLowerCase().includes(searchVal);
+
+          if (matchesSearch) {
+            el.style.display = 'flex';
+            catVisibleCount++;
+          } else {
+            el.style.display = 'none';
           }
-        }
-        
-        const matchesSearch = !searchVal || text.includes(searchVal) || sym.toLowerCase().includes(searchVal);
+        });
 
-        if (matchesCategory && matchesSearch) {
-          el.style.display = 'flex';
-          visibleCount++;
-        } else {
-          el.style.display = 'none';
+        if (cat === currentWatchFilter) {
+          activeVisibleCount = catVisibleCount;
         }
-      });
 
-      const countPill = document.getElementById('watch-count-pill');
-      if (countPill) countPill.innerText = visibleCount;
-      const countPillInner = document.getElementById('watch-count-pill-inner');
-      if (countPillInner) countPillInner.innerText = `${visibleCount}/50`;
-
-      // Zerodha-style clean empty state when active watchlist category has 0 symbols
-      const container = document.getElementById('watchlist-container');
-      let emptyMsgEl = document.getElementById('watch-empty-state');
-      if (visibleCount === 0 && !searchVal) {
-        if (!emptyMsgEl && container) {
-          emptyMsgEl = document.createElement('div');
-          emptyMsgEl.id = 'watch-empty-state';
-          emptyMsgEl.className = 'p-8 flex flex-col items-center justify-center text-center text-slate-400 gap-2 select-none';
-          container.appendChild(emptyMsgEl);
-        }
-        if (emptyMsgEl) {
-          emptyMsgEl.style.display = 'flex';
-          const label = currentWatchFilter === 'INDICES' ? 'Indices' : (currentWatchFilter === 'FUTURES' ? 'Futures' : 'Stocks');
-          emptyMsgEl.innerHTML = `
+        // Empty state per category slide
+        let emptyEl = pageEl.querySelector('.watchlist-empty-state');
+        if (catVisibleCount === 0 && !searchVal) {
+          if (!emptyEl) {
+            emptyEl = document.createElement('div');
+            emptyEl.className = 'watchlist-empty-state p-8 flex flex-col items-center justify-center text-center text-slate-400 gap-2 select-none';
+            pageEl.appendChild(emptyEl);
+          }
+          emptyEl.style.display = 'flex';
+          const label = cat === 'INDICES' ? 'Indices' : (cat === 'FUTURES' ? 'Futures' : 'Stocks');
+          emptyEl.innerHTML = `
             <div class="w-10 h-10 rounded-full bg-slate-800/80 border border-borderSubtle flex items-center justify-center text-slate-500 mb-1">
               <i data-lucide="folder-search" class="w-5 h-5"></i>
             </div>
@@ -4680,10 +4578,15 @@
             <div class="text-[11px] text-slate-500">Use "Search & add" above to add symbols</div>
           `;
           try { lucide.createIcons(); } catch (e) {}
+        } else if (emptyEl) {
+          emptyEl.style.display = 'none';
         }
-      } else if (emptyMsgEl) {
-        emptyMsgEl.style.display = 'none';
-      }
+      });
+
+      const countPill = document.getElementById('watch-count-pill');
+      if (countPill) countPill.innerText = activeVisibleCount;
+      const countPillInner = document.getElementById('watch-count-pill-inner');
+      if (countPillInner) countPillInner.innerText = `${activeVisibleCount}/50`;
     }
 
     // ------------------ INTERACTIVE SEARCH & ADD TO WATCHLIST ------------------
@@ -4983,18 +4886,16 @@
       list[targetIdx] = temp;
       saveActiveWatchlist(list);
 
-      const container = document.getElementById('watchlist-container');
-      if (container) {
-        const rowId1 = 'watch-item-' + sym.replace(/[:.-]/g, '_');
-        const rowId2 = 'watch-item-' + list[idx].replace(/[:.-]/g, '_');
-        const el1 = document.getElementById(rowId1);
-        const el2 = document.getElementById(rowId2);
-        if (el1 && el2) {
-          if (direction === -1) {
-            container.insertBefore(el1, el2);
-          } else {
-            container.insertBefore(el2, el1);
-          }
+      const rowId1 = 'watch-item-' + sym.replace(/[:.-]/g, '_');
+      const rowId2 = 'watch-item-' + list[idx].replace(/[:.-]/g, '_');
+      const el1 = document.getElementById(rowId1);
+      const el2 = document.getElementById(rowId2);
+      if (el1 && el2 && el1.parentElement === el2.parentElement) {
+        const parent = el1.parentElement;
+        if (direction === -1) {
+          parent.insertBefore(el1, el2);
+        } else {
+          parent.insertBefore(el2, el1);
         }
       }
       const displayName = sym.split(':')[1]?.replace('-EQ','')?.replace('-INDEX','')?.replace('-FUT',' FUT') || sym;
@@ -5026,14 +4927,17 @@
         
         // Maintain exact user-defined activeList sort order
         const quotes = activeList.map(sym => quotesMap[sym]).filter(Boolean);
-        const container = document.getElementById('watchlist-container');
 
         // Remove elements from DOM that were deleted from activeList
-        document.querySelectorAll('#watchlist-container > div').forEach(el => {
-          const elSym = el.getAttribute('data-symbol');
-          if (elSym && !activeList.includes(elSym)) {
-            el.remove();
-          }
+        ['INDICES', 'FUTURES', 'EQUITY'].forEach(cat => {
+          const page = document.getElementById(`watchlist-page-${cat}`);
+          if (!page) return;
+          page.querySelectorAll('.watchlist-item').forEach(el => {
+            const elSym = el.getAttribute('data-symbol');
+            if (elSym && !activeList.includes(elSym)) {
+              el.remove();
+            }
+          });
         });
 
         // Update counter pill
@@ -5045,6 +4949,13 @@
           const isUp = q.change >= 0;
           const colorClass = isUp ? 'text-emerald-400' : 'text-danger';
           const rowId = 'watch-item-' + q.symbol.replace(/[:.-]/g, '_');
+
+          const isIndex = q.symbol.includes('INDEX');
+          const isFut = q.symbol.includes('FUT');
+          const targetCat = isIndex ? 'INDICES' : (isFut ? 'FUTURES' : 'EQUITY');
+          const container = document.getElementById(`watchlist-page-${targetCat}`);
+          if (!container) return;
+
           let item = document.getElementById(rowId);
 
           const prev = prevQuotes[q.symbol];
@@ -5053,9 +4964,6 @@
             tickClass = (q.ltp > prev) ? 'flash-up' : 'flash-down';
           }
           prevQuotes[q.symbol] = q.ltp;
-
-          const isIndex = q.symbol.includes('INDEX');
-          const isFut = q.symbol.includes('FUT');
 
           const typeBadge = isIndex
             ? '<span class="text-[8px] bg-slate-800 text-slate-400 px-1 py-0.2 rounded font-bold font-mono">SPOT</span>'
@@ -5114,7 +5022,7 @@
             item = document.createElement('div');
             item.id = rowId;
             item.setAttribute('data-symbol', q.symbol);
-            item.className = `group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
+            item.className = `watchlist-item group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
             item.onclick = () => handleWatchlistRowClick(q.symbol);
             item.innerHTML = `
               <div class="min-w-0 pr-2">
@@ -5138,7 +5046,7 @@
             try { lucide.createIcons(); } catch (e) {}
           } else {
             item.setAttribute('data-symbol', q.symbol);
-            item.className = `group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
+            item.className = `watchlist-item group py-3.5 lg:py-2.5 px-4 lg:px-3 border-b border-borderSubtle/60 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all`;
             item.onclick = () => handleWatchlistRowClick(q.symbol);
             const priceEl = item.querySelector('.watch-price');
             const chgEl = item.querySelector('.watch-chg');
