@@ -2184,6 +2184,7 @@ class VirtualTradingEngine:
         final_positions = db.get_positions(username)
         final_used_margin = calculate_portfolio_margin_for_positions(final_positions)
         new_realized = round(realized, 2)
+        new_avail = max(0.0, (total_capital + trade_realized) - final_used_margin)
         db.update_funds(username, round(new_avail, 2), round(final_used_margin, 2), new_realized)
         db.record_daily_pnl(username, today_str, new_realized, len(db.get_orders(username, today_only=True)))
 

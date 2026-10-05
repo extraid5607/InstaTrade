@@ -6162,8 +6162,16 @@
           openAuthModal('login');
           return;
         }
-        const r = await res.json();
-        if (r.s === 'ok') {
+        let r = null;
+        try {
+          r = await res.json();
+        } catch (jsonErr) {
+          let rawTxt = '';
+          try { rawTxt = await res.text(); } catch (e) {}
+          r = { s: res.ok ? 'ok' : 'error', message: rawTxt || (res.ok ? 'Order executed' : 'Server error') };
+        }
+
+        if (r && r.s === 'ok') {
           triggerHaptic([35, 45, 35]);
           window._userExplicitlyClosedAll = false;
           showToast(`Order Placed: ${currentSide === 1 ? 'BUY' : 'SELL'} ${qty} ${currentSymbol}`, 'success');
@@ -6175,11 +6183,11 @@
           }, 600);
         } else {
           triggerHaptic(40);
-          showToast(`Order Failed: ${r.message || 'Error'}`, 'error');
+          showToast(`Order Failed: ${r?.message || 'Error processing order'}`, 'error');
         }
       } catch (err) {
         triggerHaptic(40);
-        showToast(`Order Error: ${err}`, 'error');
+        showToast(`Order Error: ${err?.message || err}`, 'error');
       } finally {
         if (submitBtn) {
           submitBtn.disabled = false;

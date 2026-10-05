@@ -396,25 +396,29 @@ def get_orders(username: Optional[str] = Depends(get_current_username)):
 
 @app.post("/api/orders")
 def place_order(order: OrderPayload, username: str = Depends(require_authenticated_user)):
-    ot = order.order_type
-    if isinstance(ot, str):
-        ot = 1 if "LIMIT" in ot.upper() else 2
-    else:
-        try:
-            ot = int(ot)
-        except Exception:
-            ot = 2
+    try:
+        ot = order.order_type
+        if isinstance(ot, str):
+            ot = 1 if "LIMIT" in ot.upper() else 2
+        else:
+            try:
+                ot = int(ot)
+            except Exception:
+                ot = 2
 
-    return virtual_engine.place_order_for_user(
-        username=username,
-        symbol=order.symbol,
-        qty=order.qty,
-        side=order.side,
-        order_type=ot,
-        product=order.product_type,
-        limit_price=order.limit_price,
-        expiry=order.expiry,
-    )
+        return virtual_engine.place_order_for_user(
+            username=username,
+            symbol=order.symbol,
+            qty=order.qty,
+            side=order.side,
+            order_type=ot,
+            product=order.product_type,
+            limit_price=order.limit_price,
+            expiry=order.expiry,
+        )
+    except Exception as e:
+        logger.error(f"Order placement error for user {username}: {e}", exc_info=True)
+        return {"s": "error", "message": f"Order processing failed: {str(e)}"}
 
 
 @app.get("/api/holdings")
