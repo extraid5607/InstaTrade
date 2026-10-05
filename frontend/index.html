@@ -381,7 +381,7 @@
       overscroll-behavior-y: contain;
     }
     #rd-pane-watchlist, #watchlist-container, #ws-positions-desk, #dock-content {
-      touch-action: pan-y;
+      touch-action: pan-y pinch-zoom;
       overscroll-behavior-y: contain;
     }
 
@@ -785,9 +785,9 @@
           <div class="p-3 border-b border-borderSubtle bg-panelBg flex flex-col gap-2.5">
             <!-- Filter tabs: Watchlist 1 (Indices), Watchlist 2 (Futures), Watchlist 3 (Stocks) -->
             <div class="flex items-center border-b border-borderSubtle/60 overflow-x-auto no-scrollbar gap-1 px-1" id="watchlist-filters">
-              <button onclick="filterWatchlist('INDICES')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-brand border-b-2 border-brand cursor-pointer transition-all whitespace-nowrap" data-filter="INDICES">Watchlist 1</button>
-              <button onclick="filterWatchlist('FUTURES')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap" data-filter="FUTURES">Watchlist 2</button>
-              <button onclick="filterWatchlist('EQUITY')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap" data-filter="EQUITY">Watchlist 3</button>
+              <button onclick="selectWatchlistTab('INDICES')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-brand border-b-2 border-brand cursor-pointer transition-all whitespace-nowrap" data-filter="INDICES">Watchlist 1</button>
+              <button onclick="selectWatchlistTab('FUTURES')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap" data-filter="FUTURES">Watchlist 2</button>
+              <button onclick="selectWatchlistTab('EQUITY')" class="watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap" data-filter="EQUITY">Watchlist 3</button>
             </div>
 
             <!-- Search input with Zerodha Kite 'Search & add', Item Count & Filter Controls -->
@@ -3798,32 +3798,47 @@
     let isWatchlistCollapsed = false;
     const watchlistFilterOrder = ['INDICES', 'FUTURES', 'EQUITY'];
 
+    function selectWatchlistTab(filter) {
+      if (filter === currentWatchFilter) return;
+      const curIdx = watchlistFilterOrder.indexOf(currentWatchFilter);
+      const nextIdx = watchlistFilterOrder.indexOf(filter);
+      const direction = (nextIdx >= curIdx) ? 1 : -1;
+      transitionWatchlistTo(filter, direction);
+    }
+
     function transitionWatchlistTo(nextFilter, direction = 1) {
       const container = document.getElementById('watchlist-container');
       if (!container) {
         filterWatchlist(nextFilter);
         return;
       }
-      triggerHaptic(10);
-      container.style.transition = 'transform 0.18s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.18s ease-out';
-      container.style.transform = `translate3d(${direction > 0 ? '-70px' : '70px'}, 0, 0)`;
-      container.style.opacity = '0.3';
+      triggerHaptic(12);
+
+      // 1. Soft glide-out in swipe direction
+      container.style.transition = 'transform 0.15s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.15s ease-out';
+      container.style.transform = `translate3d(${direction > 0 ? '-100%' : '100%'}, 0, 0)`;
+      container.style.opacity = '0';
 
       setTimeout(() => {
+        // 2. Change active filter & reset scroll position
         filterWatchlist(nextFilter);
-        container.style.transition = 'none';
-        container.style.transform = `translate3d(${direction > 0 ? '70px' : '-70px'}, 0, 0)`;
-        container.style.opacity = '0.3';
-        void container.offsetWidth; // Force synchronous reflow
+        container.scrollTop = 0;
 
+        // 3. Position on the incoming side instantly
+        container.style.transition = 'none';
+        container.style.transform = `translate3d(${direction > 0 ? '100%' : '-100%'}, 0, 0)`;
+        container.style.opacity = '0';
+        void container.offsetWidth; // Force layout recalculation
+
+        // 4. Silky spring slide into center
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            container.style.transition = 'transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1)';
+            container.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
             container.style.transform = 'translate3d(0, 0, 0)';
             container.style.opacity = '1';
           });
         });
-      }, 130);
+      }, 140);
     }
 
     function swipeWatchlist(direction) {
@@ -3855,10 +3870,11 @@
       let gestureAxis = null; // 'x' | 'y' | 'pull'
       let startScrollTop = 0;
       let isPullRefreshing = false;
+      let hasSwipedHorizontally = false;
 
       function onTouchStart(e) {
         if (!e.touches || e.touches.length !== 1) return;
-        if (e.target && e.target.closest('button, input, select, a, [data-lucide]')) {
+        if (e.target && e.target.closest('button, input, select, a, #watch-search, #watch-search-dropdown')) {
           isTracking = false;
           return;
         }
@@ -3867,6 +3883,7 @@
         startTime = performance.now();
         isTracking = true;
         gestureAxis = null;
+        hasSwipedHorizontally = false;
         startScrollTop = listEl ? listEl.scrollTop : 0;
         if (listEl) {
           listEl.style.transition = 'none';
@@ -3879,13 +3896,17 @@
         const currentY = e.touches[0].clientY;
         const deltaX = currentX - startX;
         const deltaY = currentY - startY;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
 
-        // Axis locking with 5px deadzone
+        // Axis locking with clean 8px deadzone
         if (!gestureAxis) {
-          if (Math.abs(deltaX) >= 5 || Math.abs(deltaY) >= 5) {
-            if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+          if (absX >= 8 || absY >= 8) {
+            if (absX >= absY) {
               gestureAxis = 'x';
-            } else if (startScrollTop <= 3 && deltaY > 5) {
+              hasSwipedHorizontally = true;
+              lastSwipeTime = Date.now();
+            } else if (startScrollTop <= 2 && deltaY > 8) {
               gestureAxis = 'pull';
             } else {
               gestureAxis = 'y';
@@ -3893,17 +3914,19 @@
           }
         }
 
-        // Prevent browser default touch action during horizontal swipe or pull refresh
+        // Horizontal swipe gesture
         if (gestureAxis === 'x') {
           if (e.cancelable) e.preventDefault();
+          hasSwipedHorizontally = true;
+          lastSwipeTime = Date.now();
           if (listEl) {
             const dragX = deltaX * 0.95;
             listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
-            listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 400))}`;
+            listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
           }
         } else if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
           if (e.cancelable) e.preventDefault();
-          const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
+          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
@@ -3922,22 +3945,30 @@
 
         const deltaX = endX - startX;
         const deltaY = endY - startY;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
         const elapsed = Math.max(1, performance.now() - startTime);
-        const velocity = Math.abs(deltaX) / elapsed;
+        const velocity = absX / elapsed;
 
-        // Fallback axis check for fast flicks where touchmove did not lock axis
+        // Fallback axis check for fast flicks where touchmove had few events
         if (!gestureAxis) {
-          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 12) {
+          if (absX >= absY && absX >= 12) {
             gestureAxis = 'x';
-          } else if (startScrollTop <= 3 && deltaY >= 25 && Math.abs(deltaY) > Math.abs(deltaX)) {
+            hasSwipedHorizontally = true;
+            lastSwipeTime = Date.now();
+          } else if (startScrollTop <= 2 && deltaY >= 25 && absY > absX) {
             gestureAxis = 'pull';
           }
         }
 
+        if (hasSwipedHorizontally || gestureAxis === 'x') {
+          lastSwipeTime = Date.now();
+        }
+
         // 1. Horizontal Swipe (Left/Right to switch Watchlist tabs)
         if (gestureAxis === 'x' && listEl) {
-          const isFlick = velocity > 0.16 && Math.abs(deltaX) >= 12;
-          const isPassedThreshold = Math.abs(deltaX) >= 20;
+          const isFlick = velocity > 0.18 && absX >= 15;
+          const isPassedThreshold = absX >= 35;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
@@ -3993,7 +4024,6 @@
         }
       }
 
-      // CRITICAL FIX: Use passive: false for touchmove so e.preventDefault() can prevent iOS Safari touchcancel!
       targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
       targetEl.addEventListener('touchmove', onTouchMove, { passive: false });
       targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
@@ -4007,17 +4037,19 @@
         resetPullUI();
       }, { passive: true });
 
-      // Pointer events for desktop trackpad / mouse drag
+      // Pointer events for desktop trackpad / mouse drag only (never touch)
       let isPointerDown = false;
       const onPointerDown = (e) => {
+        if (e.pointerType === 'touch') return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
-        if (e.target && e.target.closest('button, input, a, select, [data-lucide]')) return;
+        if (e.target && e.target.closest('button, input, a, select, #watch-search, #watch-search-dropdown')) return;
         isPointerDown = true;
         startX = e.clientX;
         startY = e.clientY;
         startTime = performance.now();
         isTracking = true;
         gestureAxis = null;
+        hasSwipedHorizontally = false;
         startScrollTop = listEl ? listEl.scrollTop : 0;
         if (listEl) listEl.style.transition = 'none';
       };
@@ -4027,23 +4059,33 @@
         const currentY = e.clientY;
         const deltaX = currentX - startX;
         const deltaY = currentY - startY;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
 
         if (!gestureAxis) {
-          if (Math.abs(deltaX) >= 5 || Math.abs(deltaY) >= 5) {
-            if (Math.abs(deltaX) >= Math.abs(deltaY)) gestureAxis = 'x';
-            else if (startScrollTop <= 3 && deltaY > 5) gestureAxis = 'pull';
-            else gestureAxis = 'y';
+          if (absX >= 8 || absY >= 8) {
+            if (absX >= absY) {
+              gestureAxis = 'x';
+              hasSwipedHorizontally = true;
+              lastSwipeTime = Date.now();
+            } else if (startScrollTop <= 2 && deltaY > 8) {
+              gestureAxis = 'pull';
+            } else {
+              gestureAxis = 'y';
+            }
           }
         }
 
         if (gestureAxis === 'x' && listEl) {
           const dragX = deltaX * 0.95;
+          hasSwipedHorizontally = true;
+          lastSwipeTime = Date.now();
           listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
           listEl.style.opacity = `${Math.max(0.7, 1 - (Math.abs(dragX) / 450))}`;
         }
 
         if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
+          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
@@ -4051,7 +4093,10 @@
       const onPointerUp = (e) => {
         if (!isPointerDown) return;
         isPointerDown = false;
-        onTouchEnd(e);
+        if (e.pointerType === 'touch') return;
+        onTouchEnd({
+          changedTouches: [{ clientX: e.clientX, clientY: e.clientY }]
+        });
       };
 
       targetEl.addEventListener('pointerdown', onPointerDown);
@@ -4063,29 +4108,30 @@
     function transitionPortfolioTo(targetSubTab, direction = 1) {
       const container = document.getElementById('dock-content');
       if (!container) {
-        switchPositionsSubTab(targetSubTab);
+        switchDockTab(targetSubTab);
         return;
       }
-      triggerHaptic(10);
-      container.style.transition = 'transform 0.18s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.18s ease-out';
-      container.style.transform = `translate3d(${direction > 0 ? '-70px' : '70px'}, 0, 0)`;
-      container.style.opacity = '0.3';
+      triggerHaptic(12);
+      container.style.transition = 'transform 0.15s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.15s ease-out';
+      container.style.transform = `translate3d(${direction > 0 ? '-100%' : '100%'}, 0, 0)`;
+      container.style.opacity = '0';
 
       setTimeout(() => {
         switchDockTab(targetSubTab);
+        container.scrollTop = 0;
         container.style.transition = 'none';
-        container.style.transform = `translate3d(${direction > 0 ? '70px' : '-70px'}, 0, 0)`;
-        container.style.opacity = '0.3';
+        container.style.transform = `translate3d(${direction > 0 ? '100%' : '-100%'}, 0, 0)`;
+        container.style.opacity = '0';
         void container.offsetWidth;
 
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
-            container.style.transition = 'transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s cubic-bezier(0.16, 1, 0.3, 1)';
+            container.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
             container.style.transform = 'translate3d(0, 0, 0)';
             container.style.opacity = '1';
           });
         });
-      }, 130);
+      }, 140);
     }
 
     function initPortfolioGestures() {
@@ -4102,14 +4148,20 @@
       let gestureAxis = null;
       let startScrollTop = 0;
       let isPullRefreshing = false;
+      let hasSwipedHorizontally = false;
 
       function onTouchStart(e) {
         if (!e.touches || e.touches.length !== 1) return;
+        if (e.target && e.target.closest('button, input, select, a')) {
+          isTracking = false;
+          return;
+        }
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         startTime = performance.now();
         isTracking = true;
         gestureAxis = null;
+        hasSwipedHorizontally = false;
         startScrollTop = deskEl ? deskEl.scrollTop : 0;
         if (dockContent) dockContent.style.transition = 'none';
       }
@@ -4120,12 +4172,15 @@
         const currentY = e.touches[0].clientY;
         const deltaX = currentX - startX;
         const deltaY = currentY - startY;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
 
         if (!gestureAxis) {
-          if (Math.abs(deltaX) >= 5 || Math.abs(deltaY) >= 5) {
-            if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+          if (absX >= 8 || absY >= 8) {
+            if (absX >= absY) {
               gestureAxis = 'x';
-            } else if (startScrollTop <= 3 && deltaY > 5) {
+              hasSwipedHorizontally = true;
+            } else if (startScrollTop <= 2 && deltaY > 8) {
               gestureAxis = 'pull';
             } else {
               gestureAxis = 'y';
@@ -4135,14 +4190,15 @@
 
         if (gestureAxis === 'x') {
           if (e.cancelable) e.preventDefault();
+          hasSwipedHorizontally = true;
           if (dockContent) {
             const dragX = deltaX * 0.95;
             dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
-            dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 400))}`;
+            dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
           }
         } else if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
           if (e.cancelable) e.preventDefault();
-          const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
+          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
         }
@@ -4161,20 +4217,23 @@
 
         const deltaX = endX - startX;
         const deltaY = endY - startY;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
         const elapsed = Math.max(1, performance.now() - startTime);
-        const velocity = Math.abs(deltaX) / elapsed;
+        const velocity = absX / elapsed;
 
         if (!gestureAxis) {
-          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 12) {
+          if (absX >= absY && absX >= 12) {
             gestureAxis = 'x';
-          } else if (startScrollTop <= 3 && deltaY >= 25 && Math.abs(deltaY) > Math.abs(deltaX)) {
+            hasSwipedHorizontally = true;
+          } else if (startScrollTop <= 2 && deltaY >= 25 && absY > absX) {
             gestureAxis = 'pull';
           }
         }
 
         if (gestureAxis === 'x' && dockContent) {
-          const isFlick = velocity > 0.16 && Math.abs(deltaX) >= 12;
-          const isPassedThreshold = Math.abs(deltaX) >= 20;
+          const isFlick = velocity > 0.18 && absX >= 15;
+          const isPassedThreshold = absX >= 35;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
@@ -4245,6 +4304,7 @@
       // Pointer events for desktop trackpad / mouse drag
       let isPointerDown = false;
       const onPointerDown = (e) => {
+        if (e.pointerType === 'touch') return;
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         if (e.target && e.target.closest('button, input, a, select, [data-lucide]')) return;
         isPointerDown = true;
@@ -4253,6 +4313,7 @@
         startTime = performance.now();
         isTracking = true;
         gestureAxis = null;
+        hasSwipedHorizontally = false;
         startScrollTop = deskEl ? deskEl.scrollTop : 0;
         if (dockContent) dockContent.style.transition = 'none';
       };
@@ -4262,19 +4323,27 @@
         const currentY = e.clientY;
         const deltaX = currentX - startX;
         const deltaY = currentY - startY;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
 
         if (!gestureAxis) {
-          if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
-            if (Math.abs(deltaX) > Math.abs(deltaY)) gestureAxis = 'x';
-            else if (startScrollTop <= 2 && deltaY > 6) gestureAxis = 'pull';
-            else gestureAxis = 'y';
+          if (absX >= 8 || absY >= 8) {
+            if (absX >= absY) {
+              gestureAxis = 'x';
+              hasSwipedHorizontally = true;
+            } else if (startScrollTop <= 2 && deltaY > 8) {
+              gestureAxis = 'pull';
+            } else {
+              gestureAxis = 'y';
+            }
           }
         }
 
         if (gestureAxis === 'x' && dockContent) {
-          const dragX = deltaX * 0.92;
+          const dragX = deltaX * 0.95;
+          hasSwipedHorizontally = true;
           dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 420))}`;
+          dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
         }
 
         if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
@@ -4286,7 +4355,10 @@
       const onPointerUp = (e) => {
         if (!isPointerDown) return;
         isPointerDown = false;
-        onTouchEnd(e);
+        if (e.pointerType === 'touch') return;
+        onTouchEnd({
+          changedTouches: [{ clientX: e.clientX, clientY: e.clientY }]
+        });
       };
 
       targetEl.addEventListener('pointerdown', onPointerDown);
@@ -4325,6 +4397,7 @@
       document.querySelectorAll('.watch-filter-btn').forEach(btn => {
         if (btn.getAttribute('data-filter') === filter) {
           btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-brand border-b-2 border-brand cursor-pointer transition-all whitespace-nowrap';
+          try { btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {}
         } else {
           btn.className = 'watch-filter-btn pb-2 px-3 text-xs font-bold text-slate-400 hover:text-white border-b-2 border-transparent cursor-pointer transition-all whitespace-nowrap';
         }
@@ -4351,6 +4424,7 @@
 
       let visibleCount = 0;
       document.querySelectorAll('#watchlist-container > div').forEach(el => {
+        if (el.id === 'watch-empty-state') return;
         const sym = el.getAttribute('data-symbol') || '';
         const text = el.innerText.toLowerCase();
         
@@ -4379,6 +4453,32 @@
       if (countPill) countPill.innerText = visibleCount;
       const countPillInner = document.getElementById('watch-count-pill-inner');
       if (countPillInner) countPillInner.innerText = `${visibleCount}/50`;
+
+      // Zerodha-style clean empty state when active watchlist category has 0 symbols
+      const container = document.getElementById('watchlist-container');
+      let emptyMsgEl = document.getElementById('watch-empty-state');
+      if (visibleCount === 0 && !searchVal) {
+        if (!emptyMsgEl && container) {
+          emptyMsgEl = document.createElement('div');
+          emptyMsgEl.id = 'watch-empty-state';
+          emptyMsgEl.className = 'p-8 flex flex-col items-center justify-center text-center text-slate-400 gap-2 select-none';
+          container.appendChild(emptyMsgEl);
+        }
+        if (emptyMsgEl) {
+          emptyMsgEl.style.display = 'flex';
+          const label = currentWatchFilter === 'INDICES' ? 'Indices' : (currentWatchFilter === 'FUTURES' ? 'Futures' : 'Stocks');
+          emptyMsgEl.innerHTML = `
+            <div class="w-10 h-10 rounded-full bg-slate-800/80 border border-borderSubtle flex items-center justify-center text-slate-500 mb-1">
+              <i data-lucide="folder-search" class="w-5 h-5"></i>
+            </div>
+            <div class="text-xs font-bold text-slate-300">No ${label} in this Watchlist</div>
+            <div class="text-[11px] text-slate-500">Use "Search & add" above to add symbols</div>
+          `;
+          try { lucide.createIcons(); } catch (e) {}
+        }
+      } else if (emptyMsgEl) {
+        emptyMsgEl.style.display = 'none';
+      }
     }
 
     // ------------------ INTERACTIVE SEARCH & ADD TO WATCHLIST ------------------
@@ -4631,7 +4731,7 @@
 
     function handleWatchlistRowClick(sym) {
       if (isWatchlistEditMode) return;
-      if (Date.now() - lastSwipeTime < 350) return;
+      if (Date.now() - lastSwipeTime < 500) return;
       if (window.innerWidth < 1024) {
         openStockActionSheet(sym);
       } else {
