@@ -3839,11 +3839,13 @@
       transitionWatchlistTo(nextFilter, direction);
     }
 
+    let lastSwipeTime = 0;
+
     function initWatchlistGestures() {
       const pane = document.getElementById('rd-pane-watchlist') || document.getElementById('right-trading-dock');
       const listEl = document.getElementById('watchlist-container');
       const pullEl = document.getElementById('watchlist-pull-refresh');
-      const targetEl = listEl || pane;
+      const targetEl = pane || listEl;
       if (!targetEl) return;
 
       let startX = 0;
@@ -3856,6 +3858,10 @@
 
       function onTouchStart(e) {
         if (!e.touches || e.touches.length !== 1) return;
+        if (e.target && e.target.closest('button, input, select, a, [data-lucide]')) {
+          isTracking = false;
+          return;
+        }
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         startTime = performance.now();
@@ -3887,15 +3893,16 @@
           }
         }
 
-        // Real-time 1:1 finger tracking for horizontal swipe (Zerodha soft feel)
-        if (gestureAxis === 'x' && listEl) {
-          const dragX = deltaX * 0.95;
-          listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          listEl.style.opacity = `${Math.max(0.7, 1 - (Math.abs(dragX) / 450))}`;
-        }
-
-        // Visual pull-down indicator
-        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+        // Prevent browser default touch action during horizontal swipe or pull refresh
+        if (gestureAxis === 'x') {
+          if (e.cancelable) e.preventDefault();
+          if (listEl) {
+            const dragX = deltaX * 0.95;
+            listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
+            listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 400))}`;
+          }
+        } else if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+          if (e.cancelable) e.preventDefault();
           const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
@@ -3908,7 +3915,7 @@
 
         let endX = startX;
         let endY = startY;
-        if (e && e.changedTouches && e.changedTouches.length === 1) {
+        if (e && e.changedTouches && e.changedTouches.length >= 1) {
           endX = e.changedTouches[0].clientX;
           endY = e.changedTouches[0].clientY;
         }
@@ -3920,7 +3927,7 @@
 
         // Fallback axis check for fast flicks where touchmove did not lock axis
         if (!gestureAxis) {
-          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 15) {
+          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 12) {
             gestureAxis = 'x';
           } else if (startScrollTop <= 3 && deltaY >= 25 && Math.abs(deltaY) > Math.abs(deltaX)) {
             gestureAxis = 'pull';
@@ -3929,8 +3936,8 @@
 
         // 1. Horizontal Swipe (Left/Right to switch Watchlist tabs)
         if (gestureAxis === 'x' && listEl) {
-          const isFlick = velocity > 0.18 && Math.abs(deltaX) >= 15;
-          const isPassedThreshold = Math.abs(deltaX) >= 22;
+          const isFlick = velocity > 0.16 && Math.abs(deltaX) >= 12;
+          const isPassedThreshold = Math.abs(deltaX) >= 20;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
@@ -3986,10 +3993,19 @@
         }
       }
 
+      // CRITICAL FIX: Use passive: false for touchmove so e.preventDefault() can prevent iOS Safari touchcancel!
       targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
-      targetEl.addEventListener('touchmove', onTouchMove, { passive: true });
+      targetEl.addEventListener('touchmove', onTouchMove, { passive: false });
       targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
-      targetEl.addEventListener('touchcancel', onTouchEnd, { passive: true });
+      targetEl.addEventListener('touchcancel', (e) => {
+        if (listEl && isTracking) {
+          isTracking = false;
+          listEl.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+          listEl.style.transform = 'translate3d(0, 0, 0)';
+          listEl.style.opacity = '1';
+        }
+        resetPullUI();
+      }, { passive: true });
 
       // Pointer events for desktop trackpad / mouse drag
       let isPointerDown = false;
@@ -4117,13 +4133,15 @@
           }
         }
 
-        if (gestureAxis === 'x' && dockContent) {
-          const dragX = deltaX * 0.95;
-          dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          dockContent.style.opacity = `${Math.max(0.7, 1 - (Math.abs(dragX) / 450))}`;
-        }
-
-        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+        if (gestureAxis === 'x') {
+          if (e.cancelable) e.preventDefault();
+          if (dockContent) {
+            const dragX = deltaX * 0.95;
+            dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
+            dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 400))}`;
+          }
+        } else if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
+          if (e.cancelable) e.preventDefault();
           const pullDistance = Math.min(46, Math.round((deltaY - 5) * 0.42));
           pullEl.style.height = `${pullDistance}px`;
           pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
@@ -4136,7 +4154,7 @@
 
         let endX = startX;
         let endY = startY;
-        if (e && e.changedTouches && e.changedTouches.length === 1) {
+        if (e && e.changedTouches && e.changedTouches.length >= 1) {
           endX = e.changedTouches[0].clientX;
           endY = e.changedTouches[0].clientY;
         }
@@ -4147,7 +4165,7 @@
         const velocity = Math.abs(deltaX) / elapsed;
 
         if (!gestureAxis) {
-          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 15) {
+          if (Math.abs(deltaX) >= Math.abs(deltaY) && Math.abs(deltaX) >= 12) {
             gestureAxis = 'x';
           } else if (startScrollTop <= 3 && deltaY >= 25 && Math.abs(deltaY) > Math.abs(deltaX)) {
             gestureAxis = 'pull';
@@ -4155,8 +4173,8 @@
         }
 
         if (gestureAxis === 'x' && dockContent) {
-          const isFlick = velocity > 0.18 && Math.abs(deltaX) >= 15;
-          const isPassedThreshold = Math.abs(deltaX) >= 22;
+          const isFlick = velocity > 0.16 && Math.abs(deltaX) >= 12;
+          const isPassedThreshold = Math.abs(deltaX) >= 20;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
@@ -4212,9 +4230,17 @@
       }
 
       targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
-      targetEl.addEventListener('touchmove', onTouchMove, { passive: true });
+      targetEl.addEventListener('touchmove', onTouchMove, { passive: false });
       targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
-      targetEl.addEventListener('touchcancel', onTouchEnd, { passive: true });
+      targetEl.addEventListener('touchcancel', (e) => {
+        if (dockContent && isTracking) {
+          isTracking = false;
+          dockContent.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+          dockContent.style.transform = 'translate3d(0, 0, 0)';
+          dockContent.style.opacity = '1';
+        }
+        resetPullUI();
+      }, { passive: true });
 
       // Pointer events for desktop trackpad / mouse drag
       let isPointerDown = false;
@@ -4605,6 +4631,7 @@
 
     function handleWatchlistRowClick(sym) {
       if (isWatchlistEditMode) return;
+      if (Date.now() - lastSwipeTime < 350) return;
       if (window.innerWidth < 1024) {
         openStockActionSheet(sym);
       } else {
