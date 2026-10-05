@@ -380,9 +380,11 @@
       -webkit-overflow-scrolling: touch; 
       overscroll-behavior-y: contain;
     }
-    #rd-pane-watchlist, #watchlist-container, #ws-positions-desk, #dock-content {
+    #rd-pane-watchlist, #watchlist-container, #ws-positions-desk, #dock-content, .watch-filter-btn {
       touch-action: pan-y pinch-zoom;
       overscroll-behavior-y: contain;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     /* Glass Panels */
@@ -1095,28 +1097,55 @@
     </div>
 
     <!-- WORKSTATION 4: SPLIT VIEW (Dual 50/50 Stage: Chart Left + Option Chain Right) -->
-    <div id="ws-split-desk" class="workstation-view hidden flex-1 flex overflow-hidden w-full h-full">
-      <!-- Left 50%: Mini Chart Preview Pane -->
-      <div class="w-1/2 flex flex-col border-r border-borderSubtle bg-darkBg overflow-hidden">
+    <div id="ws-split-desk" class="workstation-view hidden flex-1 flex flex-col md:flex-row overflow-hidden w-full h-full">
+      <!-- Left 50%: Live Chart Preview Pane -->
+      <div class="w-full md:w-1/2 flex flex-col border-b md:border-b-0 md:border-r border-borderSubtle bg-darkBg overflow-hidden h-1/2 md:h-full">
         <div class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 text-xs flex-shrink-0">
-          <span class="font-bold text-white flex items-center gap-1.5 font-sans">
-            <i data-lucide="line-chart" class="w-3.5 h-3.5 text-brand"></i> Live Chart
-          </span>
-          <span class="font-mono text-brand font-bold text-xs" id="split-chart-ltp">25,425.00</span>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-white flex items-center gap-1.5 font-sans">
+              <i data-lucide="line-chart" class="w-3.5 h-3.5 text-brand"></i>
+              <span id="split-chart-symbol">BANKNIFTY</span>
+            </span>
+            <span class="font-mono text-brand font-bold text-xs" id="split-chart-ltp">--</span>
+          </div>
+          <div class="flex items-center gap-1 bg-darkBg p-0.5 rounded-lg border border-borderSubtle">
+            <button onclick="setSplitResolution('1')" data-sres="1" class="split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer">1m</button>
+            <button onclick="setSplitResolution('5')" data-sres="5" class="split-res-btn px-2 py-0.5 rounded text-[10px] bg-slate-800 text-white font-bold cursor-pointer">5m</button>
+            <button onclick="setSplitResolution('15')" data-sres="15" class="split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer">15m</button>
+            <button onclick="setSplitResolution('D')" data-sres="D" class="split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer">1D</button>
+          </div>
         </div>
         <div id="split-chart-area" class="flex-1 w-full relative"></div>
       </div>
 
       <!-- Right 50%: Option Chain Scalper Pane -->
-      <div class="w-1/2 flex flex-col bg-darkBg overflow-hidden">
-        <div class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 text-xs flex-shrink-0">
-          <span class="font-bold text-white flex items-center gap-1.5 font-sans">
-            <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i> Option Chain Scalper
-          </span>
-          <span class="text-[10px] text-slate-400 font-mono">1-Click Trade Placement</span>
+      <div class="w-full md:w-1/2 flex flex-col bg-darkBg overflow-hidden h-1/2 md:h-full">
+        <div class="p-2 border-b border-borderSubtle bg-panelBg flex items-center justify-between gap-1.5 text-xs flex-shrink-0">
+          <div class="flex items-center gap-1.5">
+            <select id="split-chain-underlying" onchange="changeSplitChainUnderlying(this.value)" class="bg-cardBg border border-borderSubtle text-slate-200 text-xs px-2 py-1 rounded-lg font-bold cursor-pointer focus:outline-none focus:border-brand">
+              <option value="BANKNIFTY" selected>BANK NIFTY (30)</option>
+              <option value="NIFTY">NIFTY 50 (65)</option>
+              <option value="SENSEX">SENSEX (20)</option>
+              <option value="FINNIFTY">FINNIFTY (60)</option>
+              <option value="MIDCPNIFTY">MIDCP (120)</option>
+            </select>
+            <select id="split-chain-expiry" onchange="changeSplitChainExpiry(this.value)" class="bg-cardBg border border-borderSubtle text-slate-200 text-[11px] px-2 py-1 rounded-lg font-mono cursor-pointer focus:outline-none max-w-[125px]">
+              <option value="">Current Expiry</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <div class="text-[10px] font-mono bg-cardBg px-2 py-1 rounded-lg border border-borderSubtle flex items-center gap-2">
+              <div>Spot: <span id="split-chain-spot" class="text-white font-bold">--</span></div>
+              <div id="split-chain-atm" class="text-amber-400 font-bold">ATM: --</div>
+              <div id="split-chain-pcr" class="text-emerald-400 font-bold">PCR: --</div>
+            </div>
+            <button onclick="loadSplitOptionChain(true)" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Refresh Scalper Chain">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
         </div>
-        <div id="split-optionchain-view" class="flex-1 overflow-y-auto p-2 touch-scroll">
-          <!-- Mirrored Option Chain for Split Screen -->
+        <div id="split-optionchain-view" class="flex-1 overflow-y-auto touch-scroll">
+          <!-- Live Scalper Option Chain injected here -->
         </div>
       </div>
     </div>
@@ -1849,6 +1878,24 @@
           },
         });
       }
+      if (splitChart) {
+        splitChart.applyOptions({
+          layout: {
+            background: { color: isLight ? '#ffffff' : '#070a12' },
+            textColor: isLight ? '#475569' : '#94a3b8',
+          },
+          grid: {
+            vertLines: { color: isLight ? '#f1f5f9' : '#141d30' },
+            horzLines: { color: isLight ? '#f1f5f9' : '#141d30' },
+          },
+          timeScale: {
+            borderColor: isLight ? '#e2e8f0' : '#1e293b',
+          },
+          rightPriceScale: {
+            borderColor: isLight ? '#e2e8f0' : '#1e293b',
+          },
+        });
+      }
       try { lucide.createIcons(); } catch (e) {}
     }
 
@@ -2356,70 +2403,220 @@
       try { lucide.createIcons(); } catch (e) {}
     }
 
-    // Split View Initializer / Mirror
+    // ------------------ WORKSTATION 4: SPLIT VIEW CONTROLLER (CHART + SCALPER) ------------------
     let splitChart = null;
     let splitCandleSeries = null;
-    function initOrResizeSplitScreen() {
-      const splitArea = document.getElementById('split-chart-area');
-      const splitChain = document.getElementById('split-optionchain-view');
-      if (!splitArea) return;
+    let currentSplitResolution = '5';
+    let splitOptionUnderlying = 'BANKNIFTY';
+    let splitOptionExpiry = '';
+    let isFetchingSplitChain = false;
 
-      if (!splitChart && window.LightweightCharts) {
-        splitChart = LightweightCharts.createChart(splitArea, {
-          width: splitArea.clientWidth,
-          height: splitArea.clientHeight,
-          layout: { background: { color: '#070a12' }, textColor: '#94a3b8' },
-          grid: { vertLines: { color: '#141d30' }, horzLines: { color: '#141d30' } },
-          timeScale: {
-            borderColor: '#1e293b',
-            timeVisible: true,
-            secondsVisible: false,
-            tickMarkFormatter: (time, tickMarkType) => {
-              if (typeof time === 'number') {
-                const date = new Date(time * 1000);
-                if (tickMarkType === 0) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
-                if (tickMarkType === 1) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
-                if (tickMarkType === 2) return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short' });
-                return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false });
-              }
-              return null;
-            }
-          },
-          localization: {
-            timeFormatter: (time) => {
-              if (typeof time === 'number') {
-                const date = new Date(time * 1000);
-                return date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }) + ' IST';
-              }
-              return '';
-            },
-            dateFormat: 'dd MMM yyyy'
-          }
-        });
-        splitCandleSeries = splitChart.addCandlestickSeries({
-          upColor: '#10b981', downColor: '#f43f5e',
-          borderVisible: false,
-          wickUpColor: '#10b981', wickDownColor: '#f43f5e'
-        });
-        if (candleData && candleData.length > 0) {
-          splitCandleSeries.setData(candleData);
+    function setSplitResolution(res) {
+      currentSplitResolution = res;
+      document.querySelectorAll('.split-res-btn').forEach(b => {
+        if (b.dataset.sres === res) {
+          b.className = 'split-res-btn px-2 py-0.5 rounded text-[10px] bg-slate-800 text-white font-bold cursor-pointer';
+        } else {
+          b.className = 'split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer';
         }
-      } else if (splitChart) {
-        setTimeout(() => {
-          splitChart.applyOptions({ width: splitArea.clientWidth, height: splitArea.clientHeight });
-          if (candleData && candleData.length > 0 && splitCandleSeries) {
-            splitCandleSeries.setData(candleData);
-          }
-        }, 100);
+      });
+      loadSplitChartData();
+    }
+
+    function changeSplitChainUnderlying(underlying) {
+      splitOptionUnderlying = underlying;
+      splitOptionExpiry = '';
+      loadSplitOptionChain(true);
+    }
+
+    function changeSplitChainExpiry(expiry) {
+      splitOptionExpiry = expiry;
+      loadSplitOptionChain(true);
+    }
+
+    async function loadSplitChartData() {
+      if (!splitCandleSeries) return;
+      const sym = currentSymbol || 'NSE:NIFTYBANK-INDEX';
+      try {
+        const res = await fetch(`/api/history?symbol=${encodeURIComponent(sym)}&resolution=${currentSplitResolution}`);
+        const data = await res.json();
+        if (data.candles && data.candles.length) {
+          splitCandleSeries.setData(data.candles);
+          if (splitChart) splitChart.timeScale().fitContent();
+          const last = data.candles[data.candles.length - 1];
+          const ltpEl = document.getElementById('split-chart-ltp');
+          if (ltpEl && last) ltpEl.innerText = Number(last.close).toFixed(2);
+        }
+      } catch (e) {
+        console.error('Error loading split chart:', e);
+      }
+    }
+
+    function initOrResizeSplitScreen() {
+      const splitDesk = document.getElementById('ws-split-desk');
+      const splitArea = document.getElementById('split-chart-area');
+      if (!splitDesk || !splitArea) return;
+
+      const symTitle = document.getElementById('split-chart-symbol');
+      if (symTitle) {
+        const cleanName = (currentSymbol || 'BANKNIFTY').split(':').pop() || currentSymbol;
+        symTitle.innerText = cleanName;
       }
 
-      const mainChain = document.getElementById('option-chain-view');
-      if (mainChain && splitChain) {
-        if (!mainChain.children.length) {
-          loadOptionChain(true);
-        } else {
-          splitChain.innerHTML = mainChain.innerHTML;
+      const isLight = document.documentElement.classList.contains('light-theme') || currentTheme === 'light';
+      const chartBg = isLight ? '#ffffff' : '#070a12';
+      const textColor = isLight ? '#475569' : '#94a3b8';
+      const gridColor = isLight ? '#f1f5f9' : '#141d30';
+      const borderColor = isLight ? '#e2e8f0' : '#1e293b';
+
+      setTimeout(() => {
+        const width = splitArea.clientWidth || (window.innerWidth >= 768 ? Math.floor(window.innerWidth / 2) : window.innerWidth);
+        const height = splitArea.clientHeight || 450;
+
+        if (!splitChart && window.LightweightCharts) {
+          splitChart = LightweightCharts.createChart(splitArea, {
+            width: width,
+            height: height,
+            layout: { background: { color: chartBg }, textColor: textColor },
+            grid: { vertLines: { color: gridColor }, horzLines: { color: gridColor } },
+            timeScale: {
+              borderColor: borderColor,
+              timeVisible: true,
+              secondsVisible: false
+            }
+          });
+          splitCandleSeries = splitChart.addCandlestickSeries({
+            upColor: '#10b981', downColor: '#f43f5e',
+            borderVisible: false,
+            wickUpColor: '#10b981', wickDownColor: '#f43f5e'
+          });
+        } else if (splitChart) {
+          splitChart.applyOptions({
+            width: width,
+            height: height,
+            layout: { background: { color: chartBg }, textColor: textColor },
+            grid: { vertLines: { color: gridColor }, horzLines: { color: gridColor } }
+          });
         }
+
+        loadSplitChartData();
+        loadSplitOptionChain(true);
+      }, 140);
+    }
+
+    async function loadSplitOptionChain(forceFullRender = false) {
+      if (isFetchingSplitChain) return;
+      isFetchingSplitChain = true;
+      const container = document.getElementById('split-optionchain-view');
+      if (!container) {
+        isFetchingSplitChain = false;
+        return;
+      }
+
+      try {
+        const url = `/api/optionchain?underlying=${encodeURIComponent(splitOptionUnderlying)}${splitOptionExpiry ? `&expiry=${encodeURIComponent(splitOptionExpiry)}` : ''}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || !data.strikes || !data.strikes.length) {
+          container.innerHTML = '<div class="p-8 text-center text-xs text-slate-500">Option Chain unavailable for ' + splitOptionUnderlying + '</div>';
+          return;
+        }
+
+        const spotEl = document.getElementById('split-chain-spot');
+        if (spotEl) spotEl.innerText = Number(data.spot_price || 0).toFixed(1);
+        const atmEl = document.getElementById('split-chain-atm');
+        if (atmEl) atmEl.innerText = `ATM: ${data.atm_strike || '--'}`;
+        const pcrEl = document.getElementById('split-chain-pcr');
+        if (pcrEl && data.pcr !== undefined) {
+          pcrEl.innerText = `PCR: ${data.pcr.toFixed(2)}`;
+          pcrEl.className = data.pcr >= 1.0 ? 'text-emerald-400 font-bold' : 'text-danger font-bold';
+        }
+
+        const expSelect = document.getElementById('split-chain-expiry');
+        if (expSelect && data.expiries && (!expSelect.options.length || expSelect.options.length <= 1)) {
+          expSelect.innerHTML = '';
+          data.expiries.forEach((exp, idx) => {
+            const opt = document.createElement('option');
+            opt.value = exp;
+            opt.innerText = exp;
+            if (exp === data.selected_expiry || idx === 0) opt.selected = true;
+            expSelect.appendChild(opt);
+          });
+        }
+
+        const activeChainExpiry = data.selected_expiry || splitOptionExpiry || '';
+
+        let html = `
+          <table class="w-full text-xs font-mono border-collapse select-text">
+            <thead class="sticky top-0 z-10 bg-darkBg/95 backdrop-blur-sm border-b border-borderSubtle">
+              <tr class="text-[10px] text-slate-400 font-bold">
+                <th class="py-1.5 px-2 text-center text-emerald-400">CALL (CE) - 1-CLICK</th>
+                <th class="py-1.5 px-2 text-center text-slate-300">STRIKE</th>
+                <th class="py-1.5 px-2 text-center text-danger">PUT (PE) - 1-CLICK</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        data.strikes.forEach(s => {
+          const isAtm = s.is_atm;
+          const ce = s.ce || {};
+          const pe = s.pe || {};
+          const atmStyle = isAtm ? 'bg-amber-500/15 border-y border-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.15)]' : 'border-b border-borderSubtle/40';
+
+          html += `
+            <tr class="${atmStyle} hover:bg-slate-800/40 transition-colors">
+              <!-- CALL (LTP + B + S) -->
+              <td class="py-1 px-1.5">
+                <div class="flex items-center justify-end gap-1">
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="flex-1 py-1 px-1.5 text-right rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-[11px] border border-emerald-500/20 cursor-pointer active:scale-95 transition-all truncate" 
+                          title="Select ${ce.display_name}">
+                    ₹${Number(ce.ltp || 0).toFixed(1)}
+                  </button>
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-brand/20 hover:bg-brand text-brand hover:text-slate-950 font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-sm" 
+                          title="BUY ${ce.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, -1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-sm" 
+                          title="SELL ${ce.display_name}">S</button>
+                </div>
+              </td>
+
+              <!-- STRIKE -->
+              <td class="py-1 px-2 text-center font-bold whitespace-nowrap ${isAtm ? 'text-amber-300 font-black' : 'text-slate-200'}">
+                <span>${s.strike}</span>
+                ${isAtm ? '<span class="text-[8px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black ml-1">ATM</span>' : ''}
+              </td>
+
+              <!-- PUT (B + S + LTP) -->
+              <td class="py-1 px-1.5">
+                <div class="flex items-center justify-start gap-1">
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-brand/20 hover:bg-brand text-brand hover:text-slate-950 font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-sm" 
+                          title="BUY ${pe.display_name}">B</button>
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, -1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="w-5 h-5 flex-shrink-0 rounded bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white font-black text-[10px] flex items-center justify-center cursor-pointer transition-all active:scale-90 shadow-sm" 
+                          title="SELL ${pe.display_name}">S</button>
+                  <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
+                          class="flex-1 py-1 px-1.5 text-left rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-[11px] border border-rose-500/20 cursor-pointer active:scale-95 transition-all truncate" 
+                          title="Select ${pe.display_name}">
+                    ₹${Number(pe.ltp || 0).toFixed(1)}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+      } catch (err) {
+        console.error('Error fetching split option chain:', err);
+        container.innerHTML = '<div class="p-8 text-center text-xs text-danger">Failed to load option chain</div>';
+      } finally {
+        isFetchingSplitChain = false;
       }
     }
 
@@ -3499,7 +3696,9 @@
 
       // 2. Real-time option chain streaming poll (every 2000ms) when Option Chain or Split view is active
       setInterval(async () => {
-        if (currentWorkstation === 'optionchain' || currentWorkstation === 'split' || currentRightDockTab === 'optionchain') {
+        if (currentWorkstation === 'split') {
+          try { await loadSplitOptionChain(false); } catch (e) {}
+        } else if (currentWorkstation === 'optionchain' || currentRightDockTab === 'optionchain') {
           try { await loadDockOptionChain(false); } catch (e) {}
           try { await loadOptionChain(false); } catch (e) {}
         }
@@ -3732,8 +3931,16 @@
         const data = await res.json();
         if (data.candles && data.candles.length && symbolToLoad === currentSymbol) {
           candleSeries.setData(data.candles);
+          if (splitCandleSeries) {
+            splitCandleSeries.setData(data.candles);
+            if (!isBackgroundSync && splitChart) splitChart.timeScale().fitContent();
+          }
           lastCandle = Object.assign({}, data.candles[data.candles.length - 1]);
           lastCandleSymbol = symbolToLoad;
+          if (lastCandle) {
+            const splitLtpEl = document.getElementById('split-chart-ltp');
+            if (splitLtpEl) splitLtpEl.innerText = Number(lastCandle.close || 0).toFixed(2);
+          }
           if (!isBackgroundSync) {
             chart.timeScale().fitContent();
           }
@@ -3771,6 +3978,8 @@
       const cleanName = sym.split(':').pop() || sym;
       const symTag = document.getElementById('order-symbol-tag');
       if (symTag) symTag.innerText = cleanName;
+      const splitTitle = document.getElementById('split-chart-symbol');
+      if (splitTitle) splitTitle.innerText = cleanName;
 
       if (sym.includes('BANKNIFTY') || sym.includes('NIFTYBANK')) {
         currentLotSize = sym.includes('-EQ') ? 1 : 30;
@@ -3814,31 +4023,30 @@
       }
       triggerHaptic(12);
 
-      // 1. Soft glide-out in swipe direction
-      container.style.transition = 'transform 0.15s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.15s ease-out';
-      container.style.transform = `translate3d(${direction > 0 ? '-100%' : '100%'}, 0, 0)`;
-      container.style.opacity = '0';
-
-      setTimeout(() => {
-        // 2. Change active filter & reset scroll position
+      if (window.anime) {
+        anime.remove(container);
+        anime({
+          targets: container,
+          translateX: direction > 0 ? -60 : 60,
+          opacity: 0.15,
+          duration: 110,
+          easing: 'easeOutQuad',
+          complete: () => {
+            filterWatchlist(nextFilter);
+            container.scrollTop = 0;
+            anime({
+              targets: container,
+              translateX: [direction > 0 ? 60 : -60, 0],
+              opacity: [0.15, 1],
+              duration: 220,
+              easing: 'easeOutCubic'
+            });
+          }
+        });
+      } else {
         filterWatchlist(nextFilter);
         container.scrollTop = 0;
-
-        // 3. Position on the incoming side instantly
-        container.style.transition = 'none';
-        container.style.transform = `translate3d(${direction > 0 ? '100%' : '-100%'}, 0, 0)`;
-        container.style.opacity = '0';
-        void container.offsetWidth; // Force layout recalculation
-
-        // 4. Silky spring slide into center
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            container.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
-            container.style.transform = 'translate3d(0, 0, 0)';
-            container.style.opacity = '1';
-          });
-        });
-      }, 140);
+      }
     }
 
     function swipeWatchlist(direction) {
@@ -3872,9 +4080,26 @@
       let isPullRefreshing = false;
       let hasSwipedHorizontally = false;
 
+      // 1. LAPTOP TRACKPAD TWO-FINGER HORIZONTAL SWIPE
+      let lastWheelSwipe = 0;
+      const onWheel = (e) => {
+        const dx = e.deltaX;
+        const dy = e.deltaY;
+        if (Math.abs(dx) > 25 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+          if (Date.now() - lastWheelSwipe < 380) return;
+          lastWheelSwipe = Date.now();
+          lastSwipeTime = Date.now();
+          const direction = dx > 0 ? 1 : -1;
+          swipeWatchlist(direction);
+        }
+      };
+      targetEl.addEventListener('wheel', onWheel, { passive: true });
+      if (listEl && listEl !== targetEl) listEl.addEventListener('wheel', onWheel, { passive: true });
+
+      // 2. MOBILE TOUCH GESTURES
       function onTouchStart(e) {
         if (!e.touches || e.touches.length !== 1) return;
-        if (e.target && e.target.closest('button, input, select, a, #watch-search, #watch-search-dropdown')) {
+        if (e.target && e.target.closest('#watch-search, #watch-search-dropdown, #watch-search-clear, #btn-watch-edit-mode, select')) {
           isTracking = false;
           return;
         }
@@ -3885,9 +4110,7 @@
         gestureAxis = null;
         hasSwipedHorizontally = false;
         startScrollTop = listEl ? listEl.scrollTop : 0;
-        if (listEl) {
-          listEl.style.transition = 'none';
-        }
+        if (listEl && window.anime) anime.remove(listEl);
       }
 
       function onTouchMove(e) {
@@ -3899,7 +4122,6 @@
         const absX = Math.abs(deltaX);
         const absY = Math.abs(deltaY);
 
-        // Axis locking with clean 8px deadzone
         if (!gestureAxis) {
           if (absX >= 8 || absY >= 8) {
             if (absX >= absY) {
@@ -3914,13 +4136,12 @@
           }
         }
 
-        // Horizontal swipe gesture
         if (gestureAxis === 'x') {
           if (e.cancelable) e.preventDefault();
           hasSwipedHorizontally = true;
           lastSwipeTime = Date.now();
           if (listEl) {
-            const dragX = deltaX * 0.95;
+            const dragX = deltaX * 0.92;
             listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
             listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
           }
@@ -3950,7 +4171,6 @@
         const elapsed = Math.max(1, performance.now() - startTime);
         const velocity = absX / elapsed;
 
-        // Fallback axis check for fast flicks where touchmove had few events
         if (!gestureAxis) {
           if (absX >= absY && absX >= 12) {
             gestureAxis = 'x';
@@ -3965,10 +4185,9 @@
           lastSwipeTime = Date.now();
         }
 
-        // 1. Horizontal Swipe (Left/Right to switch Watchlist tabs)
         if (gestureAxis === 'x' && listEl) {
-          const isFlick = velocity > 0.18 && absX >= 15;
-          const isPassedThreshold = absX >= 35;
+          const isFlick = velocity > 0.16 && absX >= 15;
+          const isPassedThreshold = absX >= 30;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
@@ -3981,14 +4200,15 @@
             transitionWatchlistTo(nextFilter, direction);
             return;
           } else {
-            // Cancelled swipe: soft spring bounce back to center
-            listEl.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
-            listEl.style.transform = 'translate3d(0, 0, 0)';
-            listEl.style.opacity = '1';
+            if (window.anime) {
+              anime({ targets: listEl, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
+            } else {
+              listEl.style.transform = 'translate3d(0, 0, 0)';
+              listEl.style.opacity = '1';
+            }
           }
         }
 
-        // 2. Pull Down to Refresh (Vertical drag down from top)
         if (gestureAxis === 'pull' && deltaY >= 35) {
           if (!isPullRefreshing) {
             isPullRefreshing = true;
@@ -4027,81 +4247,63 @@
       targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
       targetEl.addEventListener('touchmove', onTouchMove, { passive: false });
       targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
-      targetEl.addEventListener('touchcancel', (e) => {
+      targetEl.addEventListener('touchcancel', () => {
         if (listEl && isTracking) {
           isTracking = false;
-          listEl.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
-          listEl.style.transform = 'translate3d(0, 0, 0)';
-          listEl.style.opacity = '1';
+          if (window.anime) anime({ targets: listEl, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
+          else { listEl.style.transform = 'translate3d(0, 0, 0)'; listEl.style.opacity = '1'; }
         }
         resetPullUI();
       }, { passive: true });
 
-      // Pointer events for desktop trackpad / mouse drag only (never touch)
-      let isPointerDown = false;
-      const onPointerDown = (e) => {
-        if (e.pointerType === 'touch') return;
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        if (e.target && e.target.closest('button, input, a, select, #watch-search, #watch-search-dropdown')) return;
-        isPointerDown = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        startTime = performance.now();
-        isTracking = true;
-        gestureAxis = null;
-        hasSwipedHorizontally = false;
-        startScrollTop = listEl ? listEl.scrollTop : 0;
-        if (listEl) listEl.style.transition = 'none';
-      };
-      const onPointerMove = (e) => {
-        if (!isPointerDown) return;
-        const currentX = e.clientX;
-        const currentY = e.clientY;
-        const deltaX = currentX - startX;
-        const deltaY = currentY - startY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
+      // 3. DESKTOP MOUSE DRAG SWIPE
+      let isMouseDown = false;
+      let mouseStartX = 0;
+      let mouseStartY = 0;
+      let mouseDraggedX = false;
 
-        if (!gestureAxis) {
-          if (absX >= 8 || absY >= 8) {
-            if (absX >= absY) {
-              gestureAxis = 'x';
-              hasSwipedHorizontally = true;
-              lastSwipeTime = Date.now();
-            } else if (startScrollTop <= 2 && deltaY > 8) {
-              gestureAxis = 'pull';
-            } else {
-              gestureAxis = 'y';
-            }
+      const onMouseDown = (e) => {
+        if (e.button !== 0) return;
+        if (e.target && e.target.closest('#watch-search, #watch-search-dropdown, #watch-search-clear, #btn-watch-edit-mode, select, input')) return;
+        isMouseDown = true;
+        mouseStartX = e.clientX;
+        mouseStartY = e.clientY;
+        mouseDraggedX = false;
+      };
+
+      const onMouseMove = (e) => {
+        if (!isMouseDown) return;
+        const dx = e.clientX - mouseStartX;
+        const dy = e.clientY - mouseStartY;
+        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
+          mouseDraggedX = true;
+          lastSwipeTime = Date.now();
+          if (listEl) {
+            listEl.style.transform = `translate3d(${dx * 0.75}px, 0, 0)`;
+            listEl.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dx) / 500))}`;
           }
         }
+      };
 
-        if (gestureAxis === 'x' && listEl) {
-          const dragX = deltaX * 0.95;
-          hasSwipedHorizontally = true;
+      const onMouseUp = (e) => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        if (mouseDraggedX) {
           lastSwipeTime = Date.now();
-          listEl.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          listEl.style.opacity = `${Math.max(0.7, 1 - (Math.abs(dragX) / 450))}`;
-        }
-
-        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
-          pullEl.style.height = `${pullDistance}px`;
-          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
+          const dx = e.clientX - mouseStartX;
+          if (Math.abs(dx) >= 30) {
+            const direction = dx < 0 ? 1 : -1;
+            swipeWatchlist(direction);
+          } else if (listEl) {
+            if (window.anime) anime({ targets: listEl, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
+            else { listEl.style.transform = 'translate3d(0, 0, 0)'; listEl.style.opacity = '1'; }
+          }
         }
       };
-      const onPointerUp = (e) => {
-        if (!isPointerDown) return;
-        isPointerDown = false;
-        if (e.pointerType === 'touch') return;
-        onTouchEnd({
-          changedTouches: [{ clientX: e.clientX, clientY: e.clientY }]
-        });
-      };
 
-      targetEl.addEventListener('pointerdown', onPointerDown);
-      window.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointerup', onPointerUp);
+      targetEl.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
     }
 
     // ------------------ PORTFOLIO GESTURES (SOFT ZERODHA SWIPE & PULL-TO-REFRESH) ------------------
@@ -4112,26 +4314,31 @@
         return;
       }
       triggerHaptic(12);
-      container.style.transition = 'transform 0.15s cubic-bezier(0.2, 0, 0.25, 1), opacity 0.15s ease-out';
-      container.style.transform = `translate3d(${direction > 0 ? '-100%' : '100%'}, 0, 0)`;
-      container.style.opacity = '0';
 
-      setTimeout(() => {
+      if (window.anime) {
+        anime.remove(container);
+        anime({
+          targets: container,
+          translateX: direction > 0 ? -60 : 60,
+          opacity: 0.15,
+          duration: 110,
+          easing: 'easeOutQuad',
+          complete: () => {
+            switchDockTab(targetSubTab);
+            container.scrollTop = 0;
+            anime({
+              targets: container,
+              translateX: [direction > 0 ? 60 : -60, 0],
+              opacity: [0.15, 1],
+              duration: 220,
+              easing: 'easeOutCubic'
+            });
+          }
+        });
+      } else {
         switchDockTab(targetSubTab);
         container.scrollTop = 0;
-        container.style.transition = 'none';
-        container.style.transform = `translate3d(${direction > 0 ? '100%' : '-100%'}, 0, 0)`;
-        container.style.opacity = '0';
-        void container.offsetWidth;
-
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            container.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
-            container.style.transform = 'translate3d(0, 0, 0)';
-            container.style.opacity = '1';
-          });
-        });
-      }, 140);
+      }
     }
 
     function initPortfolioGestures() {
@@ -4150,6 +4357,23 @@
       let isPullRefreshing = false;
       let hasSwipedHorizontally = false;
 
+      // Trackpad two-finger horizontal swipe
+      let lastWheelSwipe = 0;
+      const onWheel = (e) => {
+        const dx = e.deltaX;
+        const dy = e.deltaY;
+        if (Math.abs(dx) > 25 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+          if (Date.now() - lastWheelSwipe < 380) return;
+          lastWheelSwipe = Date.now();
+          const direction = dx > 0 ? 1 : -1;
+          let targetTab = (direction > 0)
+            ? (currentDockTab === 'positions' ? 'orders' : 'positions')
+            : (currentDockTab === 'orders' ? 'positions' : 'orders');
+          transitionPortfolioTo(targetTab, direction);
+        }
+      };
+      targetEl.addEventListener('wheel', onWheel, { passive: true });
+
       function onTouchStart(e) {
         if (!e.touches || e.touches.length !== 1) return;
         if (e.target && e.target.closest('button, input, select, a')) {
@@ -4163,7 +4387,7 @@
         gestureAxis = null;
         hasSwipedHorizontally = false;
         startScrollTop = deskEl ? deskEl.scrollTop : 0;
-        if (dockContent) dockContent.style.transition = 'none';
+        if (dockContent && window.anime) anime.remove(dockContent);
       }
 
       function onTouchMove(e) {
@@ -4192,7 +4416,7 @@
           if (e.cancelable) e.preventDefault();
           hasSwipedHorizontally = true;
           if (dockContent) {
-            const dragX = deltaX * 0.95;
+            const dragX = deltaX * 0.92;
             dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
             dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
           }
@@ -4232,8 +4456,8 @@
         }
 
         if (gestureAxis === 'x' && dockContent) {
-          const isFlick = velocity > 0.18 && absX >= 15;
-          const isPassedThreshold = absX >= 35;
+          const isFlick = velocity > 0.16 && absX >= 15;
+          const isPassedThreshold = absX >= 30;
 
           if (isFlick || isPassedThreshold) {
             resetPullUI();
@@ -4247,9 +4471,8 @@
             transitionPortfolioTo(targetTab, direction);
             return;
           } else {
-            dockContent.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
-            dockContent.style.transform = 'translate3d(0, 0, 0)';
-            dockContent.style.opacity = '1';
+            if (window.anime) anime({ targets: dockContent, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
+            else { dockContent.style.transform = 'translate3d(0, 0, 0)'; dockContent.style.opacity = '1'; }
           }
         }
 
@@ -4291,79 +4514,61 @@
       targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
       targetEl.addEventListener('touchmove', onTouchMove, { passive: false });
       targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
-      targetEl.addEventListener('touchcancel', (e) => {
+      targetEl.addEventListener('touchcancel', () => {
         if (dockContent && isTracking) {
           isTracking = false;
-          dockContent.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
-          dockContent.style.transform = 'translate3d(0, 0, 0)';
-          dockContent.style.opacity = '1';
+          if (window.anime) anime({ targets: dockContent, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
+          else { dockContent.style.transform = 'translate3d(0, 0, 0)'; dockContent.style.opacity = '1'; }
         }
         resetPullUI();
       }, { passive: true });
 
-      // Pointer events for desktop trackpad / mouse drag
-      let isPointerDown = false;
-      const onPointerDown = (e) => {
-        if (e.pointerType === 'touch') return;
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        if (e.target && e.target.closest('button, input, a, select, [data-lucide]')) return;
-        isPointerDown = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        startTime = performance.now();
-        isTracking = true;
-        gestureAxis = null;
-        hasSwipedHorizontally = false;
-        startScrollTop = deskEl ? deskEl.scrollTop : 0;
-        if (dockContent) dockContent.style.transition = 'none';
-      };
-      const onPointerMove = (e) => {
-        if (!isPointerDown) return;
-        const currentX = e.clientX;
-        const currentY = e.clientY;
-        const deltaX = currentX - startX;
-        const deltaY = currentY - startY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
+      // Mouse drag swipe for dock
+      let isMouseDown = false;
+      let mouseStartX = 0;
+      let mouseDraggedX = false;
 
-        if (!gestureAxis) {
-          if (absX >= 8 || absY >= 8) {
-            if (absX >= absY) {
-              gestureAxis = 'x';
-              hasSwipedHorizontally = true;
-            } else if (startScrollTop <= 2 && deltaY > 8) {
-              gestureAxis = 'pull';
-            } else {
-              gestureAxis = 'y';
-            }
+      const onMouseDown = (e) => {
+        if (e.button !== 0) return;
+        if (e.target && e.target.closest('button, input, select, a')) return;
+        isMouseDown = true;
+        mouseStartX = e.clientX;
+        mouseDraggedX = false;
+      };
+
+      const onMouseMove = (e) => {
+        if (!isMouseDown) return;
+        const dx = e.clientX - mouseStartX;
+        if (Math.abs(dx) > 8) {
+          mouseDraggedX = true;
+          if (dockContent) {
+            dockContent.style.transform = `translate3d(${dx * 0.75}px, 0, 0)`;
+            dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dx) / 500))}`;
           }
         }
-
-        if (gestureAxis === 'x' && dockContent) {
-          const dragX = deltaX * 0.95;
-          hasSwipedHorizontally = true;
-          dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
-          dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
-        }
-
-        if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
-          pullEl.style.height = `${pullDistance}px`;
-          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
-        }
-      };
-      const onPointerUp = (e) => {
-        if (!isPointerDown) return;
-        isPointerDown = false;
-        if (e.pointerType === 'touch') return;
-        onTouchEnd({
-          changedTouches: [{ clientX: e.clientX, clientY: e.clientY }]
-        });
       };
 
-      targetEl.addEventListener('pointerdown', onPointerDown);
-      window.addEventListener('pointermove', onPointerMove);
-      window.addEventListener('pointerup', onPointerUp);
+      const onMouseUp = (e) => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        if (mouseDraggedX) {
+          const dx = e.clientX - mouseStartX;
+          if (Math.abs(dx) >= 30) {
+            const direction = dx < 0 ? 1 : -1;
+            let targetTab = (direction > 0)
+              ? (currentDockTab === 'positions' ? 'orders' : 'positions')
+              : (currentDockTab === 'orders' ? 'positions' : 'orders');
+            transitionPortfolioTo(targetTab, direction);
+          } else if (dockContent) {
+            if (window.anime) anime({ targets: dockContent, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
+            else { dockContent.style.transform = 'translate3d(0, 0, 0)'; dockContent.style.opacity = '1'; }
+          }
+        }
+      };
+
+      targetEl.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
     }
 
     function toggleWatchlistCollapse() {
