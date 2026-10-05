@@ -538,6 +538,70 @@
       overscroll-behavior-y: contain;
     }
 
+    /* Split Studio Customizable Resizer & Panes */
+    .split-horizontal {
+      flex-direction: row !important;
+    }
+    .split-vertical {
+      flex-direction: column !important;
+    }
+    .split-horizontal > #split-resizer {
+      width: 10px;
+      height: 100%;
+      cursor: col-resize;
+      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: #090d16;
+    }
+    .split-vertical > #split-resizer {
+      width: 100%;
+      height: 10px;
+      cursor: row-resize;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: #090d16;
+    }
+    #split-resizer {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #split-resizer:hover,
+    #split-resizer.is-dragging {
+      background: rgba(16, 185, 129, 0.25) !important;
+      border-color: rgba(16, 185, 129, 0.5) !important;
+    }
+    #split-resizer:hover .resizer-handle,
+    #split-resizer.is-dragging .resizer-handle {
+      background-color: #10b981 !important;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.8) !important;
+    }
+    .split-horizontal > #split-resizer .resizer-handle {
+      width: 4px;
+      height: 32px;
+      border-radius: 9999px;
+    }
+    .split-vertical > #split-resizer .resizer-handle {
+      width: 32px;
+      height: 4px;
+      border-radius: 9999px;
+    }
+    .split-pane {
+      position: relative;
+      overflow: hidden;
+      min-width: 0;
+      min-height: 0;
+      transition: flex-basis 0.05s ease;
+    }
+    #split-drag-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      background: transparent;
+      cursor: inherit;
+    }
+
   </style>
   <script>
     // Immediate theme init to prevent flash
@@ -1166,56 +1230,146 @@
       </div>
     </div>
 
-    <!-- WORKSTATION 4: SPLIT VIEW (Dual 50/50 Stage: Chart Left + Option Chain Right) -->
-    <div id="ws-split-desk" class="workstation-view hidden flex-1 flex flex-col md:flex-row overflow-hidden w-full h-full">
-      <!-- Left 50%: Live Chart Preview Pane -->
-      <div class="w-full md:w-1/2 flex flex-col border-b md:border-b-0 md:border-r border-borderSubtle bg-darkBg overflow-hidden h-1/2 md:h-full">
-        <div class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 text-xs flex-shrink-0">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-white flex items-center gap-1.5 font-sans">
-              <i data-lucide="line-chart" class="w-3.5 h-3.5 text-brand"></i>
-              <span id="split-chart-symbol">BANKNIFTY</span>
-            </span>
-            <span class="font-mono text-brand font-bold text-xs" id="split-chart-ltp">--</span>
-          </div>
-          <div class="flex items-center gap-1 bg-darkBg p-0.5 rounded-lg border border-borderSubtle">
-            <button onclick="setSplitResolution('1')" data-sres="1" class="split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer">1m</button>
-            <button onclick="setSplitResolution('5')" data-sres="5" class="split-res-btn px-2 py-0.5 rounded text-[10px] bg-slate-800 text-white font-bold cursor-pointer">5m</button>
-            <button onclick="setSplitResolution('15')" data-sres="15" class="split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer">15m</button>
-            <button onclick="setSplitResolution('D')" data-sres="D" class="split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer">1D</button>
-          </div>
+    <!-- WORKSTATION 4: CUSTOMIZABLE MODULAR SPLIT STUDIO -->
+    <div id="ws-split-desk" class="workstation-view hidden flex-1 flex flex-col overflow-hidden w-full h-full bg-darkBg">
+      <!-- SPLIT STUDIO TOP CONTROLS TOOLBAR -->
+      <div id="split-top-toolbar" class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-3 text-xs flex-shrink-0 z-20">
+        <!-- Left: Title & Ratio Badge -->
+        <div class="flex items-center gap-2">
+          <span class="flex items-center gap-1.5 font-bold text-white font-sans text-xs">
+            <i data-lucide="columns-2" class="w-4 h-4 text-brand"></i>
+            <span>Split Studio</span>
+          </span>
+          <span id="split-ratio-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-darkBg text-brand border border-borderSubtle shadow-inner">50 : 50</span>
         </div>
-        <div id="split-chart-area" class="flex-1 w-full relative"></div>
+
+        <!-- Center: Quick Ratio Presets -->
+        <div class="flex items-center gap-1 bg-darkBg p-0.5 rounded-lg border border-borderSubtle">
+          <button onclick="setSplitPreset(0.30)" class="split-preset-btn px-2 py-0.5 rounded text-[10px] font-mono font-medium text-slate-400 hover:text-white cursor-pointer transition-all" data-ratio="0.30" title="30% Panel 1 / 70% Panel 2">30:70</button>
+          <button onclick="setSplitPreset(0.50)" class="split-preset-btn px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-white cursor-pointer transition-all" data-ratio="0.50" title="50:50 Balanced">50:50</button>
+          <button onclick="setSplitPreset(0.70)" class="split-preset-btn px-2 py-0.5 rounded text-[10px] font-mono font-medium text-slate-400 hover:text-white cursor-pointer transition-all" data-ratio="0.70" title="70% Panel 1 / 30% Panel 2">70:30</button>
+        </div>
+
+        <!-- Right: Orientation & Utility Actions -->
+        <div class="flex items-center gap-1.5">
+          <!-- Orientation Toggle -->
+          <button onclick="toggleSplitOrientation()" id="split-orientation-btn" class="px-2.5 py-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-sm" title="Toggle Horizontal / Vertical Split">
+            <i data-lucide="split" class="w-3.5 h-3.5 text-brand"></i>
+            <span class="hidden md:inline" id="split-orient-text">Side-by-Side</span>
+          </button>
+
+          <!-- Swap Panes Button -->
+          <button onclick="swapSplitPanes()" class="px-2.5 py-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-sm" title="Swap Left and Right Panels">
+            <i data-lucide="arrow-left-right" class="w-3.5 h-3.5 text-slate-400"></i>
+            <span class="hidden md:inline">Swap</span>
+          </button>
+
+          <!-- Reset Split Layout -->
+          <button onclick="resetSplitLayout()" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-all shadow-sm" title="Reset Layout to 50:50 Chart + Option Chain">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
       </div>
 
-      <!-- Right 50%: Option Chain Scalper Pane -->
-      <div class="w-full md:w-1/2 flex flex-col bg-darkBg overflow-hidden h-1/2 md:h-full">
-        <div class="p-2 border-b border-borderSubtle bg-panelBg flex items-center justify-between gap-1.5 text-xs flex-shrink-0">
-          <div class="flex items-center gap-1.5">
-            <select id="split-chain-underlying" onchange="changeSplitChainUnderlying(this.value)" class="bg-cardBg border border-borderSubtle text-slate-200 text-xs px-2 py-1 rounded-lg font-bold cursor-pointer focus:outline-none focus:border-brand">
-              <option value="BANKNIFTY" selected>BANK NIFTY (30)</option>
-              <option value="NIFTY">NIFTY 50 (65)</option>
-              <option value="SENSEX">SENSEX (20)</option>
-              <option value="FINNIFTY">FINNIFTY (60)</option>
-              <option value="MIDCPNIFTY">MIDCP (120)</option>
-            </select>
-            <select id="split-chain-expiry" onchange="changeSplitChainExpiry(this.value)" class="bg-cardBg border border-borderSubtle text-slate-200 text-[11px] px-2 py-1 rounded-lg font-mono cursor-pointer focus:outline-none max-w-[125px]">
-              <option value="">Current Expiry</option>
-            </select>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <div class="text-[10px] font-mono bg-cardBg px-2 py-1 rounded-lg border border-borderSubtle flex items-center gap-2">
-              <div>Spot: <span id="split-chain-spot" class="text-white font-bold">--</span></div>
-              <div id="split-chain-atm" class="text-amber-400 font-bold">ATM: --</div>
-              <div id="split-chain-pcr" class="text-emerald-400 font-bold">PCR: --</div>
+      <!-- SPLIT STAGE CONTAINER (Holds Pane 1, Resizer Bar, Pane 2) -->
+      <div id="split-stage-container" class="split-stage split-horizontal flex-1 flex flex-row overflow-hidden w-full h-full relative">
+        <div id="split-drag-overlay"></div>
+
+        <!-- PANE 1 (Left / Top) -->
+        <div id="split-pane-1" class="split-pane flex flex-col bg-darkBg overflow-hidden min-w-0 min-h-0 relative" style="flex: 0 0 50%;">
+          <!-- P1 Header -->
+          <div class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-2.5 text-xs flex-shrink-0 gap-1.5 select-none" id="split-p1-header">
+            <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+              <select onchange="changeSplitWidget('p1', this.value)" id="split-p1-widget-select" class="bg-cardBg border border-borderSubtle text-white font-bold text-xs px-2 py-1 rounded-lg cursor-pointer focus:outline-none focus:border-brand shadow-sm flex-shrink-0">
+                <option value="chart" selected>📈 Chart</option>
+                <option value="options">⚡ Option Chain</option>
+                <option value="positions">💼 Positions & P&L</option>
+                <option value="orders">📋 Orders</option>
+                <option value="watchlist">⭐ Watchlist</option>
+              </select>
+              <div id="split-p1-context-controls" class="flex items-center gap-1.5 overflow-hidden"></div>
             </div>
-            <button onclick="loadSplitOptionChain(true)" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Refresh Scalper Chain">
-              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            </button>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <button onclick="toggleMaximizeSplitPane('p1')" id="split-p1-max-btn" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Maximize Panel 1">
+                <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- P1 Views Container -->
+          <div class="flex-1 w-full h-full overflow-hidden relative flex flex-col">
+            <!-- View 1: Chart -->
+            <div id="split-p1-view-chart" class="split-widget-view w-full h-full flex flex-col overflow-hidden relative">
+              <div id="split-p1-chart-area" class="flex-1 w-full relative"></div>
+            </div>
+            <!-- View 2: Option Chain -->
+            <div id="split-p1-view-options" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p1-optionchain-view" class="flex-1 overflow-y-auto touch-scroll"></div>
+            </div>
+            <!-- View 3: Positions -->
+            <div id="split-p1-view-positions" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p1-positions-view" class="flex-1 overflow-y-auto touch-scroll p-0"></div>
+            </div>
+            <!-- View 4: Orders -->
+            <div id="split-p1-view-orders" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p1-orders-view" class="flex-1 overflow-y-auto touch-scroll p-0"></div>
+            </div>
+            <!-- View 5: Watchlist -->
+            <div id="split-p1-view-watchlist" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p1-watchlist-view" class="flex-1 overflow-y-auto touch-scroll p-0"></div>
+            </div>
           </div>
         </div>
-        <div id="split-optionchain-view" class="flex-1 overflow-y-auto touch-scroll">
-          <!-- Live Scalper Option Chain injected here -->
+
+        <!-- DRAGGABLE RESIZER GUTTER -->
+        <div id="split-resizer" class="split-resizer flex-shrink-0 relative group select-none z-10 flex items-center justify-center transition-colors">
+          <div class="resizer-handle flex-shrink-0 bg-slate-600 transition-colors"></div>
+        </div>
+
+        <!-- PANE 2 (Right / Bottom) -->
+        <div id="split-pane-2" class="split-pane flex flex-col bg-darkBg overflow-hidden min-w-0 min-h-0 relative" style="flex: 1 1 0%;">
+          <!-- P2 Header -->
+          <div class="h-10 bg-panelBg border-b border-borderSubtle flex items-center justify-between px-2.5 text-xs flex-shrink-0 gap-1.5 select-none" id="split-p2-header">
+            <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+              <select onchange="changeSplitWidget('p2', this.value)" id="split-p2-widget-select" class="bg-cardBg border border-borderSubtle text-white font-bold text-xs px-2 py-1 rounded-lg cursor-pointer focus:outline-none focus:border-brand shadow-sm flex-shrink-0">
+                <option value="chart">📈 Chart</option>
+                <option value="options" selected>⚡ Option Chain</option>
+                <option value="positions">💼 Positions & P&L</option>
+                <option value="orders">📋 Orders</option>
+                <option value="watchlist">⭐ Watchlist</option>
+              </select>
+              <div id="split-p2-context-controls" class="flex items-center gap-1.5 overflow-hidden"></div>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <button onclick="toggleMaximizeSplitPane('p2')" id="split-p2-max-btn" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Maximize Panel 2">
+                <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- P2 Views Container -->
+          <div class="flex-1 w-full h-full overflow-hidden relative flex flex-col">
+            <!-- View 1: Chart -->
+            <div id="split-p2-view-chart" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden relative">
+              <div id="split-p2-chart-area" class="flex-1 w-full relative"></div>
+            </div>
+            <!-- View 2: Option Chain -->
+            <div id="split-p2-view-options" class="split-widget-view w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p2-optionchain-view" class="flex-1 overflow-y-auto touch-scroll"></div>
+            </div>
+            <!-- View 3: Positions -->
+            <div id="split-p2-view-positions" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p2-positions-view" class="flex-1 overflow-y-auto touch-scroll p-0"></div>
+            </div>
+            <!-- View 4: Orders -->
+            <div id="split-p2-view-orders" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p2-orders-view" class="flex-1 overflow-y-auto touch-scroll p-0"></div>
+            </div>
+            <!-- View 5: Watchlist -->
+            <div id="split-p2-view-watchlist" class="split-widget-view hidden w-full h-full flex flex-col overflow-hidden">
+              <div id="split-p2-watchlist-view" class="flex-1 overflow-y-auto touch-scroll p-0"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2510,61 +2664,400 @@
       try { lucide.createIcons(); } catch (e) {}
     }
 
-    // ------------------ WORKSTATION 4: SPLIT VIEW CONTROLLER (CHART + SCALPER) ------------------
+    // ------------------ WORKSTATION 4: CUSTOMIZABLE MODULAR SPLIT STUDIO ------------------
+    let splitOrientation = localStorage.getItem('insta_trade_split_orientation') || 'horizontal';
+    let splitRatio = parseFloat(localStorage.getItem('insta_trade_split_ratio') || '0.50');
+    if (isNaN(splitRatio) || splitRatio < 0.15 || splitRatio > 0.85) splitRatio = 0.50;
+
+    let splitWidgets = { p1: 'chart', p2: 'options' };
+    try {
+      const savedWidgets = JSON.parse(localStorage.getItem('insta_trade_split_widgets') || '{}');
+      if (savedWidgets && savedWidgets.p1) splitWidgets.p1 = savedWidgets.p1;
+      if (savedWidgets && savedWidgets.p2) splitWidgets.p2 = savedWidgets.p2;
+    } catch (e) {}
+
+    let splitMaximizedPane = null; // null | 'p1' | 'p2'
+    const splitCharts = { p1: null, p2: null };
+    const splitCandleSeries = { p1: null, p2: null };
+    const splitResolutions = { p1: '5', p2: '5' };
+    const splitUnderlyings = { p1: 'BANKNIFTY', p2: 'BANKNIFTY' };
+    const splitExpiries = { p1: '', p2: '' };
+    const splitWatchFilters = { p1: 'ALL', p2: 'ALL' };
+    const isFetchingSplitChainMap = { p1: false, p2: false };
+    let splitResizerInitialized = false;
+    let splitRafId = null;
+
+    // Backward compatibility aliases
     let splitChart = null;
-    let splitCandleSeries = null;
     let currentSplitResolution = '5';
     let splitOptionUnderlying = 'BANKNIFTY';
     let splitOptionExpiry = '';
     let isFetchingSplitChain = false;
 
-    function setSplitResolution(res) {
-      currentSplitResolution = res;
-      document.querySelectorAll('.split-res-btn').forEach(b => {
-        if (b.dataset.sres === res) {
-          b.className = 'split-res-btn px-2 py-0.5 rounded text-[10px] bg-slate-800 text-white font-bold cursor-pointer';
+    function initSplitResizer() {
+      if (splitResizerInitialized) return;
+      const resizer = document.getElementById('split-resizer');
+      const stage = document.getElementById('split-stage-container');
+      const overlay = document.getElementById('split-drag-overlay');
+      if (!resizer || !stage) return;
+
+      let isDragging = false;
+
+      const onPointerDown = (e) => {
+        if (splitMaximizedPane) return;
+        e.preventDefault();
+        isDragging = true;
+        try { resizer.setPointerCapture(e.pointerId); } catch (err) {}
+        resizer.classList.add('is-dragging');
+        if (overlay) overlay.style.display = 'block';
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = splitOrientation === 'horizontal' ? 'col-resize' : 'row-resize';
+      };
+
+      const onPointerMove = (e) => {
+        if (!isDragging) return;
+        const rect = stage.getBoundingClientRect();
+        let newRatio = splitRatio;
+        if (splitOrientation === 'horizontal') {
+          if (rect.width > 0) {
+            newRatio = (e.clientX - rect.left) / rect.width;
+          }
         } else {
-          b.className = 'split-res-btn px-2 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer';
+          if (rect.height > 0) {
+            newRatio = (e.clientY - rect.top) / rect.height;
+          }
+        }
+        newRatio = Math.max(0.15, Math.min(0.85, newRatio));
+        applySplitRatio(newRatio, true);
+      };
+
+      const onPointerUp = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        try { resizer.releasePointerCapture(e.pointerId); } catch (err) {}
+        resizer.classList.remove('is-dragging');
+        if (overlay) overlay.style.display = 'none';
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        try {
+          localStorage.setItem('insta_trade_split_ratio', splitRatio.toFixed(3));
+        } catch (err) {}
+        resizeAllSplitCharts();
+      };
+
+      resizer.addEventListener('pointerdown', onPointerDown);
+      resizer.addEventListener('pointermove', onPointerMove);
+      resizer.addEventListener('pointerup', onPointerUp);
+      resizer.addEventListener('pointercancel', onPointerUp);
+
+      // Double-click resizer resets to 50:50
+      resizer.addEventListener('dblclick', () => {
+        setSplitPreset(0.50);
+      });
+
+      splitResizerInitialized = true;
+    }
+
+    function applySplitRatio(ratio, triggerChartResize = true) {
+      splitRatio = Math.max(0.15, Math.min(0.85, ratio));
+      const p1 = document.getElementById('split-pane-1');
+      const p2 = document.getElementById('split-pane-2');
+      const badge = document.getElementById('split-ratio-badge');
+      if (!p1 || !p2) return;
+
+      let p1Pct, p2Pct;
+      if (splitMaximizedPane === 'p1') {
+        p1Pct = 100;
+        p2Pct = 0;
+      } else if (splitMaximizedPane === 'p2') {
+        p1Pct = 0;
+        p2Pct = 100;
+      } else {
+        p1Pct = Number((splitRatio * 100).toFixed(1));
+        p2Pct = Number((100 - p1Pct).toFixed(1));
+      }
+
+      if (splitOrientation === 'horizontal') {
+        p1.style.flex = `0 0 ${p1Pct}%`;
+        p1.style.width = `${p1Pct}%`;
+        p1.style.height = '100%';
+        p2.style.flex = `0 0 ${p2Pct}%`;
+        p2.style.width = `${p2Pct}%`;
+        p2.style.height = '100%';
+      } else {
+        p1.style.flex = `0 0 ${p1Pct}%`;
+        p1.style.height = `${p1Pct}%`;
+        p1.style.width = '100%';
+        p2.style.flex = `0 0 ${p2Pct}%`;
+        p2.style.height = `${p2Pct}%`;
+        p2.style.width = '100%';
+      }
+
+      if (badge) {
+        badge.innerText = splitMaximizedPane ? (splitMaximizedPane === 'p1' ? '100 : 0' : '0 : 100') : `${Math.round(p1Pct)} : ${Math.round(p2Pct)}`;
+      }
+
+      // Update preset buttons active highlight
+      document.querySelectorAll('.split-preset-btn').forEach(btn => {
+        const bRatio = parseFloat(btn.getAttribute('data-ratio'));
+        if (!splitMaximizedPane && Math.abs(bRatio - splitRatio) < 0.04) {
+          btn.className = 'split-preset-btn px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-white cursor-pointer transition-all';
+        } else {
+          btn.className = 'split-preset-btn px-2 py-0.5 rounded text-[10px] font-mono font-medium text-slate-400 hover:text-white cursor-pointer transition-all';
         }
       });
-      loadSplitChartData();
-    }
 
-    function changeSplitChainUnderlying(underlying) {
-      splitOptionUnderlying = underlying;
-      splitOptionExpiry = '';
-      loadSplitOptionChain(true);
-    }
-
-    function changeSplitChainExpiry(expiry) {
-      splitOptionExpiry = expiry;
-      loadSplitOptionChain(true);
-    }
-
-    async function loadSplitChartData() {
-      if (!splitCandleSeries) return;
-      const sym = currentSymbol || 'NSE:NIFTYBANK-INDEX';
-      try {
-        const res = await fetch(`/api/history?symbol=${encodeURIComponent(sym)}&resolution=${currentSplitResolution}`);
-        const data = await res.json();
-        if (data.candles && data.candles.length) {
-          splitCandleSeries.setData(data.candles);
-          if (splitChart) splitChart.timeScale().fitContent();
-          const last = data.candles[data.candles.length - 1];
-          const ltpEl = document.getElementById('split-chart-ltp');
-          if (ltpEl && last) ltpEl.innerText = Number(last.close).toFixed(2);
-        }
-      } catch (e) {
-        console.error('Error loading split chart:', e);
+      if (triggerChartResize) {
+        if (splitRafId) cancelAnimationFrame(splitRafId);
+        splitRafId = requestAnimationFrame(() => {
+          resizeAllSplitCharts();
+        });
       }
     }
 
-    function initOrResizeSplitScreen() {
-      const splitDesk = document.getElementById('ws-split-desk');
-      const splitArea = document.getElementById('split-chart-area');
-      if (!splitDesk || !splitArea) return;
+    function setSplitPreset(ratio) {
+      splitMaximizedPane = null;
+      updateSplitMaximizeButtons();
+      applySplitRatio(ratio, true);
+      try { localStorage.setItem('insta_trade_split_ratio', ratio.toFixed(3)); } catch (e) {}
+      triggerHaptic(10);
+    }
 
-      const symTitle = document.getElementById('split-chart-symbol');
+    function toggleSplitOrientation() {
+      splitOrientation = splitOrientation === 'horizontal' ? 'vertical' : 'horizontal';
+      try { localStorage.setItem('insta_trade_split_orientation', splitOrientation); } catch (e) {}
+      const stage = document.getElementById('split-stage-container');
+      const btnText = document.getElementById('split-orient-text');
+      if (stage) {
+        if (splitOrientation === 'horizontal') {
+          stage.classList.remove('split-vertical');
+          stage.classList.add('split-horizontal');
+          if (btnText) btnText.innerText = 'Side-by-Side';
+        } else {
+          stage.classList.remove('split-horizontal');
+          stage.classList.add('split-vertical');
+          if (btnText) btnText.innerText = 'Stacked';
+        }
+      }
+      applySplitRatio(splitRatio, true);
+      triggerHaptic(10);
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function swapSplitPanes() {
+      const tempWidget = splitWidgets.p1;
+      splitWidgets.p1 = splitWidgets.p2;
+      splitWidgets.p2 = tempWidget;
+
+      const tempRes = splitResolutions.p1;
+      splitResolutions.p1 = splitResolutions.p2;
+      splitResolutions.p2 = tempRes;
+
+      const tempUnd = splitUnderlyings.p1;
+      splitUnderlyings.p1 = splitUnderlyings.p2;
+      splitUnderlyings.p2 = tempUnd;
+
+      const tempExp = splitExpiries.p1;
+      splitExpiries.p1 = splitExpiries.p2;
+      splitExpiries.p2 = tempExp;
+
+      // Invert split ratio so dominant pane stays with swapped widget
+      splitRatio = Math.max(0.15, Math.min(0.85, 1 - splitRatio));
+
+      try {
+        localStorage.setItem('insta_trade_split_widgets', JSON.stringify(splitWidgets));
+        localStorage.setItem('insta_trade_split_ratio', splitRatio.toFixed(3));
+      } catch (e) {}
+
+      syncSplitWidgetSelects();
+      renderSplitContextControls('p1');
+      renderSplitContextControls('p2');
+      showSplitWidgetView('p1', splitWidgets.p1);
+      showSplitWidgetView('p2', splitWidgets.p2);
+      applySplitRatio(splitRatio, true);
+
+      renderSplitWidget('p1', splitWidgets.p1);
+      renderSplitWidget('p2', splitWidgets.p2);
+
+      triggerHaptic(15);
+      showToast('Split panels swapped', 'info');
+    }
+
+    function toggleMaximizeSplitPane(paneId) {
+      if (splitMaximizedPane === paneId) {
+        splitMaximizedPane = null;
+      } else {
+        splitMaximizedPane = paneId;
+      }
+      updateSplitMaximizeButtons();
+      applySplitRatio(splitRatio, true);
+      triggerHaptic(10);
+    }
+
+    function updateSplitMaximizeButtons() {
+      ['p1', 'p2'].forEach(p => {
+        const btn = document.getElementById(`split-${p}-max-btn`);
+        if (!btn) return;
+        if (splitMaximizedPane === p) {
+          btn.innerHTML = '<i data-lucide="minimize-2" class="w-3.5 h-3.5 text-brand"></i>';
+          btn.title = 'Restore Split Ratio';
+        } else {
+          btn.innerHTML = '<i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>';
+          btn.title = `Maximize Panel ${p === 'p1' ? '1' : '2'}`;
+        }
+      });
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function resetSplitLayout() {
+      splitOrientation = 'horizontal';
+      splitRatio = 0.50;
+      splitWidgets = { p1: 'chart', p2: 'options' };
+      splitMaximizedPane = null;
+      try {
+        localStorage.setItem('insta_trade_split_orientation', 'horizontal');
+        localStorage.setItem('insta_trade_split_ratio', '0.500');
+        localStorage.setItem('insta_trade_split_widgets', JSON.stringify(splitWidgets));
+      } catch (e) {}
+      initOrResizeSplitScreen();
+      showToast('Split layout reset to default (50:50 Chart + Option Chain)', 'info');
+      triggerHaptic(20);
+    }
+
+    function syncSplitWidgetSelects() {
+      ['p1', 'p2'].forEach(p => {
+        const sel = document.getElementById(`split-${p}-widget-select`);
+        if (sel) sel.value = splitWidgets[p] || (p === 'p1' ? 'chart' : 'options');
+      });
+    }
+
+    function changeSplitWidget(paneId, widgetType) {
+      splitWidgets[paneId] = widgetType;
+      try {
+        localStorage.setItem('insta_trade_split_widgets', JSON.stringify(splitWidgets));
+      } catch (e) {}
+
+      showSplitWidgetView(paneId, widgetType);
+      renderSplitContextControls(paneId);
+      renderSplitWidget(paneId, widgetType);
+      triggerHaptic(10);
+    }
+
+    function showSplitWidgetView(paneId, widgetType) {
+      const pane = document.getElementById(`split-pane-${paneId === 'p1' ? '1' : '2'}`);
+      if (!pane) return;
+      pane.querySelectorAll('.split-widget-view').forEach(view => {
+        view.classList.add('hidden');
+      });
+      const activeView = document.getElementById(`split-${paneId}-view-${widgetType}`);
+      if (activeView) activeView.classList.remove('hidden');
+    }
+
+    function renderSplitContextControls(paneId) {
+      const container = document.getElementById(`split-${paneId}-context-controls`);
+      if (!container) return;
+      const widget = splitWidgets[paneId] || 'chart';
+
+      if (widget === 'chart') {
+        const sym = (currentSymbol || 'BANKNIFTY').split(':').pop() || currentSymbol;
+        const res = splitResolutions[paneId] || '5';
+        container.innerHTML = `
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="font-bold text-white font-sans text-xs flex items-center gap-1 truncate" id="split-${paneId}-chart-symbol">
+              ${sym}
+            </span>
+            <span class="font-mono text-brand font-bold text-xs" id="split-${paneId}-chart-ltp">--</span>
+          </div>
+          <div class="flex items-center gap-0.5 bg-darkBg p-0.5 rounded-lg border border-borderSubtle flex-shrink-0">
+            ${['1', '5', '15', 'D'].map(r => `
+              <button onclick="setSplitPaneResolution('${paneId}', '${r}')" data-pane="${paneId}" data-sres="${r}" class="split-${paneId}-res-btn px-1.5 py-0.5 rounded text-[10px] ${r === res ? 'bg-slate-800 text-white font-bold' : 'text-slate-400 hover:text-white'} cursor-pointer transition-all">${r}m</button>
+            `).join('')}
+          </div>
+          <button onclick="fitSplitPaneChart('${paneId}')" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-400 hover:text-white border border-borderSubtle cursor-pointer transition-colors flex-shrink-0" title="Fit Chart Scale">
+            <i data-lucide="scan" class="w-3 h-3"></i>
+          </button>
+        `;
+      } else if (widget === 'options') {
+        const und = splitUnderlyings[paneId] || 'BANKNIFTY';
+        container.innerHTML = `
+          <div class="flex items-center gap-1 flex-wrap min-w-0">
+            <select onchange="changeSplitPaneUnderlying('${paneId}', this.value)" class="bg-cardBg border border-borderSubtle text-slate-200 text-xs px-2 py-0.5 rounded-lg font-bold cursor-pointer focus:outline-none focus:border-brand flex-shrink-0">
+              <option value="BANKNIFTY" ${und === 'BANKNIFTY' ? 'selected' : ''}>BANK NIFTY</option>
+              <option value="NIFTY" ${und === 'NIFTY' ? 'selected' : ''}>NIFTY 50</option>
+              <option value="SENSEX" ${und === 'SENSEX' ? 'selected' : ''}>SENSEX</option>
+              <option value="FINNIFTY" ${und === 'FINNIFTY' ? 'selected' : ''}>FINNIFTY</option>
+              <option value="MIDCPNIFTY" ${und === 'MIDCPNIFTY' ? 'selected' : ''}>MIDCP</option>
+            </select>
+            <select onchange="changeSplitPaneExpiry('${paneId}', this.value)" id="split-${paneId}-chain-expiry" class="bg-cardBg border border-borderSubtle text-slate-200 text-[10px] px-1.5 py-0.5 rounded-lg font-mono cursor-pointer focus:outline-none max-w-[105px] truncate flex-shrink-0">
+              <option value="">Expiry</option>
+            </select>
+            <div class="hidden xl:flex items-center gap-1 text-[10px] font-mono bg-darkBg px-1.5 py-0.5 rounded-lg border border-borderSubtle">
+              <span>Spot: <b id="split-${paneId}-chain-spot" class="text-white">--</b></span>
+              <span id="split-${paneId}-chain-atm" class="text-amber-400 font-bold">ATM: --</span>
+              <span id="split-${paneId}-chain-pcr" class="text-emerald-400 font-bold">PCR: --</span>
+            </div>
+            <button onclick="loadSplitOptionChainPane('${paneId}', true)" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors flex-shrink-0" title="Refresh Option Chain">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+          </div>
+        `;
+      } else if (widget === 'positions') {
+        container.innerHTML = `
+          <div class="flex items-center gap-1.5 text-xs font-mono">
+            <span id="split-${paneId}-pos-count-badge" class="px-1.5 py-0.5 rounded text-[10px] bg-darkBg text-slate-300 border border-borderSubtle font-bold">0 Active</span>
+            <span class="text-slate-400 text-[11px]">MTM: <b id="split-${paneId}-pos-mtm" class="text-emerald-400">+₹ 0.00</b></span>
+            <button onclick="refreshSplitPositionsPane('${paneId}')" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Refresh Positions">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+          </div>
+        `;
+      } else if (widget === 'orders') {
+        container.innerHTML = `
+          <div class="flex items-center gap-1.5 text-xs font-mono">
+            <span id="split-${paneId}-ord-count-badge" class="px-1.5 py-0.5 rounded text-[10px] bg-darkBg text-slate-300 border border-borderSubtle font-bold">0 Orders</span>
+            <button onclick="refreshSplitOrdersPane('${paneId}')" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors" title="Refresh Orders">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+          </div>
+        `;
+      } else if (widget === 'watchlist') {
+        const curFilter = splitWatchFilters[paneId] || 'ALL';
+        container.innerHTML = `
+          <div class="flex items-center gap-1 text-xs">
+            <div class="flex items-center gap-0.5 bg-darkBg p-0.5 rounded-lg border border-borderSubtle flex-shrink-0">
+              ${['ALL', 'INDICES', 'FUTURES', 'EQUITY'].map(f => `
+                <button onclick="setSplitWatchFilter('${paneId}', '${f}')" class="split-${paneId}-wf-btn px-1.5 py-0.5 rounded text-[10px] ${f === curFilter ? 'bg-slate-800 text-white font-bold' : 'text-slate-400 hover:text-white'} cursor-pointer transition-all">${f}</button>
+              `).join('')}
+            </div>
+            <button onclick="refreshSplitWatchlistPane('${paneId}')" class="p-1 rounded-lg bg-cardBg hover:bg-slate-800 text-slate-300 hover:text-white border border-borderSubtle cursor-pointer transition-colors flex-shrink-0" title="Refresh Watchlist">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+          </div>
+        `;
+      }
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    function renderSplitWidget(paneId, widgetType) {
+      if (widgetType === 'chart') {
+        initSplitPaneChart(paneId);
+      } else if (widgetType === 'options') {
+        loadSplitOptionChainPane(paneId, true);
+      } else if (widgetType === 'positions') {
+        renderSplitPositionsPane(paneId);
+      } else if (widgetType === 'orders') {
+        renderSplitOrdersPane(paneId);
+      } else if (widgetType === 'watchlist') {
+        renderSplitWatchlistPane(paneId);
+      }
+    }
+
+    // ------------------ SPLIT PANE 1 & 2 CHART ENGINE ------------------
+    function initSplitPaneChart(paneId) {
+      const area = document.getElementById(`split-${paneId}-chart-area`);
+      if (!area) return;
+
+      const symTitle = document.getElementById(`split-${paneId}-chart-symbol`);
       if (symTitle) {
         const cleanName = (currentSymbol || 'BANKNIFTY').split(':').pop() || currentSymbol;
         symTitle.innerText = cleanName;
@@ -2577,11 +3070,11 @@
       const borderColor = isLight ? '#e2e8f0' : '#1e293b';
 
       setTimeout(() => {
-        const width = splitArea.clientWidth || (window.innerWidth >= 768 ? Math.floor(window.innerWidth / 2) : window.innerWidth);
-        const height = splitArea.clientHeight || 450;
+        const width = area.clientWidth || 300;
+        const height = area.clientHeight || 400;
 
-        if (!splitChart && window.LightweightCharts) {
-          splitChart = LightweightCharts.createChart(splitArea, {
+        if (!splitCharts[paneId] && window.LightweightCharts) {
+          splitCharts[paneId] = LightweightCharts.createChart(area, {
             width: width,
             height: height,
             layout: { background: { color: chartBg }, textColor: textColor },
@@ -2592,13 +3085,13 @@
               secondsVisible: false
             }
           });
-          splitCandleSeries = splitChart.addCandlestickSeries({
+          splitCandleSeries[paneId] = splitCharts[paneId].addCandlestickSeries({
             upColor: '#10b981', downColor: '#f43f5e',
             borderVisible: false,
             wickUpColor: '#10b981', wickDownColor: '#f43f5e'
           });
-        } else if (splitChart) {
-          splitChart.applyOptions({
+        } else if (splitCharts[paneId]) {
+          splitCharts[paneId].applyOptions({
             width: width,
             height: height,
             layout: { background: { color: chartBg }, textColor: textColor },
@@ -2606,53 +3099,126 @@
           });
         }
 
-        loadSplitChartData();
-        loadSplitOptionChain(true);
-      }, 140);
+        // Backward compatibility pointer
+        if (paneId === 'p1' || !splitChart) {
+          splitChart = splitCharts[paneId];
+          splitCandleSeriesLegacy = splitCandleSeries[paneId];
+        }
+
+        loadSplitChartDataPane(paneId);
+      }, 100);
     }
 
-    async function loadSplitOptionChain(forceFullRender = false) {
-      if (isFetchingSplitChain) return;
-      isFetchingSplitChain = true;
-      const container = document.getElementById('split-optionchain-view');
+    async function loadSplitChartDataPane(paneId) {
+      const series = splitCandleSeries[paneId];
+      if (!series) return;
+      const sym = currentSymbol || 'NSE:NIFTYBANK-INDEX';
+      const res = splitResolutions[paneId] || '5';
+      try {
+        const response = await fetch(`/api/history?symbol=${encodeURIComponent(sym)}&resolution=${res}`);
+        const data = await response.json();
+        if (data.candles && data.candles.length) {
+          series.setData(data.candles);
+          if (splitCharts[paneId]) splitCharts[paneId].timeScale().fitContent();
+          const last = data.candles[data.candles.length - 1];
+          const ltpEl = document.getElementById(`split-${paneId}-chart-ltp`);
+          if (ltpEl && last) ltpEl.innerText = Number(last.close).toFixed(2);
+        }
+      } catch (e) {
+        console.error(`Error loading split chart for ${paneId}:`, e);
+      }
+    }
+
+    function setSplitPaneResolution(paneId, res) {
+      splitResolutions[paneId] = res;
+      document.querySelectorAll(`.split-${paneId}-res-btn`).forEach(b => {
+        if (b.dataset.sres === res) {
+          b.className = `split-${paneId}-res-btn px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-white font-bold cursor-pointer transition-all`;
+        } else {
+          b.className = `split-${paneId}-res-btn px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer transition-all`;
+        }
+      });
+      loadSplitChartDataPane(paneId);
+    }
+
+    function fitSplitPaneChart(paneId) {
+      if (splitCharts[paneId]) {
+        splitCharts[paneId].timeScale().fitContent();
+        triggerHaptic(10);
+      }
+    }
+
+    function resizeAllSplitCharts() {
+      ['p1', 'p2'].forEach(p => {
+        if (splitCharts[p]) {
+          const area = document.getElementById(`split-${p}-chart-area`);
+          if (area && area.clientWidth > 0 && area.clientHeight > 0) {
+            splitCharts[p].applyOptions({
+              width: area.clientWidth,
+              height: area.clientHeight
+            });
+          }
+        }
+      });
+    }
+
+    // ------------------ SPLIT OPTION CHAIN ENGINE ------------------
+    function changeSplitPaneUnderlying(paneId, und) {
+      splitUnderlyings[paneId] = und;
+      splitExpiries[paneId] = '';
+      loadSplitOptionChainPane(paneId, true);
+    }
+
+    function changeSplitPaneExpiry(paneId, exp) {
+      splitExpiries[paneId] = exp;
+      loadSplitOptionChainPane(paneId, true);
+    }
+
+    async function loadSplitOptionChainPane(paneId, forceFullRender = false) {
+      if (isFetchingSplitChainMap[paneId]) return;
+      isFetchingSplitChainMap[paneId] = true;
+      const container = document.getElementById(`split-${paneId}-optionchain-view`);
       if (!container) {
-        isFetchingSplitChain = false;
+        isFetchingSplitChainMap[paneId] = false;
         return;
       }
 
+      const und = splitUnderlyings[paneId] || 'BANKNIFTY';
+      const exp = splitExpiries[paneId] || '';
+
       try {
-        const url = `/api/optionchain?underlying=${encodeURIComponent(splitOptionUnderlying)}${splitOptionExpiry ? `&expiry=${encodeURIComponent(splitOptionExpiry)}` : ''}`;
+        const url = `/api/optionchain?underlying=${encodeURIComponent(und)}${exp ? `&expiry=${encodeURIComponent(exp)}` : ''}`;
         const res = await fetch(url);
         const data = await res.json();
 
         if (!data || !data.strikes || !data.strikes.length) {
-          container.innerHTML = '<div class="p-8 text-center text-xs text-slate-500">Option Chain unavailable for ' + splitOptionUnderlying + '</div>';
+          container.innerHTML = `<div class="p-8 text-center text-xs text-slate-500">Option Chain unavailable for ${und}</div>`;
           return;
         }
 
-        const spotEl = document.getElementById('split-chain-spot');
+        const spotEl = document.getElementById(`split-${paneId}-chain-spot`);
         if (spotEl) spotEl.innerText = Number(data.spot_price || 0).toFixed(1);
-        const atmEl = document.getElementById('split-chain-atm');
+        const atmEl = document.getElementById(`split-${paneId}-chain-atm`);
         if (atmEl) atmEl.innerText = `ATM: ${data.atm_strike || '--'}`;
-        const pcrEl = document.getElementById('split-chain-pcr');
+        const pcrEl = document.getElementById(`split-${paneId}-chain-pcr`);
         if (pcrEl && data.pcr !== undefined) {
           pcrEl.innerText = `PCR: ${data.pcr.toFixed(2)}`;
           pcrEl.className = data.pcr >= 1.0 ? 'text-emerald-400 font-bold' : 'text-danger font-bold';
         }
 
-        const expSelect = document.getElementById('split-chain-expiry');
+        const expSelect = document.getElementById(`split-${paneId}-chain-expiry`);
         if (expSelect && data.expiries && (!expSelect.options.length || expSelect.options.length <= 1)) {
           expSelect.innerHTML = '';
-          data.expiries.forEach((exp, idx) => {
+          data.expiries.forEach((itemExp, idx) => {
             const opt = document.createElement('option');
-            opt.value = exp;
-            opt.innerText = exp;
-            if (exp === data.selected_expiry || idx === 0) opt.selected = true;
+            opt.value = itemExp;
+            opt.innerText = itemExp;
+            if (itemExp === data.selected_expiry || idx === 0) opt.selected = true;
             expSelect.appendChild(opt);
           });
         }
 
-        const activeChainExpiry = data.selected_expiry || splitOptionExpiry || '';
+        const activeChainExpiry = data.selected_expiry || exp || '';
 
         let html = `
           <table class="w-full text-xs font-mono border-collapse select-text">
@@ -2674,7 +3240,6 @@
 
           html += `
             <tr class="${atmStyle} hover:bg-slate-800/40 transition-colors">
-              <!-- CALL (LTP + B + S) -->
               <td class="py-1 px-1.5">
                 <div class="flex items-center justify-end gap-1">
                   <button onclick="selectOptionForTrade('${ce.display_name}', ${ce.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
@@ -2690,14 +3255,10 @@
                           title="SELL ${ce.display_name}">S</button>
                 </div>
               </td>
-
-              <!-- STRIKE -->
               <td class="py-1 px-2 text-center font-bold whitespace-nowrap ${isAtm ? 'text-amber-300 font-black' : 'text-slate-200'}">
                 <span>${s.strike}</span>
                 ${isAtm ? '<span class="text-[8px] bg-amber-400 text-slate-950 px-1 py-0.2 rounded font-black ml-1">ATM</span>' : ''}
               </td>
-
-              <!-- PUT (B + S + LTP) -->
               <td class="py-1 px-1.5">
                 <div class="flex items-center justify-start gap-1">
                   <button onclick="selectOptionForTrade('${pe.display_name}', ${pe.ltp}, 1, ${data.lot_size}, '${activeChainExpiry}')" 
@@ -2720,12 +3281,290 @@
         html += '</tbody></table>';
         container.innerHTML = html;
       } catch (err) {
-        console.error('Error fetching split option chain:', err);
+        console.error(`Error fetching split option chain for ${paneId}:`, err);
         container.innerHTML = '<div class="p-8 text-center text-xs text-danger">Failed to load option chain</div>';
       } finally {
-        isFetchingSplitChain = false;
+        isFetchingSplitChainMap[paneId] = false;
       }
     }
+
+    // ------------------ SPLIT POSITIONS ENGINE ------------------
+    async function refreshSplitPositionsPane(paneId) {
+      try {
+        await loadDockContent();
+      } catch (e) {}
+      renderSplitPositionsPane(paneId);
+      triggerHaptic(10);
+    }
+
+    function renderSplitPositionsPane(paneId) {
+      const container = document.getElementById(`split-${paneId}-positions-view`);
+      if (!container) return;
+      const positions = window.latestPositions || [];
+
+      // Update header badges
+      const countBadge = document.getElementById(`split-${paneId}-pos-count-badge`);
+      if (countBadge) countBadge.innerText = `${positions.length} Active`;
+      const totalPnl = positions.reduce((acc, p) => acc + Number(p.pnl || 0), 0);
+      const mtmBadge = document.getElementById(`split-${paneId}-pos-mtm`);
+      if (mtmBadge) {
+        mtmBadge.innerText = `${totalPnl >= 0 ? '+' : ''}₹ ${totalPnl.toFixed(2)}`;
+        mtmBadge.className = totalPnl >= 0 ? 'text-emerald-400 font-bold' : 'text-danger font-bold';
+      }
+
+      if (!positions.length) {
+        container.innerHTML = `
+          <div class="py-12 px-4 text-center">
+            <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+              <i data-lucide="briefcase" class="w-6 h-6"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-300">No Open Positions</div>
+            <div class="text-xs text-slate-500 mt-1">Punch a trade from Option Chain or Watchlist</div>
+          </div>
+        `;
+        try { lucide.createIcons(); } catch (e) {}
+        return;
+      }
+
+      let html = `
+        <div class="divide-y divide-borderSubtle/60 w-full font-mono">
+          ${positions.map(p => {
+            const pnl = Number(p.pnl || 0);
+            const isClosed = (p.net_qty === 0);
+            const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-400' : 'text-danger');
+            const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
+            const info = parsePosSymbolDetails(p.symbol, p.expiry);
+            return `
+              <div class="p-3 hover:bg-slate-800/30 transition-colors select-none ${isClosed ? 'opacity-60' : ''}">
+                <div class="flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-bold text-white text-xs">${info.underlying || p.symbol}</span>
+                    ${info.isOption ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${info.optType === 'CALL' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25' : 'bg-orange-500/15 text-orange-400 border border-orange-500/25'}">${info.strike} ${info.optType}</span>` : ''}
+                    <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${p.side === 'BUY' ? 'bg-brand/15 text-brand border border-brand/20' : 'bg-danger/15 text-danger border border-danger/20'}">${p.side || 'BUY'}</span>
+                  </div>
+                  <span class="font-bold text-xs ${pnlColor}">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                  <span>Qty: <b class="text-white">${p.net_qty}</b> | Avg: ₹${Number(avgPrice).toFixed(1)}</span>
+                  <span>LTP: <b class="text-white">₹${Number(p.ltp || 0).toFixed(1)}</b></span>
+                </div>
+                <div class="flex items-center justify-end mt-1.5">
+                  <button onclick="openPosExitModal('${p.symbol}')" class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-danger/10 hover:bg-danger hover:text-white text-danger border border-danger/25 cursor-pointer active:scale-95 transition-all">Exit Position</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      container.innerHTML = html;
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ SPLIT ORDERS ENGINE ------------------
+    async function refreshSplitOrdersPane(paneId) {
+      try {
+        await loadDockContent();
+      } catch (e) {}
+      renderSplitOrdersPane(paneId);
+      triggerHaptic(10);
+    }
+
+    function renderSplitOrdersPane(paneId) {
+      const container = document.getElementById(`split-${paneId}-orders-view`);
+      if (!container) return;
+      const orders = window.latestOrders || [];
+
+      const countBadge = document.getElementById(`split-${paneId}-ord-count-badge`);
+      if (countBadge) countBadge.innerText = `${orders.length} Orders`;
+
+      if (!orders.length) {
+        container.innerHTML = `
+          <div class="py-12 px-4 text-center">
+            <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+              <i data-lucide="clock" class="w-6 h-6"></i>
+            </div>
+            <div class="text-sm font-bold text-slate-300">No Orders Placed Today</div>
+            <div class="text-xs text-slate-500 mt-1">Executed orders will appear here automatically</div>
+          </div>
+        `;
+        try { lucide.createIcons(); } catch (e) {}
+        return;
+      }
+
+      let html = `
+        <div class="divide-y divide-borderSubtle/60 w-full font-mono">
+          ${orders.map(o => {
+            const statusColor = (o.status === 'FILLED' || o.status === 'COMPLETE') ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : (o.status === 'CANCELLED' ? 'text-slate-500 bg-slate-800 border-slate-700' : 'text-amber-400 bg-amber-500/10 border-amber-500/20');
+            const isBuy = (o.side === 'BUY' || o.type === 'BUY');
+            return `
+              <div class="p-3 hover:bg-slate-800/30 transition-colors select-none text-xs">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400">${o.time || '--:--'}</span>
+                    <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${isBuy ? 'bg-brand/15 text-brand border border-brand/20' : 'bg-danger/15 text-danger border border-danger/20'}">${isBuy ? 'BUY' : 'SELL'}</span>
+                    <span class="font-bold text-white text-xs">${o.symbol}</span>
+                  </div>
+                  <span class="px-1.5 py-0.2 rounded text-[10px] font-bold border ${statusColor}">${o.status || 'FILLED'}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                  <span>Qty: <b class="text-white">${o.qty}</b> (${o.product || 'NRML'})</span>
+                  <span>Price: <b class="text-white">₹${Number(o.price || 0).toFixed(2)}</b></span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      container.innerHTML = html;
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // ------------------ SPLIT WATCHLIST ENGINE ------------------
+    function setSplitWatchFilter(paneId, filter) {
+      splitWatchFilters[paneId] = filter;
+      document.querySelectorAll(`.split-${paneId}-wf-btn`).forEach(b => {
+        if (b.innerText === filter) {
+          b.className = `split-${paneId}-wf-btn px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-white font-bold cursor-pointer transition-all`;
+        } else {
+          b.className = `split-${paneId}-wf-btn px-1.5 py-0.5 rounded text-[10px] text-slate-400 hover:text-white cursor-pointer transition-all`;
+        }
+      });
+      renderSplitWatchlistPane(paneId);
+    }
+
+    async function refreshSplitWatchlistPane(paneId) {
+      try {
+        await refreshWatchlist();
+      } catch (e) {}
+      renderSplitWatchlistPane(paneId);
+      triggerHaptic(10);
+    }
+
+    function renderSplitWatchlistPane(paneId) {
+      const container = document.getElementById(`split-${paneId}-watchlist-view`);
+      if (!container) return;
+
+      const activeList = getActiveWatchlist() || [];
+      const quotesMap = window.latestWatchQuotesMap || {};
+      const filter = splitWatchFilters[paneId] || 'ALL';
+
+      let filteredSymbols = activeList.filter(sym => {
+        if (filter === 'ALL') return true;
+        if (filter === 'INDICES') return sym.includes('INDEX');
+        if (filter === 'FUTURES') return sym.includes('FUT');
+        if (filter === 'EQUITY') return !sym.includes('INDEX') && !sym.includes('FUT');
+        return true;
+      });
+
+      if (!filteredSymbols.length) {
+        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-500">No symbols found for ${filter}</div>`;
+        return;
+      }
+
+      let html = `
+        <div class="divide-y divide-borderSubtle/60 w-full select-none font-mono">
+          ${filteredSymbols.map(sym => {
+            const q = quotesMap[sym] || { symbol: sym, short_name: sym.split(':').pop(), ltp: 0, change: 0, chg_percent: 0 };
+            const isSelected = (sym === currentSymbol);
+            const isUp = (q.change || 0) >= 0;
+            const colorClass = isUp ? 'text-emerald-400' : 'text-danger';
+            return `
+              <div onclick="selectSymbol('${sym}')" class="p-2.5 flex items-center justify-between cursor-pointer ${isSelected ? 'bg-emerald-500/10 border-l-2 border-brand' : 'hover:bg-slate-800/40'} transition-all">
+                <div class="min-w-0 pr-2">
+                  <div class="font-bold text-xs text-white truncate">${q.short_name || sym}</div>
+                  <div class="text-[10px] text-slate-500 font-mono">${sym.split(':')[0]}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="text-right flex-shrink-0">
+                    <div class="text-xs font-bold ${colorClass}">₹${Number(q.ltp || 0).toFixed(2)}</div>
+                    <div class="text-[10px] font-semibold ${colorClass}">${isUp ? '+' : ''}${Number(q.change || 0).toFixed(2)} (${isUp ? '+' : ''}${Number(q.chg_percent || 0).toFixed(2)}%)</div>
+                  </div>
+                  <div class="flex items-center gap-1 opacity-80 hover:opacity-100">
+                    <button onclick="event.stopPropagation(); selectSymbol('${sym}'); openOrderWithSide(1);" class="px-1.5 py-0.5 rounded bg-brand text-slate-950 font-black text-[9px] hover:bg-emerald-400 active:scale-95 transition-all">B</button>
+                    <button onclick="event.stopPropagation(); selectSymbol('${sym}'); openOrderWithSide(-1);" class="px-1.5 py-0.5 rounded bg-danger text-white font-black text-[9px] hover:bg-rose-600 active:scale-95 transition-all">S</button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      container.innerHTML = html;
+    }
+
+    // ------------------ MAIN SPLIT STUDIO INITIALIZER ------------------
+    function initOrResizeSplitScreen() {
+      const splitDesk = document.getElementById('ws-split-desk');
+      if (!splitDesk) return;
+
+      initSplitResizer();
+
+      // Apply saved orientation
+      const stage = document.getElementById('split-stage-container');
+      const btnText = document.getElementById('split-orient-text');
+      if (stage) {
+        if (splitOrientation === 'horizontal') {
+          stage.classList.remove('split-vertical');
+          stage.classList.add('split-horizontal');
+          if (btnText) btnText.innerText = 'Side-by-Side';
+        } else {
+          stage.classList.remove('split-horizontal');
+          stage.classList.add('split-vertical');
+          if (btnText) btnText.innerText = 'Stacked';
+        }
+      }
+
+      syncSplitWidgetSelects();
+
+      // Setup panels views and controls
+      ['p1', 'p2'].forEach(p => {
+        showSplitWidgetView(p, splitWidgets[p]);
+        renderSplitContextControls(p);
+      });
+
+      updateSplitMaximizeButtons();
+      applySplitRatio(splitRatio, true);
+
+      // Render data for both active widgets
+      ['p1', 'p2'].forEach(p => {
+        renderSplitWidget(p, splitWidgets[p]);
+      });
+
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // Backward compatibility functions
+    function loadSplitChartData() {
+      if (splitWidgets.p1 === 'chart') loadSplitChartDataPane('p1');
+      if (splitWidgets.p2 === 'chart') loadSplitChartDataPane('p2');
+    }
+
+    function setSplitResolution(res) {
+      if (splitWidgets.p1 === 'chart') setSplitPaneResolution('p1', res);
+      if (splitWidgets.p2 === 'chart') setSplitPaneResolution('p2', res);
+    }
+
+    function changeSplitChainUnderlying(und) {
+      if (splitWidgets.p1 === 'options') changeSplitPaneUnderlying('p1', und);
+      if (splitWidgets.p2 === 'options') changeSplitPaneUnderlying('p2', und);
+    }
+
+    function changeSplitChainExpiry(exp) {
+      if (splitWidgets.p1 === 'options') changeSplitPaneExpiry('p1', exp);
+      if (splitWidgets.p2 === 'options') changeSplitPaneExpiry('p2', exp);
+    }
+
+    async function loadSplitOptionChain(forceFullRender = false) {
+      if (splitWidgets.p1 === 'options') await loadSplitOptionChainPane('p1', forceFullRender);
+      if (splitWidgets.p2 === 'options') await loadSplitOptionChainPane('p2', forceFullRender);
+    }
+
+    // Window resize observer to adapt split charts smoothly
+    window.addEventListener('resize', () => {
+      if (currentWorkstation === 'split') {
+        resizeAllSplitCharts();
+      }
+    });
 
     // ------------------ MOBILE NAVIGATION CONTROLS ------------------
     function switchMobileTab(tab, pushHistory = true) {
@@ -3808,6 +4647,12 @@
       setInterval(async () => {
         if (currentWorkstation === 'split') {
           try { await loadSplitOptionChain(false); } catch (e) {}
+          if (typeof splitWidgets !== 'undefined') {
+            if (splitWidgets.p1 === 'positions') renderSplitPositionsPane('p1');
+            if (splitWidgets.p2 === 'positions') renderSplitPositionsPane('p2');
+            if (splitWidgets.p1 === 'watchlist') renderSplitWatchlistPane('p1');
+            if (splitWidgets.p2 === 'watchlist') renderSplitWatchlistPane('p2');
+          }
         } else if (currentWorkstation === 'optionchain' || currentRightDockTab === 'optionchain') {
           try { await loadDockOptionChain(false); } catch (e) {}
           try { await loadOptionChain(false); } catch (e) {}
@@ -4088,8 +4933,13 @@
       const cleanName = sym.split(':').pop() || sym;
       const symTag = document.getElementById('order-symbol-tag');
       if (symTag) symTag.innerText = cleanName;
-      const splitTitle = document.getElementById('split-chart-symbol');
-      if (splitTitle) splitTitle.innerText = cleanName;
+      ['p1', 'p2'].forEach(p => {
+        const sEl = document.getElementById(`split-${p}-chart-symbol`);
+        if (sEl) sEl.innerText = cleanName;
+        if (typeof splitWidgets !== 'undefined' && splitWidgets[p] === 'chart') {
+          loadSplitChartDataPane(p);
+        }
+      });
 
       if (sym.includes('BANKNIFTY') || sym.includes('NIFTYBANK')) {
         currentLotSize = sym.includes('-EQ') ? 1 : 30;
