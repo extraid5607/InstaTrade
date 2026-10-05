@@ -500,6 +500,8 @@
     #watchlist-swiper,
     .watchlist-page,
     #watchlist-container, 
+    #portfolio-swiper,
+    .portfolio-page,
     #dock-content,
     #ws-positions-desk {
       touch-action: pan-y;
@@ -508,26 +510,31 @@
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
     }
-    .watchlist-swiper {
+    .watchlist-swiper,
+    .portfolio-swiper {
       width: 100%;
       height: 100%;
       position: relative;
     }
-    .watchlist-swiper .swiper-wrapper {
+    .watchlist-swiper .swiper-wrapper,
+    .portfolio-swiper .swiper-wrapper {
       width: 100%;
       height: 100%;
       display: flex;
     }
-    .watchlist-swiper .swiper-slide {
+    .watchlist-swiper .swiper-slide,
+    .portfolio-swiper .swiper-slide {
       width: 100%;
       height: 100%;
       flex-shrink: 0;
       position: relative;
       overflow: hidden;
     }
-    .watchlist-page {
+    .watchlist-page,
+    .portfolio-page {
       width: 100%;
       height: 100%;
+      overflow-x: hidden;
       overscroll-behavior-y: contain;
     }
 
@@ -1001,13 +1008,13 @@
       
       <!-- MOBILE ZERODHA KITE STYLE TOP CONTROLS (< md) -->
       <div id="mob-zerodha-header-container" class="block md:hidden bg-cardBg border-b border-borderSubtle flex-shrink-0">
-        <!-- Zerodha Dual Tabs: ORDERS vs POSITIONS -->
+        <!-- Zerodha Dual Tabs: POSITIONS vs ORDERS -->
         <div class="flex items-center border-b border-borderSubtle bg-darkBg/30">
-          <button onclick="switchPositionsSubTab('orders')" id="mob-zk-tab-investments" class="flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer">
-            ORDERS <span id="mob-zk-inv-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">0</span>
-          </button>
           <button onclick="switchPositionsSubTab('positions')" id="mob-zk-tab-positions" class="flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer">
             POSITIONS <span id="mob-zk-pos-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-brand text-slate-950 font-mono font-bold">0</span>
+          </button>
+          <button onclick="switchPositionsSubTab('orders')" id="mob-zk-tab-investments" class="flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+            ORDERS <span id="mob-zk-inv-count" class="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">0</span>
           </button>
         </div>
 
@@ -1127,9 +1134,34 @@
           </div>
         </div>
 
-        <!-- DOCK CONTENT CONTAINER (Where loadDockContent renders positions and orders) -->
-        <div id="dock-content" class="min-h-48 overflow-x-auto touch-scroll">
-          <!-- Injected via loadDockContent() -->
+        <!-- DOCK CONTENT SWIPER CONTAINER (nolimits4web/swiper Zerodha-style touch slider) -->
+        <div class="swiper portfolio-swiper w-full overflow-hidden min-h-64 flex-1" id="portfolio-swiper">
+          <div class="swiper-wrapper h-full">
+            <!-- Slide 0: Open Positions -->
+            <div class="swiper-slide h-full flex flex-col" data-subtab="positions">
+              <div id="portfolio-page-positions" class="portfolio-page flex-1 w-full overflow-y-auto overflow-x-hidden touch-scroll">
+                <div class="py-12 px-4 text-center">
+                  <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+                    <i data-lucide="briefcase" class="w-6 h-6"></i>
+                  </div>
+                  <div class="text-sm font-bold text-slate-300">No Open Positions</div>
+                  <div class="text-xs text-slate-500 mt-1">Tap Option Chain or Watchlist to take your first trade</div>
+                </div>
+              </div>
+            </div>
+            <!-- Slide 1: Executed Orders -->
+            <div class="swiper-slide h-full flex flex-col" data-subtab="orders">
+              <div id="portfolio-page-orders" class="portfolio-page flex-1 w-full overflow-y-auto overflow-x-hidden touch-scroll">
+                <div class="py-12 px-4 text-center">
+                  <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
+                    <i data-lucide="clock" class="w-6 h-6"></i>
+                  </div>
+                  <div class="text-sm font-bold text-slate-300">No Orders Placed Today</div>
+                  <div class="text-xs text-slate-500 mt-1">Executed orders will appear here automatically</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2099,6 +2131,9 @@
         loadOptionChain(true);
       } else if (mode === 'positions') {
         loadDockContent();
+        if (portfolioSwiper) {
+          setTimeout(() => { try { portfolioSwiper.update(); } catch(e){} }, 60);
+        }
       } else if (mode === 'split') {
         initOrResizeSplitScreen();
       } else if (mode === 'account') {
@@ -2322,21 +2357,51 @@
       try { lucide.createIcons(); } catch (e) {}
     }
 
+    const portfolioSubTabOrder = ['positions', 'orders'];
+
+    function syncPortfolioSubTabUI(tab) {
+      currentDockTab = tab;
+
+      // Desktop subtab buttons
+      const posBtn = document.getElementById('cmd-tab-positions');
+      const ordBtn = document.getElementById('cmd-tab-orders');
+      if (posBtn && ordBtn) {
+        if (tab === 'positions') {
+          posBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
+          ordBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        } else {
+          ordBtn.className = 'px-3.5 py-1.5 rounded-lg bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm';
+          posBtn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white font-medium text-xs cursor-pointer';
+        }
+      }
+
+      // Mobile Zerodha subtab buttons
+      const mobPosTab = document.getElementById('mob-zk-tab-positions');
+      const mobInvTab = document.getElementById('mob-zk-tab-investments');
+      if (mobPosTab && mobInvTab) {
+        if (tab === 'positions') {
+          mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+          mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+        } else {
+          mobInvTab.className = 'flex-1 py-3 text-center text-xs font-bold text-brand border-b-2 border-brand flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+          mobPosTab.className = 'flex-1 py-3 text-center text-xs font-bold text-slate-400 border-b-2 border-transparent flex items-center justify-center gap-1.5 transition-all cursor-pointer';
+        }
+      }
+
+      // Search placeholder
+      const searchInput = document.getElementById('mob-pos-search');
+      if (searchInput) {
+        searchInput.placeholder = tab === 'positions' ? 'Search in positions' : 'Search in orders';
+      }
+    }
+
     // Toggle Sub-tabs inside Portfolio & P&L Command Center
     function switchPositionsSubTab(subTab) {
       triggerHaptic(12);
-      switchDockTab(subTab);
-      const dockContent = document.getElementById('dock-content');
-      if (dockContent && window.anime) {
-        try {
-          anime({
-            targets: dockContent,
-            opacity: [0.75, 1],
-            translateX: subTab === 'orders' ? [14, 0] : [-14, 0],
-            duration: 200,
-            easing: 'easeOutCubic'
-          });
-        } catch (e) {}
+      syncPortfolioSubTabUI(subTab);
+      const idx = portfolioSubTabOrder.indexOf(subTab);
+      if (portfolioSwiper && idx !== -1 && portfolioSwiper.activeIndex !== idx) {
+        portfolioSwiper.slideTo(idx, 260);
       }
     }
 
@@ -2754,6 +2819,9 @@
       } else if (tab === 'positions') {
         switchWorkstation('positions');
         if (chartActionBar) chartActionBar.classList.add('hidden');
+        if (portfolioSwiper) {
+          setTimeout(() => { try { portfolioSwiper.update(); } catch(e){} }, 60);
+        }
       } else if (tab === 'account') {
         switchWorkstation('account');
         if (chartActionBar) chartActionBar.classList.add('hidden');
@@ -4223,183 +4291,118 @@
       });
     }
 
-    // ------------------ PORTFOLIO GESTURES (SOFT ZERODHA SWIPE & PULL-TO-REFRESH) ------------------
-    function transitionPortfolioTo(targetSubTab, direction = 1) {
-      const container = document.getElementById('dock-content');
-      if (!container) {
-        switchDockTab(targetSubTab);
-        return;
-      }
-      triggerHaptic(12);
+    // ------------------ PORTFOLIO GESTURES (ZERODHA SWIPER & PULL-TO-REFRESH) ------------------
+    let portfolioSwiper = null;
 
-      if (window.anime) {
-        anime.remove(container);
-        anime({
-          targets: container,
-          translateX: direction > 0 ? -60 : 60,
-          opacity: 0.15,
-          duration: 110,
-          easing: 'easeOutQuad',
-          complete: () => {
-            switchDockTab(targetSubTab);
-            container.scrollTop = 0;
-            anime({
-              targets: container,
-              translateX: [direction > 0 ? 60 : -60, 0],
-              opacity: [0.15, 1],
-              duration: 220,
-              easing: 'easeOutCubic'
-            });
-          }
-        });
-      } else {
-        switchDockTab(targetSubTab);
-        container.scrollTop = 0;
-      }
+    function transitionPortfolioTo(targetSubTab, direction = 1) {
+      switchPositionsSubTab(targetSubTab);
     }
 
     function initPortfolioGestures() {
-      const deskEl = document.getElementById('ws-positions-desk');
-      const dockContent = document.getElementById('dock-content');
+      const swiperContainer = document.getElementById('portfolio-swiper');
+      if (!swiperContainer) return;
+
+      if (typeof Swiper !== 'undefined') {
+        if (portfolioSwiper) {
+          try { portfolioSwiper.destroy(true, true); } catch (e) {}
+          portfolioSwiper = null;
+        }
+
+        portfolioSwiper = new Swiper('#portfolio-swiper', {
+          direction: 'horizontal',
+          speed: 260,
+          touchAngle: 45,
+          resistance: true,
+          resistanceRatio: 0.85,
+          preventClicks: true,
+          preventClicksPropagation: true,
+          touchStartPreventDefault: false,
+          nested: false,
+          grabCursor: true,
+          observer: true,
+          observeParents: true,
+          observeSlideChildren: true,
+          threshold: 8,
+          mousewheel: {
+            forceToAxis: true,
+            sensitivity: 0.8,
+            releaseOnEdges: true
+          },
+          keyboard: {
+            enabled: true,
+            onlyInViewport: true
+          },
+          on: {
+            init: function() {
+              const idx = portfolioSubTabOrder.indexOf(currentDockTab);
+              if (idx !== -1 && this.activeIndex !== idx) {
+                this.slideTo(idx, 0, false);
+              }
+              syncPortfolioSubTabUI(currentDockTab);
+            },
+            slideChange: function() {
+              const newIdx = this.activeIndex;
+              const newTab = portfolioSubTabOrder[newIdx] || 'positions';
+              currentDockTab = newTab;
+              syncPortfolioSubTabUI(newTab);
+              triggerHaptic(10);
+            }
+          }
+        });
+      }
+
+      // Initialize Pull-to-refresh on portfolio pages
+      initPortfolioPullToRefresh();
+    }
+
+    function initPortfolioPullToRefresh() {
       const pullEl = document.getElementById('portfolio-pull-refresh');
-      const targetEl = dockContent || deskEl;
-      if (!targetEl) return;
+      const pullText = document.getElementById('portfolio-pull-text');
+      if (!pullEl) return;
 
-      let startX = 0;
-      let startY = 0;
-      let startTime = 0;
-      let isTracking = false;
-      let gestureAxis = null;
-      let startScrollTop = 0;
-      let isPullRefreshing = false;
-      let hasSwipedHorizontally = false;
+      ['positions', 'orders'].forEach(tab => {
+        const page = document.getElementById(`portfolio-page-${tab}`);
+        if (!page) return;
 
-      // Trackpad two-finger horizontal swipe
-      let lastWheelSwipe = 0;
-      const onWheel = (e) => {
-        const dx = e.deltaX;
-        const dy = e.deltaY;
-        if (Math.abs(dx) > 25 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-          if (Date.now() - lastWheelSwipe < 380) return;
-          lastWheelSwipe = Date.now();
-          const direction = dx > 0 ? 1 : -1;
-          let targetTab = (direction > 0)
-            ? (currentDockTab === 'positions' ? 'orders' : 'positions')
-            : (currentDockTab === 'orders' ? 'positions' : 'orders');
-          transitionPortfolioTo(targetTab, direction);
-        }
-      };
-      targetEl.addEventListener('wheel', onWheel, { passive: true });
+        let startY = 0;
+        let isPulling = false;
+        let isRefreshing = false;
 
-      function onTouchStart(e) {
-        if (!e.touches || e.touches.length !== 1) return;
-        if (e.target && e.target.closest('button, input, select, a')) {
-          isTracking = false;
-          return;
-        }
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        startTime = performance.now();
-        isTracking = true;
-        gestureAxis = null;
-        hasSwipedHorizontally = false;
-        startScrollTop = deskEl ? deskEl.scrollTop : 0;
-        if (dockContent && window.anime) anime.remove(dockContent);
-      }
-
-      function onTouchMove(e) {
-        if (!isTracking || !e.touches || e.touches.length !== 1) return;
-        const currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const deltaX = currentX - startX;
-        const deltaY = currentY - startY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-
-        if (!gestureAxis) {
-          if (absX >= 8 || absY >= 8) {
-            if (absX >= absY) {
-              gestureAxis = 'x';
-              hasSwipedHorizontally = true;
-            } else if (startScrollTop <= 2 && deltaY > 8) {
-              gestureAxis = 'pull';
-            } else {
-              gestureAxis = 'y';
-            }
-          }
-        }
-
-        if (gestureAxis === 'x') {
-          if (e.cancelable) e.preventDefault();
-          hasSwipedHorizontally = true;
-          if (dockContent) {
-            const dragX = deltaX * 0.92;
-            dockContent.style.transform = `translate3d(${dragX}px, 0, 0)`;
-            dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dragX) / 450))}`;
-          }
-        } else if (gestureAxis === 'pull' && pullEl && !isPullRefreshing) {
-          if (e.cancelable) e.preventDefault();
-          const pullDistance = Math.min(46, Math.round((deltaY - 6) * 0.42));
-          pullEl.style.height = `${pullDistance}px`;
-          pullEl.style.opacity = `${Math.min(1, pullDistance / 28)}`;
-        }
-      }
-
-      async function onTouchEnd(e) {
-        if (!isTracking) return;
-        isTracking = false;
-
-        let endX = startX;
-        let endY = startY;
-        if (e && e.changedTouches && e.changedTouches.length >= 1) {
-          endX = e.changedTouches[0].clientX;
-          endY = e.changedTouches[0].clientY;
-        }
-
-        const deltaX = endX - startX;
-        const deltaY = endY - startY;
-        const absX = Math.abs(deltaX);
-        const absY = Math.abs(deltaY);
-        const elapsed = Math.max(1, performance.now() - startTime);
-        const velocity = absX / elapsed;
-
-        if (!gestureAxis) {
-          if (absX >= absY && absX >= 12) {
-            gestureAxis = 'x';
-            hasSwipedHorizontally = true;
-          } else if (startScrollTop <= 2 && deltaY >= 25 && absY > absX) {
-            gestureAxis = 'pull';
-          }
-        }
-
-        if (gestureAxis === 'x' && dockContent) {
-          const isFlick = velocity > 0.16 && absX >= 15;
-          const isPassedThreshold = absX >= 30;
-
-          if (isFlick || isPassedThreshold) {
-            resetPullUI();
-            const direction = deltaX < 0 ? 1 : -1;
-            let targetTab = 'positions';
-            if (direction > 0) {
-              targetTab = (currentDockTab === 'positions') ? 'orders' : 'positions';
-            } else {
-              targetTab = (currentDockTab === 'orders') ? 'positions' : 'orders';
-            }
-            transitionPortfolioTo(targetTab, direction);
-            return;
+        page.addEventListener('touchstart', (e) => {
+          if (e.touches.length !== 1) return;
+          if (page.scrollTop <= 0) {
+            startY = e.touches[0].clientY;
+            isPulling = true;
           } else {
-            if (window.anime) anime({ targets: dockContent, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
-            else { dockContent.style.transform = 'translate3d(0, 0, 0)'; dockContent.style.opacity = '1'; }
+            isPulling = false;
           }
-        }
+        }, { passive: true });
 
-        if (gestureAxis === 'pull' && deltaY >= 35) {
-          if (!isPullRefreshing) {
-            isPullRefreshing = true;
-            if (pullEl) {
-              pullEl.style.height = '36px';
-              pullEl.style.opacity = '1';
+        page.addEventListener('touchmove', (e) => {
+          if (!isPulling || isRefreshing || e.touches.length !== 1) return;
+          const currentY = e.touches[0].clientY;
+          const deltaY = currentY - startY;
+          if (deltaY > 8 && page.scrollTop <= 0) {
+            const pullDistance = Math.min(48, Math.round((deltaY - 8) * 0.42));
+            pullEl.style.height = `${pullDistance}px`;
+            pullEl.style.opacity = `${Math.min(1, pullDistance / 26)}`;
+            if (pullText) {
+              pullText.innerText = pullDistance >= 36 ? 'Release to refresh' : 'Pull to refresh';
             }
+          }
+        }, { passive: true });
+
+        page.addEventListener('touchend', async (e) => {
+          if (!isPulling || isRefreshing) return;
+          isPulling = false;
+          const endY = e.changedTouches[0]?.clientY || startY;
+          const deltaY = endY - startY;
+
+          if (deltaY >= 45 && page.scrollTop <= 0) {
+            isRefreshing = true;
+            pullEl.style.height = '38px';
+            pullEl.style.opacity = '1';
+            if (pullText) pullText.innerText = 'Refreshing Portfolio & Orders...';
             triggerHaptic(20);
             try {
               await loadDockContent();
@@ -4407,85 +4410,24 @@
               showToast('Portfolio & Orders refreshed', 'success');
             } catch (err) {}
             setTimeout(() => {
-              resetPullUI();
-              isPullRefreshing = false;
-            }, 300);
+              pullEl.style.transition = 'height 0.25s ease, opacity 0.25s ease';
+              pullEl.style.height = '0px';
+              pullEl.style.opacity = '0';
+              setTimeout(() => {
+                pullEl.style.transition = '';
+                isRefreshing = false;
+              }, 250);
+            }, 350);
+          } else {
+            pullEl.style.transition = 'height 0.2s ease, opacity 0.2s ease';
+            pullEl.style.height = '0px';
+            pullEl.style.opacity = '0';
+            setTimeout(() => {
+              pullEl.style.transition = '';
+            }, 200);
           }
-          return;
-        }
-
-        resetPullUI();
-      }
-
-      function resetPullUI() {
-        if (pullEl && !isPullRefreshing) {
-          pullEl.style.transition = 'height 0.2s ease, opacity 0.2s ease';
-          pullEl.style.height = '0px';
-          pullEl.style.opacity = '0';
-          setTimeout(() => {
-            if (pullEl) pullEl.style.transition = '';
-          }, 200);
-        }
-      }
-
-      targetEl.addEventListener('touchstart', onTouchStart, { passive: true });
-      targetEl.addEventListener('touchmove', onTouchMove, { passive: false });
-      targetEl.addEventListener('touchend', onTouchEnd, { passive: true });
-      targetEl.addEventListener('touchcancel', () => {
-        if (dockContent && isTracking) {
-          isTracking = false;
-          if (window.anime) anime({ targets: dockContent, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
-          else { dockContent.style.transform = 'translate3d(0, 0, 0)'; dockContent.style.opacity = '1'; }
-        }
-        resetPullUI();
-      }, { passive: true });
-
-      // Mouse drag swipe for dock
-      let isMouseDown = false;
-      let mouseStartX = 0;
-      let mouseDraggedX = false;
-
-      const onMouseDown = (e) => {
-        if (e.button !== 0) return;
-        if (e.target && e.target.closest('button, input, select, a')) return;
-        isMouseDown = true;
-        mouseStartX = e.clientX;
-        mouseDraggedX = false;
-      };
-
-      const onMouseMove = (e) => {
-        if (!isMouseDown) return;
-        const dx = e.clientX - mouseStartX;
-        if (Math.abs(dx) > 8) {
-          mouseDraggedX = true;
-          if (dockContent) {
-            dockContent.style.transform = `translate3d(${dx * 0.75}px, 0, 0)`;
-            dockContent.style.opacity = `${Math.max(0.65, 1 - (Math.abs(dx) / 500))}`;
-          }
-        }
-      };
-
-      const onMouseUp = (e) => {
-        if (!isMouseDown) return;
-        isMouseDown = false;
-        if (mouseDraggedX) {
-          const dx = e.clientX - mouseStartX;
-          if (Math.abs(dx) >= 30) {
-            const direction = dx < 0 ? 1 : -1;
-            let targetTab = (direction > 0)
-              ? (currentDockTab === 'positions' ? 'orders' : 'positions')
-              : (currentDockTab === 'orders' ? 'positions' : 'orders');
-            transitionPortfolioTo(targetTab, direction);
-          } else if (dockContent) {
-            if (window.anime) anime({ targets: dockContent, translateX: 0, opacity: 1, duration: 180, easing: 'easeOutQuad' });
-            else { dockContent.style.transform = 'translate3d(0, 0, 0)'; dockContent.style.opacity = '1'; }
-          }
-        }
-      };
-
-      targetEl.addEventListener('mousedown', onMouseDown);
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('mouseup', onMouseUp);
+        }, { passive: true });
+      });
     }
 
     function toggleWatchlistCollapse() {
@@ -5429,7 +5371,9 @@
 
     async function loadDockContent() {
       const container = document.getElementById('dock-content');
-      if (!container) return;
+      const posContainer = document.getElementById('portfolio-page-positions');
+      const ordContainer = document.getElementById('portfolio-page-orders');
+      if (!container && !posContainer && !ordContainer) return;
 
       const activeUser = getActiveUsername();
       const todayIST = getTodayISTDateString();
@@ -5582,10 +5526,10 @@
 
       renderRightDockPositions();
 
-      // =================== TAB 1: POSITIONS ===================
-      if (currentDockTab === 'positions') {
+      // =================== 1. RENDER POSITIONS SLIDE ===================
+      if (posContainer) {
         if (!positions.length) {
-          container.innerHTML = `
+          posContainer.innerHTML = `
             <div class="py-12 px-4 text-center">
               <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
                 <i data-lucide="briefcase" class="w-6 h-6"></i>
@@ -5594,170 +5538,162 @@
               <div class="text-xs text-slate-500 mt-1">Tap Option Chain or Watchlist to take your first trade</div>
             </div>
           `;
-          try { lucide.createIcons(); } catch (e) {}
-          return;
-        }
+        } else {
+          // Fast In-Place Update (if already rendered and count unchanged)
+          const existingPosTable = posContainer.querySelector('#pos-table-body');
+          const existingMobList = posContainer.querySelector('#pos-mob-zerodha-list');
+          const isTableReady = existingPosTable && existingPosTable.children.length === positions.length;
+          const isMobReady = existingMobList && existingMobList.children.length === positions.length;
 
-        // Fast In-Place Update (if already rendered and count unchanged)
-        const existingPosTable = document.getElementById('pos-table-body');
-        const existingMobList = document.getElementById('pos-mob-zerodha-list');
-        const isTableReady = existingPosTable && existingPosTable.children.length === positions.length;
-        const isMobReady = existingMobList && existingMobList.children.length === positions.length;
-
-        if (isTableReady || isMobReady) {
-          let runningTotalPnl = 0;
-          positions.forEach(p => {
-            const rowKey = p.symbol.replace(/[: -]/g, '_');
-            const ltpEl = document.getElementById(`pos-ltp-${rowKey}`);
-            const pnlEl = document.getElementById(`pos-pnl-${rowKey}`);
-            const mobLtpEl = document.getElementById(`mob-pos-ltp-${rowKey}`);
-            const mobPnlEl = document.getElementById(`mob-pos-pnl-${rowKey}`);
-            const pnl = Number(p.pnl || 0);
-            runningTotalPnl += pnl;
-            const isClosed = (p.net_qty === 0);
-            const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger');
-
-            if (ltpEl) ltpEl.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
-            if (pnlEl) {
-              pnlEl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
-              pnlEl.className = `${pnlColor} font-bold`;
-            }
-            if (mobLtpEl) mobLtpEl.innerText = Number(p.ltp || 0).toFixed(2);
-            if (mobPnlEl) {
-              mobPnlEl.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}`;
-              mobPnlEl.className = `font-bold font-mono text-sm ${pnlColor}`;
-            }
-
-            if (window.currentExitSymbol === p.symbol) {
-              const modalLtp = document.getElementById('exit-modal-ltp');
-              const modalPnl = document.getElementById('exit-modal-pnl');
-              if (modalLtp) modalLtp.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
-              if (modalPnl) {
-                modalPnl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
-                modalPnl.className = `text-sm font-bold font-mono mt-0.5 ${pnlColor}`;
-              }
-            }
-          });
-
-          if (mobZkTotalPnl) {
-            mobZkTotalPnl.innerText = `${runningTotalPnl >= 0 ? '+' : ''}${runningTotalPnl.toFixed(2)}`;
-            mobZkTotalPnl.className = `text-sm font-bold font-mono ${runningTotalPnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger'}`;
-          }
-          if (dockMtm) {
-            dockMtm.innerText = `${runningTotalPnl >= 0 ? '+' : ''}₹ ${runningTotalPnl.toFixed(2)}`;
-            dockMtm.className = `font-bold ${runningTotalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
-          }
-          return;
-        }
-
-        let html = `
-          <!-- MOBILE ZERODHA KITE POSITION LIST (< 768px) -->
-          <div class="block md:hidden divide-y divide-borderSubtle/60" id="pos-mob-zerodha-list">
-            ${positions.map(p => {
+          if (isTableReady || isMobReady) {
+            let runningTotalPnl = 0;
+            positions.forEach(p => {
               const rowKey = p.symbol.replace(/[: -]/g, '_');
-              const info = parsePosSymbolDetails(p.symbol, p.expiry);
+              const ltpEl = document.getElementById(`pos-ltp-${rowKey}`);
+              const pnlEl = document.getElementById(`pos-pnl-${rowKey}`);
+              const mobLtpEl = document.getElementById(`mob-pos-ltp-${rowKey}`);
+              const mobPnlEl = document.getElementById(`mob-pos-pnl-${rowKey}`);
               const pnl = Number(p.pnl || 0);
-              const pnlFormatted = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}`;
+              runningTotalPnl += pnl;
               const isClosed = (p.net_qty === 0);
               const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger');
-              const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
-              const qtyText = isClosed ? '0 SHARES' : `${p.net_qty > 0 ? '+' : ''}${p.net_qty} SHARES`;
-              const product = p.product || 'NRML';
 
-              let badgeHtml = '';
-              if (info.isOption) {
-                if (isClosed) {
-                  badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400">${info.strike} ${info.optType}</span>`;
-                } else if (info.optType === 'CALL') {
-                  badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25">${info.strike} CALL</span>`;
-                } else {
-                  badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-orange-500/15 text-orange-400 border border-orange-500/25">${info.strike} PUT</span>`;
-                }
+              if (ltpEl) ltpEl.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
+              if (pnlEl) {
+                pnlEl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
+                pnlEl.className = `${pnlColor} font-bold`;
+              }
+              if (mobLtpEl) mobLtpEl.innerText = Number(p.ltp || 0).toFixed(2);
+              if (mobPnlEl) {
+                mobPnlEl.innerText = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}`;
+                mobPnlEl.className = `font-bold font-mono text-sm ${pnlColor}`;
               }
 
-              const expBadge = info.expiryStr ? `<span class="pos-expiry-badge px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border">${info.expiryStr}</span>` : '';
+              if (window.currentExitSymbol === p.symbol) {
+                const modalLtp = document.getElementById('exit-modal-ltp');
+                const modalPnl = document.getElementById('exit-modal-pnl');
+                if (modalLtp) modalLtp.innerText = `₹ ${Number(p.ltp || 0).toFixed(2)}`;
+                if (modalPnl) {
+                  modalPnl.innerText = `${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}`;
+                  modalPnl.className = `text-sm font-bold font-mono mt-0.5 ${pnlColor}`;
+                }
+              }
+            });
 
-              return `
-                <div id="mob-pos-row-${rowKey}" onclick="openPosExitModal('${p.symbol}')" class="mob-zk-pos-row px-4 py-3 active:bg-slate-800/30 transition-colors cursor-pointer select-none ${isClosed ? 'opacity-60' : ''}" data-symbol="${p.symbol.toLowerCase()}" data-closed="${isClosed ? '1' : '0'}">
-                  <!-- Line 1: Quantity with shield & Product -->
-                  <div class="flex items-center justify-between text-xs text-slate-400">
-                    <div class="flex items-center gap-1.5 font-mono">
-                      <span class="${isClosed ? 'text-slate-500' : 'text-slate-300 font-medium'}">${qtyText}</span>
-                      <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded text-[9px] border border-slate-600 text-slate-400 font-bold" title="NRML Margin">₹</span>
-                    </div>
-                    <span class="text-[11px] font-semibold tracking-wider ${isClosed ? 'text-slate-500' : 'text-slate-400'}">${product}</span>
-                  </div>
-
-                  <!-- Line 2: Symbol, Strike Badge, Expiry & PnL -->
-                  <div class="flex items-center justify-between my-1.5">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                      <span class="font-bold text-sm ${isClosed ? 'text-slate-400' : 'text-white'}">${info.underlying}</span>
-                      ${badgeHtml}
-                      ${expBadge}
-                    </div>
-                    <div class="text-right">
-                      <span id="mob-pos-pnl-${rowKey}" class="font-bold font-mono text-sm ${pnlColor}">${pnlFormatted}</span>
-                    </div>
-                  </div>
-
-                  <!-- Line 3: Exchange, Buy/Sell Avg & LTP -->
-                  <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
-                    <span>${info.exchange} • AVG ${Number(avgPrice).toFixed(2)}</span>
-                    <span>LTP <span id="mob-pos-ltp-${rowKey}" class="${isClosed ? 'text-slate-400' : 'text-slate-200'}">${Number(p.ltp || 0).toFixed(2)}</span></span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-
-          <!-- DESKTOP POSITIONS TABLE (>= 768px) -->
-          <div class="hidden md:block w-full overflow-x-auto">
-            <table class="w-full text-left text-xs font-mono">
-              <thead class="text-slate-400 border-b border-borderSubtle pb-1">
-                <tr>
-                  <th class="py-2 pl-2">Symbol</th>
-                  <th>Expiry</th>
-                  <th>Side</th>
-                  <th>Qty</th>
-                  <th>Buy/Sell Avg</th>
-                  <th>LTP</th>
-                  <th>P&L</th>
-                  <th class="text-right pr-3">Action</th>
-                </tr>
-              </thead>
-              <tbody id="pos-table-body">
+            if (mobZkTotalPnl) {
+              mobZkTotalPnl.innerText = `${runningTotalPnl >= 0 ? '+' : ''}${runningTotalPnl.toFixed(2)}`;
+              mobZkTotalPnl.className = `text-sm font-bold font-mono ${runningTotalPnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger'}`;
+            }
+            if (dockMtm) {
+              dockMtm.innerText = `${runningTotalPnl >= 0 ? '+' : ''}₹ ${runningTotalPnl.toFixed(2)}`;
+              dockMtm.className = `font-bold ${runningTotalPnl >= 0 ? 'text-emerald-400' : 'text-danger'}`;
+            }
+          } else {
+            let posHtml = `
+              <!-- MOBILE ZERODHA KITE POSITION LIST (< 768px) -->
+              <div class="block md:hidden divide-y divide-borderSubtle/60 w-full" id="pos-mob-zerodha-list">
                 ${positions.map(p => {
                   const rowKey = p.symbol.replace(/[: -]/g, '_');
+                  const info = parsePosSymbolDetails(p.symbol, p.expiry);
                   const pnl = Number(p.pnl || 0);
+                  const pnlFormatted = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}`;
                   const isClosed = (p.net_qty === 0);
-                  const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-400' : 'text-danger');
+                  const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-danger');
                   const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
+                  const qtyText = isClosed ? '0 SHARES' : `${p.net_qty > 0 ? '+' : ''}${p.net_qty} SHARES`;
+                  const product = p.product || 'NRML';
+
+                  let badgeHtml = '';
+                  if (info.isOption) {
+                    if (isClosed) {
+                      badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-400">${info.strike} ${info.optType}</span>`;
+                    } else if (info.optType === 'CALL') {
+                      badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25">${info.strike} CALL</span>`;
+                    } else {
+                      badgeHtml = `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-orange-500/15 text-orange-400 border border-orange-500/25">${info.strike} PUT</span>`;
+                    }
+                  }
+
+                  const expBadge = info.expiryStr ? `<span class="pos-expiry-badge px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border">${info.expiryStr}</span>` : '';
+
                   return `
-                    <tr id="pos-row-${rowKey}" class="border-b border-borderSubtle/40 hover:bg-slate-800/30 ${isClosed ? 'opacity-50' : ''}">
-                      <td class="py-2.5 pl-2 text-white font-bold">${p.symbol}</td>
-                      <td>${formatExpiryBadge(p.expiry)}</td>
-                      <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span></td>
-                      <td class="font-bold text-white">${p.net_qty}</td>
-                      <td>₹ ${Number(avgPrice).toFixed(2)}</td>
-                      <td id="pos-ltp-${rowKey}" class="font-bold text-white">₹ ${Number(p.ltp || 0).toFixed(2)}</td>
-                      <td id="pos-pnl-${rowKey}" class="${pnlColor} font-bold">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</td>
-                      <td class="text-right pr-3">
-                        <button onclick="openPosExitModal('${p.symbol}')" class="px-3 py-1 text-xs font-bold rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white border border-danger/30 cursor-pointer active:scale-95 transition-all">Exit</button>
-                      </td>
-                    </tr>
+                    <div id="mob-pos-row-${rowKey}" onclick="openPosExitModal('${p.symbol}')" class="mob-zk-pos-row px-4 py-3 active:bg-slate-800/30 transition-colors cursor-pointer select-none ${isClosed ? 'opacity-60' : ''}" data-symbol="${p.symbol.toLowerCase()}" data-closed="${isClosed ? '1' : '0'}">
+                      <div class="flex items-center justify-between text-xs text-slate-400">
+                        <div class="flex items-center gap-1.5 font-mono">
+                          <span class="${isClosed ? 'text-slate-500' : 'text-slate-300 font-medium'}">${qtyText}</span>
+                          <span class="inline-flex items-center justify-center w-3.5 h-3.5 rounded text-[9px] border border-slate-600 text-slate-400 font-bold" title="NRML Margin">₹</span>
+                        </div>
+                        <span class="text-[11px] font-semibold tracking-wider ${isClosed ? 'text-slate-500' : 'text-slate-400'}">${product}</span>
+                      </div>
+                      <div class="flex items-center justify-between my-1.5">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="font-bold text-sm ${isClosed ? 'text-slate-400' : 'text-white'}">${info.underlying}</span>
+                          ${badgeHtml}
+                          ${expBadge}
+                        </div>
+                        <div class="text-right">
+                          <span id="mob-pos-pnl-${rowKey}" class="font-bold font-mono text-sm ${pnlColor}">${pnlFormatted}</span>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
+                        <span>${info.exchange} • AVG ${Number(avgPrice).toFixed(2)}</span>
+                        <span>LTP <span id="mob-pos-ltp-${rowKey}" class="${isClosed ? 'text-slate-400' : 'text-slate-200'}">${Number(p.ltp || 0).toFixed(2)}</span></span>
+                      </div>
+                    </div>
                   `;
                 }).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
-        container.innerHTML = html;
-        try { lucide.createIcons(); } catch (e) {}
+              </div>
 
-      // =================== TAB 2: ORDERS ===================
-      } else if (currentDockTab === 'orders') {
+              <!-- DESKTOP POSITIONS TABLE (>= 768px) -->
+              <div class="hidden md:block w-full overflow-x-auto">
+                <table class="w-full text-left text-xs font-mono">
+                  <thead class="text-slate-400 border-b border-borderSubtle pb-1">
+                    <tr>
+                      <th class="py-2 pl-2">Symbol</th>
+                      <th>Expiry</th>
+                      <th>Side</th>
+                      <th>Qty</th>
+                      <th>Buy/Sell Avg</th>
+                      <th>LTP</th>
+                      <th>P&L</th>
+                      <th class="text-right pr-3">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pos-table-body">
+                    ${positions.map(p => {
+                      const rowKey = p.symbol.replace(/[: -]/g, '_');
+                      const pnl = Number(p.pnl || 0);
+                      const isClosed = (p.net_qty === 0);
+                      const pnlColor = isClosed ? 'text-slate-400' : (pnl >= 0 ? 'text-emerald-400' : 'text-danger');
+                      const avgPrice = (p.buy_avg && p.buy_avg > 0) ? p.buy_avg : (p.sell_avg || 0);
+                      return `
+                        <tr id="pos-row-${rowKey}" class="border-b border-borderSubtle/40 hover:bg-slate-800/30 ${isClosed ? 'opacity-50' : ''}">
+                          <td class="py-2.5 pl-2 text-white font-bold">${p.symbol}</td>
+                          <td>${formatExpiryBadge(p.expiry)}</td>
+                          <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.side === 'BUY' ? 'bg-brand/20 text-brand' : 'bg-danger/20 text-danger'}">${p.side || 'BUY'}</span></td>
+                          <td class="font-bold text-white">${p.net_qty}</td>
+                          <td>₹ ${Number(avgPrice).toFixed(2)}</td>
+                          <td id="pos-ltp-${rowKey}" class="font-bold text-white">₹ ${Number(p.ltp || 0).toFixed(2)}</td>
+                          <td id="pos-pnl-${rowKey}" class="${pnlColor} font-bold">${pnl >= 0 ? '+' : ''}₹ ${pnl.toFixed(2)}</td>
+                          <td class="text-right pr-3">
+                            <button onclick="openPosExitModal('${p.symbol}')" class="px-3 py-1 text-xs font-bold rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white border border-danger/30 cursor-pointer active:scale-95 transition-all">Exit</button>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+            posContainer.innerHTML = posHtml;
+          }
+        }
+      }
+
+      // =================== 2. RENDER ORDERS SLIDE ===================
+      if (ordContainer) {
         if (!orders.length) {
-          container.innerHTML = `
+          ordContainer.innerHTML = `
             <div class="py-12 px-4 text-center">
               <div class="w-12 h-12 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center text-slate-500 mb-2">
                 <i data-lucide="clock" class="w-6 h-6"></i>
@@ -5766,100 +5702,94 @@
               <div class="text-xs text-slate-500 mt-1">Executed orders will appear here automatically</div>
             </div>
           `;
-          try { lucide.createIcons(); } catch (e) {}
-          return;
+        } else {
+          let ordHtml = `
+            <!-- MOBILE ZERODHA KITE STYLE ORDER LIST (< 768px) -->
+            <div class="block md:hidden divide-y divide-borderSubtle/60 w-full" id="ord-mob-zerodha-list">
+              ${orders.map(o => {
+                const statusColor = (o.status === 'FILLED' || o.status === 'COMPLETE') ? 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : (o.status === 'CANCELLED' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-amber-400 bg-amber-500/10 border-amber-500/20');
+                const isBuy = (o.side === 'BUY' || o.type === 'BUY');
+                const sideColor = isBuy ? 'bg-brand/15 text-brand border-brand/30' : 'bg-danger/15 text-danger border-danger/30';
+                const info = parsePosSymbolDetails(o.symbol, o.expiry);
+                const price = Number(o.price || 0).toFixed(2);
+                return `
+                  <div class="px-4 py-3 active:bg-slate-800/30 transition-colors select-none">
+                    <div class="flex items-center justify-between text-xs text-slate-400">
+                      <div class="flex items-center gap-1.5 font-mono text-[11px]">
+                        <span>${o.time || '--:--'}</span>
+                        <span>•</span>
+                        <span class="font-semibold text-slate-300 uppercase">${o.product || 'NRML'}</span>
+                      </div>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColor}">
+                        ${o.status || 'FILLED'}
+                      </span>
+                    </div>
+                    <div class="flex items-center justify-between my-1.5">
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="font-bold text-sm text-white">${info.underlying || o.symbol}</span>
+                        ${info.isOption ? `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold ${info.optType === 'CALL' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25' : 'bg-orange-500/15 text-orange-400 border border-orange-500/25'}">${info.strike} ${info.optType}</span>` : ''}
+                        ${info.expiryStr ? `<span class="pos-expiry-badge px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border">${info.expiryStr}</span>` : ''}
+                      </div>
+                      <div class="text-right font-mono">
+                        <span class="text-xs text-slate-400">Price </span>
+                        <span class="font-bold text-sm text-white">₹ ${price}</span>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <div class="flex items-center gap-2">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${sideColor}">${isBuy ? 'BUY' : 'SELL'}</span>
+                        <span class="text-slate-300 font-medium">${o.qty} / ${o.qty} Qty</span>
+                      </div>
+                      <span class="text-[10px] text-slate-500">${o.id}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- DESKTOP ORDERS TABLE (>= 768px) -->
+            <div class="hidden md:block w-full overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="text-slate-400 border-b border-borderSubtle pb-1">
+                  <tr>
+                    <th class="py-2 pl-2">Order ID</th>
+                    <th>Time</th>
+                    <th>Symbol</th>
+                    <th>Side</th>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Avg Price</th>
+                    <th class="text-right pr-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${orders.map(o => {
+                    const statusColor = (o.status === 'FILLED' || o.status === 'COMPLETE') ? 'text-emerald-400 bg-emerald-500/10' : (o.status === 'CANCELLED' ? 'text-slate-500' : 'text-amber-400 bg-amber-500/10');
+                    const isBuy = (o.side === 'BUY' || o.type === 'BUY');
+                    return `
+                      <tr class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
+                        <td class="py-2.5 pl-2 text-slate-400 text-[11px] font-mono">${o.id}</td>
+                        <td class="text-slate-400 font-mono">${o.time || '--:--'}</td>
+                        <td class="text-white font-bold">${o.symbol}</td>
+                        <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${isBuy ? 'bg-brand/15 text-brand border border-brand/20' : 'bg-danger/15 text-danger border border-danger/20'}">${isBuy ? 'BUY' : 'SELL'}</span></td>
+                        <td><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-300 bg-slate-800">${o.product || 'NRML'}</span></td>
+                        <td class="font-bold text-white">${o.qty}</td>
+                        <td class="font-bold text-white">₹ ${Number(o.price || 0).toFixed(2)}</td>
+                        <td class="text-right pr-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusColor}">${o.status || 'FILLED'}</span></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+          ordContainer.innerHTML = ordHtml;
         }
-
-        let html = `
-          <!-- MOBILE ZERODHA KITE STYLE ORDER LIST (< 768px) -->
-          <div class="block md:hidden divide-y divide-borderSubtle/60" id="ord-mob-zerodha-list">
-            ${orders.map(o => {
-              const statusColor = (o.status === 'FILLED' || o.status === 'COMPLETE') ? 'text-emerald-500 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20' : (o.status === 'CANCELLED' ? 'text-slate-400 bg-slate-800 border-slate-700' : 'text-amber-400 bg-amber-500/10 border-amber-500/20');
-              const isBuy = (o.side === 'BUY' || o.type === 'BUY');
-              const sideColor = isBuy ? 'bg-brand/15 text-brand border-brand/30' : 'bg-danger/15 text-danger border-danger/30';
-              const info = parsePosSymbolDetails(o.symbol, o.expiry);
-              const price = Number(o.price || 0).toFixed(2);
-              return `
-                <div class="px-4 py-3 active:bg-slate-800/30 transition-colors select-none">
-                  <!-- Row 1: Time & Product + Status -->
-                  <div class="flex items-center justify-between text-xs text-slate-400">
-                    <div class="flex items-center gap-1.5 font-mono text-[11px]">
-                      <span>${o.time || '--:--'}</span>
-                      <span>•</span>
-                      <span class="font-semibold text-slate-300 uppercase">${o.product || 'NRML'}</span>
-                    </div>
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${statusColor}">
-                      ${o.status || 'FILLED'}
-                    </span>
-                  </div>
-
-                  <!-- Row 2: Symbol & Executed Price -->
-                  <div class="flex items-center justify-between my-1.5">
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                      <span class="font-bold text-sm text-white">${info.underlying || o.symbol}</span>
-                      ${info.isOption ? `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold ${info.optType === 'CALL' ? 'bg-sky-500/15 text-sky-400 border border-sky-500/25' : 'bg-orange-500/15 text-orange-400 border border-orange-500/25'}">${info.strike} ${info.optType}</span>` : ''}
-                      ${info.expiryStr ? `<span class="pos-expiry-badge px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono border">${info.expiryStr}</span>` : ''}
-                    </div>
-                    <div class="text-right font-mono">
-                      <span class="text-xs text-slate-400">Price </span>
-                      <span class="font-bold text-sm text-white">₹ ${price}</span>
-                    </div>
-                  </div>
-
-                  <!-- Row 3: Side & Quantity & Order ID -->
-                  <div class="flex items-center justify-between text-xs text-slate-400 font-mono">
-                    <div class="flex items-center gap-2">
-                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold border ${sideColor}">${isBuy ? 'BUY' : 'SELL'}</span>
-                      <span class="text-slate-300 font-medium">${o.qty} / ${o.qty} Qty</span>
-                    </div>
-                    <span class="text-[10px] text-slate-500">${o.id}</span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-
-          <!-- DESKTOP ORDERS TABLE (>= 768px) -->
-          <div class="hidden md:block w-full overflow-x-auto">
-            <table class="w-full text-left text-xs font-mono">
-              <thead class="text-slate-400 border-b border-borderSubtle pb-1">
-                <tr>
-                  <th class="py-2 pl-2">Order ID</th>
-                  <th>Time</th>
-                  <th>Symbol</th>
-                  <th>Side</th>
-                  <th>Product</th>
-                  <th>Qty</th>
-                  <th>Avg Price</th>
-                  <th class="text-right pr-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${orders.map(o => {
-                  const statusColor = (o.status === 'FILLED' || o.status === 'COMPLETE') ? 'text-emerald-400 bg-emerald-500/10' : (o.status === 'CANCELLED' ? 'text-slate-500' : 'text-amber-400 bg-amber-500/10');
-                  const isBuy = (o.side === 'BUY' || o.type === 'BUY');
-                  return `
-                    <tr class="border-b border-borderSubtle/40 hover:bg-slate-800/30">
-                      <td class="py-2.5 pl-2 text-slate-400 text-[11px] font-mono">${o.id}</td>
-                      <td class="text-slate-400 font-mono">${o.time || '--:--'}</td>
-                      <td class="text-white font-bold">${o.symbol}</td>
-                      <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${isBuy ? 'bg-brand/15 text-brand border border-brand/20' : 'bg-danger/15 text-danger border border-danger/20'}">${isBuy ? 'BUY' : 'SELL'}</span></td>
-                      <td><span class="px-1.5 py-0.5 rounded text-[10px] font-semibold text-slate-300 bg-slate-800">${o.product || 'NRML'}</span></td>
-                      <td class="font-bold text-white">${o.qty}</td>
-                      <td class="font-bold text-white">₹ ${Number(o.price || 0).toFixed(2)}</td>
-                      <td class="text-right pr-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${statusColor}">${o.status || 'FILLED'}</span></td>
-                    </tr>
-                  `;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
-        container.innerHTML = html;
-        try { lucide.createIcons(); } catch (e) {}
+      }
+      try { lucide.createIcons(); } catch (e) {}
 
       // =================== TAB 3: HOLDINGS ===================
-      } else if (currentDockTab === 'holdings') {
+      if (currentDockTab === 'holdings' && container) {
         const res = await fetch('/api/holdings', { headers: getAuthHeaders() });
         const d = await res.json();
         const holdings = d.holdings || [];
